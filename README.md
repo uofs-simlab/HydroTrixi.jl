@@ -10,6 +10,34 @@ integrate:
 These are required dependencies of `DiffuSEM.jl`. The package architecture is designed to 
 support additional linear/nonlinear parabolic PDE models as they are added.
 
+## Installation
+
+If you have not yet installed Julia, please [follow the instructions for your
+operating system](https://julialang.org/downloads/platform/). DiffuSEM.jl works
+with Julia v1.10 and newer. We recommend using the latest stable release.
+
+Install and run DiffuSEM.jl from a local clone:
+
+```bash
+git clone https://github.com/tristanmontoya/DiffuSEM.jl.git
+cd DiffuSEM.jl
+julia --project=.
+```
+
+Then instantiate dependencies in the Julia REPL:
+
+```julia
+julia> using Pkg
+
+julia> Pkg.instantiate()
+```
+
+Optional sanity check:
+
+```julia
+julia> Pkg.test()
+```
+
 ## Package structure
 
 - `src/DiffuSEM.jl`: main module + exports
