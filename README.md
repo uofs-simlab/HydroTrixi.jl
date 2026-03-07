@@ -1,5 +1,7 @@
 # DiffuSEM.jl
 
+[![CI](https://github.com/tristanmontoya/DiffuSEM.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/tristanmontoya/DiffuSEM.jl/actions/workflows/ci.yml)
+
 DiffuSEM.jl is a discontinuous spectral-element framework for solving linear and nonlinear 
 parabolic PDEs using the Trixi.jl and SciML ecosystems. The package is scaffolded to 
 integrate:
