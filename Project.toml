@@ -1,0 +1,25 @@
+name = "DiffuSEM"
+uuid = "7af077dc-b170-402d-9829-aaaeff984f5f"
+authors = ["Tristan Montoya <montoya.tristan@gmail.com>"]
+version = "0.1.0-DEV"
+
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+Trixi = "a7f1ee26-1774-49b1-8366-f1abc58fbfcb"
+
+[compat]
+CairoMakie = "0.15"
+LaTeXStrings = "1"
+OrdinaryDiffEq = "6"
+SciMLBase = "2"
+Trixi = "0.13"
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
