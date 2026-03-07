@@ -5,17 +5,9 @@ on:
     branches:
       - main
     tags: ['*']
-    paths-ignore:
-      - 'LICENSE'
-      - 'README.md'
-      - '.zenodo.json'
-      - 'docs/**'
   pull_request:
-    paths-ignore:
-      - 'LICENSE'
-      - 'README.md'
-      - '.zenodo.json'
-      - 'docs/**'
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
