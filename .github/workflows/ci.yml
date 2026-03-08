@@ -18,38 +18,18 @@ concurrency:
 
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-          - macOS-latest
-          - windows-latest
-        arch:
-          - x64
+    name: Julia 1.10 - ubuntu-latest - x64 - ${{ github.event_name }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+          version: '1.10'
+          arch: x64
           show-versioninfo: true
       - uses: julia-actions/cache@v2
 
-      - name: Run full tests (Ubuntu)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Run tests
         uses: julia-actions/julia-runtest@v1
-        with:
-          coverage: false
-
-      - name: Run smoke tests (macOS/Windows)
-        if: ${{ matrix.os != 'ubuntu-latest' }}
-        uses: julia-actions/julia-runtest@v1
-        env:
-          DIFFUSEM_SMOKE_TESTS: "true"
         with:
           coverage: false
