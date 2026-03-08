@@ -4,6 +4,9 @@ using OrdinaryDiffEq
 using SciMLBase
 using Trixi
 
+const SMOKE_TESTS = lowercase(get(ENV, "DIFFUSEM_SMOKE_TESTS", "false")) in
+                    ("1", "true", "yes", "on")
+
 @testset "1D diffusion equation with Dirichlet BCs" begin
     @test DiffuSEM.examples_dir() == joinpath(pkgdir(DiffuSEM), "examples")
 
@@ -52,25 +55,27 @@ using Trixi
     @test eoc[2] ≈ 2.0
     @test eoc[3] ≈ 2.0
 
-    mktempdir() do dir
-        convergence_plot = joinpath(dir, "convergence.pdf")
-        DiffuSEM.plot_convergence_1d([16, 32, 64], [1.0e-2, 1.0e-3, 1.0e-4],
-                                     [2.0e-2, 3.0e-3, 4.0e-4];
-                                     output_path=convergence_plot,
-                                     triangle_order=3)
-        @test isfile(convergence_plot)
+    if !SMOKE_TESTS
+        mktempdir() do dir
+            convergence_plot = joinpath(dir, "convergence.pdf")
+            DiffuSEM.plot_convergence_1d([16, 32, 64], [1.0e-2, 1.0e-3, 1.0e-4],
+                                         [2.0e-2, 3.0e-3, 4.0e-4];
+                                         output_path=convergence_plot,
+                                         triangle_order=3)
+            @test isfile(convergence_plot)
 
-        solution_plot = joinpath(dir, "solution.pdf")
-        DiffuSEM.plot_solution_1d(sol;
-                                  output_path=solution_plot,
-                                  exact_solution=(x, t) -> exp(-0.1 * pi^2 * t) * sinpi(x[1]))
-        @test isfile(solution_plot)
+            solution_plot = joinpath(dir, "solution.pdf")
+            DiffuSEM.plot_solution_1d(sol;
+                                      output_path=solution_plot,
+                                      exact_solution=(x, t) -> exp(-0.1 * pi^2 * t) * sinpi(x[1]))
+            @test isfile(solution_plot)
 
-        solution_animation = joinpath(dir, "solution.mp4")
-        DiffuSEM.animate_solution_1d(sol;
-                                     output_path=solution_animation,
-                                     framerate=2)
-        @test isfile(solution_animation)
-        @test filesize(solution_animation) > 0
+            solution_animation = joinpath(dir, "solution.mp4")
+            DiffuSEM.animate_solution_1d(sol;
+                                         output_path=solution_animation,
+                                         framerate=2)
+            @test isfile(solution_animation)
+            @test filesize(solution_animation) > 0
+        end
     end
 end
