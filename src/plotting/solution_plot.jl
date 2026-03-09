@@ -15,6 +15,9 @@ function plot_solution_1d(sol;
                           legendfontsize=14,
                           linewidth=2.0,
                           markersize=7.0,
+                          xlabelfont=DEFAULT_PLOT_FONT,
+                          ylabelfont=DEFAULT_PLOT_FONT,
+                          titlefont=DEFAULT_PLOT_FONT,
                           xticklabelfont=DEFAULT_PLOT_FONT,
                           yticklabelfont=DEFAULT_PLOT_FONT,
                           legendfont=DEFAULT_PLOT_FONT,
@@ -31,6 +34,9 @@ function plot_solution_1d(sol;
     ax = Axis(fig[1, 1];
               xlabel=xlabel,
               ylabel=ylabel,
+              xlabelfont=xlabelfont,
+              ylabelfont=ylabelfont,
+              titlefont=titlefont,
               xticklabelfont=xticklabelfont,
               yticklabelfont=yticklabelfont,
               title=isnothing(title) ? "" : title)

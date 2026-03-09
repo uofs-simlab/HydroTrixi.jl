@@ -33,7 +33,8 @@ end
 
 function _plot_bottom_triangle!(ax, x_left, x_right, y_ref, order;
                                 triangle_shift=1.5,
-                                trianglefontsize=12)
+                                trianglefontsize=12,
+                                font=DEFAULT_PLOT_FONT)
     x_right > x_left || throw(ArgumentError("`x_right` must be greater than `x_left`."))
     ratio = x_right / x_left
     y_top = y_ref / triangle_shift
@@ -49,7 +50,8 @@ function _plot_bottom_triangle!(ax, x_left, x_right, y_ref, order;
           text=string(order, ":1"),
           align=(:center, :center),
           color=:black,
-          fontsize=trianglefontsize)
+          fontsize=trianglefontsize,
+          font=font)
 
     return nothing
 end
@@ -69,6 +71,8 @@ function plot_convergence_1d(ndofs::AbstractVector{<:Real},
                              legendfontsize=14,
                              trianglefontsize=nothing,
                              linewidth=1.8,
+                             xlabelfont=DEFAULT_PLOT_FONT,
+                             ylabelfont=DEFAULT_PLOT_FONT,
                              xticklabelfont=DEFAULT_PLOT_FONT,
                              yticklabelfont=DEFAULT_PLOT_FONT,
                              legendfont=DEFAULT_PLOT_FONT,
@@ -93,6 +97,8 @@ function plot_convergence_1d(ndofs::AbstractVector{<:Real},
     ax = Axis(fig[1, 1];
               xlabel=xlabel,
               ylabel=ylabel,
+              xlabelfont=xlabelfont,
+              ylabelfont=ylabelfont,
               xticklabelfont=xticklabelfont,
               yticklabelfont=yticklabelfont,
               xscale=xscale,
@@ -133,7 +139,8 @@ function plot_convergence_1d(ndofs::AbstractVector{<:Real},
     y_ref = min(l2_errors[end - 1], linf_errors[end - 1])
     _plot_bottom_triangle!(ax, x_ref_left, x_ref_right, y_ref, order;
                            triangle_shift=triangle_shift,
-                           trianglefontsize=trianglefontsize)
+                           trianglefontsize=trianglefontsize,
+                           font=font)
 
     axislegend(ax;
                position=legend_position,

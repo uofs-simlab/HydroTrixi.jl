@@ -53,4 +53,19 @@ julia> Pkg.test()
 - `examples/diffusion_equation_1d_mixed_dirichlet_neumann_plot.jl`: mixed-BC solution plot
 - `examples/diffusion_equation_1d_mixed_dirichlet_neumann_animation.jl`: mixed-BC animation
 - `examples/diffusion_equation_1d_mixed_dirichlet_neumann_convergence.jl`: mixed-BC convergence study
+- `examples/diffusion_equation_1d_mixed_dirichlet_neumann_convergence_br1_vs_ldg.jl`: mixed-BC BR1 vs LDG convergence comparison
 - `test/runtests.jl`: 1D diffusion-equation tests
+
+## Example outputs
+
+Mixed Dirichlet-Neumann solution profile at final time (numerical vs exact):
+
+![Mixed BC solution profile](assets/images/diffusion_equation_1d_mixed_dirichlet_neumann_solution.png)
+
+LDG convergence study for the mixed Dirichlet-Neumann case:
+
+![LDG convergence](assets/images/diffusion_equation_1d_mixed_dirichlet_neumann_convergence.png)
+
+BR1 vs LDG convergence comparison for the same case:
+
+![BR1 vs LDG convergence](assets/images/diffusion_equation_1d_mixed_dirichlet_neumann_convergence_br1_vs_ldg.png)

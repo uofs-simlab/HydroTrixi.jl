@@ -8,6 +8,7 @@ function mixed_dirichlet_neumann_case(;
                                       forcing_amplitude=0.4,
                                       forcing_frequency=4.0,
                                       dirichlet_mean=1.0,
+                                      parabolic_scheme=ViscousFormulationLocalDG(),
                                       initial_refinement_level=3,
                                       polydeg=3,
                                       n_cells_max=30_000)
@@ -34,7 +35,7 @@ function mixed_dirichlet_neumann_case(;
 
     semi = SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
                                        boundary_conditions=boundary_conditions,
-                                       parabolic_scheme=ViscousFormulationLocalDG())
+                                       parabolic_scheme=parabolic_scheme)
     ode = semidiscretize(semi, tspan)
 
     return (; diffusivity, tspan, forcing_amplitude, forcing_frequency, dirichlet_mean,
