@@ -7,7 +7,7 @@ function animate_solution_1d(sol;
                              ylabel=L"$u(x,t)$",
                              show_time=true,
                              font=DEFAULT_PLOT_FONT,
-                             size=(700, 350),
+                             size=DEFAULT_SOLUTION_FIGSIZE,
                              fontsize=15,
                              legendfontsize=14,
                              linewidth=2.0,

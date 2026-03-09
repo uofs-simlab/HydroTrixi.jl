@@ -10,7 +10,7 @@ function plot_solution_1d(sol;
                           ylabel=L"$u(x,t)$",
                           title="",
                           font=DEFAULT_PLOT_FONT,
-                          size=(700, 350),
+                          size=DEFAULT_CONVERGENCE_FIGSIZE,
                           fontsize=15,
                           legendfontsize=14,
                           linewidth=2.0,
@@ -73,7 +73,7 @@ function plot_solution_1d(sol;
 
     outdir = dirname(output_path)
     outdir == "" || mkpath(outdir)
-    save(output_path, fig)
+    save(output_path, fig; px_per_unit=1)
 
     return fig
 end

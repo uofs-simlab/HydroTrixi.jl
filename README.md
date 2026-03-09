@@ -69,3 +69,6 @@ LDG convergence study for the mixed Dirichlet-Neumann case:
 BR1 vs LDG convergence comparison for the same case:
 
 ![BR1 vs LDG convergence](assets/images/diffusion_equation_1d_mixed_dirichlet_neumann_convergence_br1_vs_ldg.png)
+
+## License 
+This code ~~is~~ **will probably be** released under the [MIT license](https://opensource.org/license/mit).

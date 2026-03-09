@@ -103,7 +103,7 @@ end
 DiffuSEM.set_serif_tex_theme!()
 plot_font = DiffuSEM.DEFAULT_PLOT_FONT
 
-fig = Figure(size=(460, 380), fontsize=15)
+fig = Figure(size=DiffuSEM.DEFAULT_CONVERGENCE_FIGSIZE, fontsize=15)
 xticks = DiffuSEM._doubling_dof_ticks(ldg.ndofs; base=10)
 ax = Axis(fig[1, 1];
           xlabel=LaTeXString("Degrees of freedom"),
@@ -141,14 +141,14 @@ scatterlines!(ax, br1.ndofs, br1.linf_errors;
               linestyle=:dash,
               linewidth=1.8)
 
-axislegend(ax; position=(:right, :top), labelsize=13, font=plot_font)
+axislegend(ax; position=(:right, :top), labelsize=14, font=plot_font)
 
 comparison_plot = joinpath(plots_dir,
                            "diffusion_equation_1d_mixed_dirichlet_neumann_convergence_br1_vs_ldg.pdf")
-save(comparison_plot, fig)
+save(comparison_plot, fig; px_per_unit=1)
 comparison_plot_png = joinpath(plots_dir,
                                "diffusion_equation_1d_mixed_dirichlet_neumann_convergence_br1_vs_ldg.png")
-save(comparison_plot_png, fig)
+save(comparison_plot_png, fig; px_per_unit=1)
 println()
 println("Saved comparison plot to: $(comparison_plot)")
 println("Saved comparison plot to: $(comparison_plot_png)")

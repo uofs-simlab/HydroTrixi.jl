@@ -66,7 +66,7 @@ function plot_convergence_1d(ndofs::AbstractVector{<:Real},
                              xlabel=LaTeXString("Degrees of freedom"),
                              ylabel=LaTeXString("Error"),
                              font=DEFAULT_PLOT_FONT,
-                             size=(420, 360),
+                             size=DEFAULT_CONVERGENCE_FIGSIZE,
                              fontsize=15,
                              legendfontsize=14,
                              trianglefontsize=nothing,
@@ -149,7 +149,7 @@ function plot_convergence_1d(ndofs::AbstractVector{<:Real},
 
     outdir = dirname(output_path)
     outdir == "" || mkpath(outdir)
-    save(output_path, fig)
+    save(output_path, fig; px_per_unit=1)
 
     return fig
 end
