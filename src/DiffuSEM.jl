@@ -13,6 +13,8 @@ using Trixi
 
 include("auxiliary/auxiliary.jl")
 include("equations/equations.jl")
+include("equations/linear_diffusion_1d.jl")
+include("solvers/solvers.jl")
 include("semidiscretization/semidiscretization_parabolic.jl")
 include("time_integration/time_integration.jl")
 include("plotting/style.jl")
@@ -21,6 +23,7 @@ include("plotting/solution_animation.jl")
 include("plotting/convergence_plot.jl")
 
 export LinearDiffusionEquation1D
+export BoundaryConditionDirichletPenalty
 export SemidiscretizationParabolic
 export default_algorithm
 export plot_solution_1d

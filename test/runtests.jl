@@ -50,6 +50,22 @@ const SMOKE_TESTS = lowercase(get(ENV, "DIFFUSEM_SMOKE_TESTS", "false")) in
     @test sol_mixed.t[end] ≈ 0.01
     @test all(isfinite, sol_mixed.u[end])
 
+    h = 1.0 / (2.0^2)
+    penalty_strength = equations.diffusivity * (2 + 1)^2 / h
+    boundary_conditions_penalized = (;
+                                     x_neg=BoundaryConditionDirichletPenalty((x, t, equations) -> SVector(0.0);
+                                                                             penalty=penalty_strength),
+                                     x_pos=BoundaryConditionDirichletPenalty((x, t, equations) -> SVector(0.0);
+                                                                             penalty=penalty_strength))
+    semi_penalized = DiffuSEM.SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
+                                                          boundary_conditions=boundary_conditions_penalized,
+                                                          parabolic_scheme=ViscousFormulationLocalDG())
+    ode_penalized = semidiscretize(semi_penalized, (0.0, 0.01))
+    sol_penalized = SciMLBase.solve(ode_penalized, DiffuSEM.default_algorithm(); dt=1.0e-4,
+                                    save_everystep=false)
+    @test sol_penalized.t[end] ≈ 0.01
+    @test all(isfinite, sol_penalized.u[end])
+
     eoc = DiffuSEM.compute_eoc([1.0, 0.25, 0.0625])
     @test isnan(eoc[1])
     @test eoc[2] ≈ 2.0

@@ -93,8 +93,8 @@ function Trixi.rhs!(du_ode, u_ode, semi::SemidiscretizationParabolic, t)
     du = Trixi.wrap_array(du_ode, mesh, equations, solver, base)
 
     time_start = time_ns()
-    Trixi.rhs_parabolic!(du, u, t, mesh, equations, boundary_conditions, source_terms,
-                         solver, parabolic_scheme, base, viscous)
+    rhs_parabolic!(du, u, t, mesh, equations, boundary_conditions, source_terms,
+                   solver, parabolic_scheme, base, viscous)
     runtime = time_ns() - time_start
     put!(semi.performance_counter, runtime)
 

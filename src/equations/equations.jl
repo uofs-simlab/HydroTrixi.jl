@@ -1,11 +1,19 @@
-struct LinearDiffusionEquation1D{RealT <: Real} <: Trixi.AbstractLaplaceDiffusion{1, 1}
-    diffusivity::RealT
+"""
+    BoundaryConditionDirichletPenalty(boundary_value_function; penalty=1.0)
+
+Dirichlet boundary condition with a configurable boundary penalty for parabolic
+diffusion operators. The `boundary_value_function` is called as
+`boundary_value_function(x, t, equations)`.
+
+`penalty` may be either a scalar or a function called as
+`penalty(x, t, equations)`.
+"""
+struct BoundaryConditionDirichletPenalty{B, P}
+    boundary_value_function::B
+    penalty_function::P
 end
 
-Trixi.varnames(::typeof(Trixi.cons2cons), ::LinearDiffusionEquation1D) = ("scalar",)
-
-@inline function Trixi.flux(u, gradients, orientation::Integer,
-                            equations::LinearDiffusionEquation1D)
-    dudx, = gradients
-    return equations.diffusivity * dudx
+function BoundaryConditionDirichletPenalty(boundary_value_function; penalty=1.0)
+    penalty_function = penalty isa Function ? penalty : (x, t, equations) -> penalty
+    return BoundaryConditionDirichletPenalty(boundary_value_function, penalty_function)
 end
