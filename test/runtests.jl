@@ -4,65 +4,84 @@ using OrdinaryDiffEq
 using SciMLBase
 using Trixi
 
-const SMOKE_TESTS = lowercase(get(ENV, "DIFFUSEM_SMOKE_TESTS", "false")) in
-                    ("1", "true", "yes", "on")
+const SMOKE_TESTS = lowercase(get(ENV, "DIFFUSEM_SMOKE_TESTS", "false")) in ("1", "true",
+                                                                             "yes", "on")
 
 @testset "1D diffusion equation with Dirichlet BCs" begin
     @test DiffuSEM.examples_dir() == joinpath(pkgdir(DiffuSEM), "examples")
 
     @test DiffuSEM.default_algorithm() isa OrdinaryDiffEq.Tsit5
-    equations = DiffuSEM.LinearDiffusionEquation1D(0.1)
-    @test equations isa DiffuSEM.LinearDiffusionEquation1D
+    equations = DiffuSEM.Trixi.LinearDiffusionEquation1D(0.1)
+    @test equations isa DiffuSEM.Trixi.LinearDiffusionEquation1D
 
-    solver = DGSEM(polydeg=2, surface_flux=flux_central)
-    mesh = TreeMesh((0.0,), (1.0,),
-                    initial_refinement_level=2,
-                    n_cells_max=30_000,
-                    periodicity=false)
+    solver = DGSEM(polydeg = 2, surface_flux = flux_central)
+    mesh = TreeMesh((0.0,),
+                    (1.0,),
+                    initial_refinement_level = 2,
+                    n_cells_max = 30_000,
+                    periodicity = false)
     initial_condition(x, t, equations) = Trixi.SVector(sinpi(x[1]))
 
-    boundary_conditions = (; x_neg=BoundaryConditionDirichlet((x, t, equations) -> SVector(0.0)),
-                           x_pos=BoundaryConditionDirichlet((x, t, equations) -> SVector(0.0)))
+    boundary_conditions = (;
+                           x_neg = BoundaryConditionDirichlet((x, t, equations) -> SVector(0.0)),
+                           x_pos = BoundaryConditionDirichlet((x, t, equations) -> SVector(0.0)),)
 
-    semi = DiffuSEM.SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
-                                                boundary_conditions=boundary_conditions,
-                                                parabolic_scheme=ViscousFormulationLocalDG())
+    semi = DiffuSEM.SemidiscretizationParabolic(mesh,
+                                                equations,
+                                                initial_condition,
+                                                solver;
+                                                boundary_conditions = boundary_conditions,
+                                                solver_parabolic = ParabolicFormulationLocalDG(),)
 
     @test semi isa DiffuSEM.SemidiscretizationParabolic
-    @test semi.parabolic_scheme isa Trixi.ViscousFormulationLocalDG
+    @test semi.solver_parabolic isa Trixi.ParabolicFormulationLocalDG
 
     ode = semidiscretize(semi, (0.0, 0.01))
-    sol = SciMLBase.solve(ode, DiffuSEM.default_algorithm(); dt=1.0e-4, save_everystep=false)
+    sol = SciMLBase.solve(ode,
+                          DiffuSEM.default_algorithm();
+                          dt = 1.0e-4,
+                          save_everystep = false,)
     @test sol.t[end] ≈ 0.01
     @test all(isfinite, sol.u[end])
 
-    boundary_conditions_mixed = (; x_neg=BoundaryConditionDirichlet((x, t, equations) -> SVector(1.0)),
-                                 x_pos=BoundaryConditionNeumann((x, t, equations) -> SVector(0.0)))
-    semi_mixed = DiffuSEM.SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
-                                                      boundary_conditions=boundary_conditions_mixed,
-                                                      parabolic_scheme=ViscousFormulationLocalDG())
+    boundary_conditions_mixed = (;
+                                 x_neg = BoundaryConditionDirichlet((x, t, equations) -> SVector(1.0)),
+                                 x_pos = BoundaryConditionNeumann((x, t, equations) -> SVector(0.0)),)
+    semi_mixed = DiffuSEM.SemidiscretizationParabolic(mesh,
+                                                      equations,
+                                                      initial_condition,
+                                                      solver;
+                                                      boundary_conditions = boundary_conditions_mixed,
+                                                      solver_parabolic = ParabolicFormulationLocalDG(),)
     @test semi_mixed.boundary_conditions.x_neg isa Trixi.BoundaryConditionDirichlet
     @test semi_mixed.boundary_conditions.x_pos isa Trixi.BoundaryConditionNeumann
 
     ode_mixed = semidiscretize(semi_mixed, (0.0, 0.01))
-    sol_mixed = SciMLBase.solve(ode_mixed, DiffuSEM.default_algorithm(); dt=1.0e-4,
-                                save_everystep=false)
+    sol_mixed = SciMLBase.solve(ode_mixed,
+                                DiffuSEM.default_algorithm();
+                                dt = 1.0e-4,
+                                save_everystep = false,)
     @test sol_mixed.t[end] ≈ 0.01
     @test all(isfinite, sol_mixed.u[end])
 
     h = 1.0 / (2.0^2)
     penalty_strength = equations.diffusivity * (2 + 1)^2 / h
     boundary_conditions_penalized = (;
-                                     x_neg=BoundaryConditionDirichletPenalty((x, t, equations) -> SVector(0.0);
-                                                                             penalty=penalty_strength),
-                                     x_pos=BoundaryConditionDirichletPenalty((x, t, equations) -> SVector(0.0);
-                                                                             penalty=penalty_strength))
-    semi_penalized = DiffuSEM.SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
-                                                          boundary_conditions=boundary_conditions_penalized,
-                                                          parabolic_scheme=ViscousFormulationLocalDG())
+                                     x_neg = BoundaryConditionDirichletPenalty((x, t, equations) -> SVector(0.0);
+                                                                               penalty = penalty_strength,),
+                                     x_pos = BoundaryConditionDirichletPenalty((x, t, equations) -> SVector(0.0);
+                                                                               penalty = penalty_strength,),)
+    semi_penalized = DiffuSEM.SemidiscretizationParabolic(mesh,
+                                                          equations,
+                                                          initial_condition,
+                                                          solver;
+                                                          boundary_conditions = boundary_conditions_penalized,
+                                                          solver_parabolic = ParabolicFormulationLocalDG(),)
     ode_penalized = semidiscretize(semi_penalized, (0.0, 0.01))
-    sol_penalized = SciMLBase.solve(ode_penalized, DiffuSEM.default_algorithm(); dt=1.0e-4,
-                                    save_everystep=false)
+    sol_penalized = SciMLBase.solve(ode_penalized,
+                                    DiffuSEM.default_algorithm();
+                                    dt = 1.0e-4,
+                                    save_everystep = false,)
     @test sol_penalized.t[end] ≈ 0.01
     @test all(isfinite, sol_penalized.u[end])
 
@@ -74,22 +93,24 @@ const SMOKE_TESTS = lowercase(get(ENV, "DIFFUSEM_SMOKE_TESTS", "false")) in
     if !SMOKE_TESTS
         mktempdir() do dir
             convergence_plot = joinpath(dir, "convergence.pdf")
-            DiffuSEM.plot_convergence_1d([16, 32, 64], [1.0e-2, 1.0e-3, 1.0e-4],
+            DiffuSEM.plot_convergence_1d([16, 32, 64],
+                                         [1.0e-2, 1.0e-3, 1.0e-4],
                                          [2.0e-2, 3.0e-3, 4.0e-4];
-                                         output_path=convergence_plot,
-                                         triangle_order=3)
+                                         output_path = convergence_plot,
+                                         triangle_order = 3,)
             @test isfile(convergence_plot)
 
             solution_plot = joinpath(dir, "solution.pdf")
             DiffuSEM.plot_solution_1d(sol;
-                                      output_path=solution_plot,
-                                      exact_solution=(x, t) -> exp(-0.1 * pi^2 * t) * sinpi(x[1]))
+                                      output_path = solution_plot,
+                                      exact_solution = (x, t) -> exp(-0.1 * pi^2 * t) *
+                                                                 sinpi(x[1]),)
             @test isfile(solution_plot)
 
             solution_animation = joinpath(dir, "solution.mp4")
             DiffuSEM.animate_solution_1d(sol;
-                                         output_path=solution_animation,
-                                         framerate=2)
+                                         output_path = solution_animation,
+                                         framerate = 2,)
             @test isfile(solution_animation)
             @test filesize(solution_animation) > 0
         end

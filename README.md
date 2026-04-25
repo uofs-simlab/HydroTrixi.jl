@@ -44,7 +44,7 @@ julia> Pkg.test()
 
 - `src/DiffuSEM.jl`: main module + exports
 - `src/equations/`: equation definitions (parabolic PDE models)
-- `src/semidiscretization/`: problem and semidiscretization APIs
+- `src/solvers/`: solver extensions and parabolic RHS/cache specializations
 - `src/time_integration/`: default time-integration algorithm selection
 - `src/plotting/solution_plot.jl`: solution plotting routines
 - `src/plotting/solution_animation.jl`: solution animation routines

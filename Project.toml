@@ -6,6 +6,7 @@ version = "0.1.0-DEV"
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Trixi = "a7f1ee26-1774-49b1-8366-f1abc58fbfcb"
@@ -15,7 +16,7 @@ CairoMakie = "0.15"
 LaTeXStrings = "1"
 OrdinaryDiffEq = "6"
 SciMLBase = "2"
-Trixi = "0.13"
+Trixi = "0.16.5"
 julia = "1.10"
 
 [extras]

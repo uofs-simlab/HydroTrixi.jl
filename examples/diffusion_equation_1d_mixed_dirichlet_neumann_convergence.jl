@@ -16,22 +16,23 @@ levels = collect(2:5)
 dt_factor = 0.01
 
 function run_level(level)
-    case = mixed_dirichlet_neumann_case(; diffusivity=diffusivity,
-                                        forcing_amplitude=forcing_amplitude,
-                                        forcing_frequency=forcing_frequency,
-                                        dirichlet_mean=dirichlet_mean,
-                                        tspan=tspan,
-                                        initial_refinement_level=level,
-                                        polydeg=polydeg)
+    case = mixed_dirichlet_neumann_case(;
+                                        diffusivity = diffusivity,
+                                        forcing_amplitude = forcing_amplitude,
+                                        forcing_frequency = forcing_frequency,
+                                        dirichlet_mean = dirichlet_mean,
+                                        tspan = tspan,
+                                        initial_refinement_level = level,
+                                        polydeg = polydeg,)
 
     h = 1.0 / (2.0^level)
     dt = dt_factor * h^2
     sol = solve_mixed_dirichlet_neumann_case(case;
-                                             dt=dt,
-                                             adaptive=false,
-                                             save_everystep=false)
+                                             dt = dt,
+                                             adaptive = false,
+                                             save_everystep = false,)
 
-    analysis_callback = AnalysisCallback(case.semi, interval=typemax(Int))
+    analysis_callback = AnalysisCallback(case.semi, interval = typemax(Int))
     errors = analysis_callback(sol)
     return length(sol.u[end]), errors.l2[1], errors.linf[1], dt
 end
@@ -57,17 +58,24 @@ println("diffusivity = $(diffusivity), polydeg = $(polydeg), tspan = $(tspan)")
 println("forcing_amplitude = $(forcing_amplitude), forcing_frequency = $(forcing_frequency)")
 println()
 @printf("%-7s %-10s %-11s %-14s %-8s %-14s %-8s\n",
-        "level", "ndofs", "dt", "L2 error", "EOC", "Linf error", "EOC")
+        "level",
+        "ndofs",
+        "dt",
+        "L2 error",
+        "EOC",
+        "Linf error",
+        "EOC")
 for i in eachindex(levels)
     level = levels[i]
-    @printf("%-7d %-10d %-11.3e %-14.6e ",
-            level, ndofs[i], dts[i], l2_errors[i])
+    @printf("%-7d %-10d %-11.3e %-14.6e ", level, ndofs[i], dts[i], l2_errors[i])
     isnan(l2_eoc[i]) ? @printf("%-8s ", "-") : @printf("%-8.3f ", l2_eoc[i])
     @printf("%-14.6e ", linf_errors[i])
     isnan(linf_eoc[i]) ? @printf("%-8s\n", "-") : @printf("%-8.3f\n", linf_eoc[i])
 end
 
-plot_convergence_1d(ndofs, l2_errors, linf_errors;
-                    output_path=joinpath(plots_dir,
-                                         "diffusion_equation_1d_mixed_dirichlet_neumann_convergence.pdf"),
-                    triangle_order=polydeg + 1)
+plot_convergence_1d(ndofs,
+                    l2_errors,
+                    linf_errors;
+                    output_path = joinpath(plots_dir,
+                                           "diffusion_equation_1d_mixed_dirichlet_neumann_convergence.pdf"),
+                    triangle_order = polydeg + 1,)
