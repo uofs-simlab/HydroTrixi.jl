@@ -10,21 +10,24 @@ using CairoMakie
 using LaTeXStrings
 using MuladdMacro
 using OrdinaryDiffEq
+using SciMLBase
 using Trixi
+using LinearAlgebra
 
 include("auxiliary/auxiliary.jl")
 include("equations/equations.jl")
 include("solvers/solvers.jl")
+include("semidiscretization/semidiscretization.jl")
 include("time_integration/time_integration.jl")
-include("plotting/style.jl")
-include("plotting/solution_plot.jl")
-include("plotting/solution_animation.jl")
-include("plotting/convergence_plot.jl")
+include("visualization/visualization.jl")
 
 export LinearDiffusionEquation1D
+export RichardsEquation1D
+export VanGenuchten
 export AbstractDiffusionEquation1D
 export BoundaryConditionDirichletPenalty
 export SemidiscretizationParabolic
+export SemidiscretizationConstitutive
 export default_algorithm
 export plot_solution_1d
 export animate_solution_1d

@@ -118,27 +118,18 @@ function plot_convergence_1d(ndofs::AbstractVector{<:Real},
     ax.xminorgridvisible = false
     ax.xminorticksvisible = false
 
-    if !isnothing(xlims)
-        CairoMakie.xlims!(ax, xlims)
-    end
-    if !isnothing(ylims)
-        CairoMakie.ylims!(ax, ylims)
-    end
+    _apply_axis_limits!(ax; xlims = xlims, ylims = ylims)
 
-    scatterlines!(ax,
-                  ndofs,
-                  l2_errors;
-                  label = labels[1],
-                  linestyle = styles[1],
-                  linewidth = linewidth,
-                  color = Makie.wong_colors()[colors[1]],)
-    scatterlines!(ax,
-                  ndofs,
-                  linf_errors;
-                  label = labels[2],
-                  linestyle = styles[2],
-                  linewidth = linewidth,
-                  color = Makie.wong_colors()[colors[2]],)
+    for (errors, label, style, color) in ((l2_errors, labels[1], styles[1], colors[1]),
+                                          (linf_errors, labels[2], styles[2], colors[2]))
+        scatterlines!(ax,
+                      ndofs,
+                      errors;
+                      label = label,
+                      linestyle = style,
+                      linewidth = linewidth,
+                      color = Makie.wong_colors()[color],)
+    end
 
     l2_eoc = compute_eoc(l2_errors)
     order = if isnothing(triangle_order)

@@ -1,11 +1,11 @@
 function animate_solution_1d(sol;
                              output_path = joinpath(pwd(), "solution_1d.mp4"),
+                             component = 1,
                              exact_solution = nothing,
                              numerical_label = LaTeXString("Numerical"),
                              exact_label = LaTeXString("Exact"),
                              xlabel = L"$x$",
                              ylabel = L"$u(x,t)$",
-                             show_time = true,
                              font = DEFAULT_PLOT_FONT,
                              size = DEFAULT_SOLUTION_FIGSIZE,
                              fontsize = 15,
@@ -38,36 +38,23 @@ function animate_solution_1d(sol;
 
     semi = sol.prob.p
     first_idx = first(indices)
-    pd = Trixi.PlotData1D(sol.u[first_idx], semi; solution_variables = Trixi.cons2cons)
-    x = collect(pd.x)
-    y = vec(pd.data[:, 1])
+    x, y = _plot_curve_1d(sol.u[first_idx], semi; component = component)
 
     y_obs = Observable(y)
-    t_obs = Observable(float(sol.t[first_idx]))
 
     fig = Figure(size = size, fontsize = fontsize)
-    title_obs = if show_time
-        @lift "t = $(round($t_obs, sigdigits=5))"
-    else
-        ""
-    end
 
-    ax = Axis(fig[1, 1];
-              xlabel = xlabel,
-              ylabel = ylabel,
-              xlabelfont = xlabelfont,
-              ylabelfont = ylabelfont,
-              titlefont = titlefont,
-              xticklabelfont = xticklabelfont,
-              yticklabelfont = yticklabelfont,
-              title = title_obs,)
-
-    if !isnothing(xlims)
-        CairoMakie.xlims!(ax, xlims)
-    end
-    if !isnothing(ylims)
-        CairoMakie.ylims!(ax, ylims)
-    end
+    ax = _solution_axis(fig;
+                        xlabel = xlabel,
+                        ylabel = ylabel,
+                        title = "",
+                        xlabelfont = xlabelfont,
+                        ylabelfont = ylabelfont,
+                        titlefont = titlefont,
+                        xticklabelfont = xticklabelfont,
+                        yticklabelfont = yticklabelfont,
+                        xlims = xlims,
+                        ylims = ylims)
 
     scatterlines!(ax,
                   x,
@@ -80,12 +67,10 @@ function animate_solution_1d(sol;
     x_exact = nothing
     y_exact_obs = nothing
     if !isnothing(exact_solution)
-        finite_x = x[isfinite.(x)]
-        x_exact = range(minimum(finite_x), maximum(finite_x); length = 1500)
-        y_exact_obs = Observable([_scalar_value(exact_solution(Trixi.SVector(xi),
-                                                               sol.t[first_idx]))
-                                  for
-                                  xi in x_exact])
+        x_exact = _exact_solution_x(x)
+        y_exact_obs = Observable(_exact_solution_values(exact_solution,
+                                                        x_exact,
+                                                        sol.t[first_idx]))
         lines!(ax,
                x_exact,
                y_exact_obs;
@@ -104,13 +89,11 @@ function animate_solution_1d(sol;
     outdir == "" || mkpath(outdir)
 
     record(fig, output_path, indices; framerate = framerate) do i
-        frame_pd = Trixi.PlotData1D(sol.u[i], semi; solution_variables = Trixi.cons2cons)
-        y_obs[] = vec(frame_pd.data[:, 1])
-        t_obs[] = float(sol.t[i])
+        _, y_frame = _plot_curve_1d(sol.u[i], semi; component = component)
+        y_obs[] = y_frame
 
         if !isnothing(y_exact_obs)
-            y_exact_obs[] = [_scalar_value(exact_solution(Trixi.SVector(xi), sol.t[i]))
-                             for xi in x_exact]
+            y_exact_obs[] = _exact_solution_values(exact_solution, x_exact, sol.t[i])
         end
     end
 

@@ -19,7 +19,7 @@ end
 
 # Creates the parabolic cache, including parabolic-specific boundary container
 function Trixi.create_cache_parabolic(mesh::Trixi.TreeMesh{1},
-                                      equations::AbstractDiffusionEquation1D,
+                                      equations::Trixi.AbstractEquationsParabolic{1},
                                       dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                                       n_elements,
                                       ::Type{uEltype}) where {uEltype <: Real}
@@ -47,7 +47,7 @@ end
 function Trixi.refine!(u_ode::AbstractVector,
                        adaptor,
                        mesh::Trixi.TreeMesh{1},
-                       equations::AbstractDiffusionEquation1D,
+                       equations::Trixi.AbstractEquationsParabolic{1},
                        dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                        cache,
                        cache_parabolic,
@@ -64,7 +64,7 @@ end
 function Trixi.coarsen!(u_ode::AbstractVector,
                         adaptor,
                         mesh::Trixi.TreeMesh{1},
-                        equations::AbstractDiffusionEquation1D,
+                        equations::Trixi.AbstractEquationsParabolic{1},
                         dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                         cache,
                         cache_parabolic,
@@ -81,7 +81,7 @@ end
 # Version of `rhs_parabolic!` that allows both the interior-side solution and flux to be 
 # available at the boundary for use in the boundary condition
 function Trixi.rhs_parabolic!(du, u, t, mesh::Trixi.TreeMesh{1},
-                              equations_parabolic::AbstractDiffusionEquation1D,
+                              equations_parabolic::Trixi.AbstractEquationsParabolic{1},
                               boundary_conditions, source_terms,
                               solver::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                               solver_parabolic, cache, cache_parabolic)
@@ -157,7 +157,7 @@ end
 function calc_boundary_flux_divergence!(cache, t,
                                         boundary_conditions::Trixi.BoundaryConditionPeriodic,
                                         mesh::Trixi.TreeMesh{1},
-                                        equations_parabolic::AbstractDiffusionEquation1D,
+                                        equations_parabolic::Trixi.AbstractEquationsParabolic{1},
                                         surface_integral,
                                         dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                                         cache_parabolic)
@@ -167,7 +167,7 @@ end
 function calc_boundary_flux_divergence!(cache, t,
                                         boundary_conditions::NamedTuple,
                                         mesh::Trixi.TreeMesh{1},
-                                        equations_parabolic::AbstractDiffusionEquation1D,
+                                        equations_parabolic::Trixi.AbstractEquationsParabolic{1},
                                         surface_integral,
                                         dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                                         cache_parabolic)
@@ -197,7 +197,7 @@ function calc_boundary_flux_by_direction_divergence!(surface_flux_values::Abstra
                                                                                         3},
                                                      t,
                                                      boundary_condition,
-                                                     equations_parabolic::AbstractDiffusionEquation1D,
+                                                     equations_parabolic::Trixi.AbstractEquationsParabolic{1},
                                                      surface_integral,
                                                      dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                                                      cache, direction,
@@ -237,7 +237,7 @@ end
 
 function prolong2boundaries_divergence!(parabolic_boundaries, cache, flux_parabolic,
                                         mesh::Trixi.TreeMesh{1},
-                                        equations::AbstractDiffusionEquation1D,
+                                        equations::Trixi.AbstractEquationsParabolic{1},
                                         dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis})
     neighbor_sides = cache.boundaries.neighbor_sides
     boundary_flux_values = parabolic_boundaries.flux_values

@@ -13,3 +13,14 @@ function set_serif_tex_theme!(; font = DEFAULT_PLOT_FONT)
                                            Legend = (labelfont = font, titlefont = font)))
     return nothing
 end
+
+function _apply_axis_limits!(ax; xlims = nothing, ylims = nothing)
+    if !isnothing(xlims)
+        CairoMakie.xlims!(ax, xlims)
+    end
+    if !isnothing(ylims)
+        CairoMakie.ylims!(ax, ylims)
+    end
+
+    return nothing
+end

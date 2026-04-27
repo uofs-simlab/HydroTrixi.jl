@@ -28,7 +28,7 @@ end
                                                                          x,
                                                                          t,
                                                                          operator_type::Trixi.Gradient,
-                                                                         equations::AbstractDiffusionEquation1D)
+                                                                         equations::Trixi.AbstractEquationsParabolic{1})
     return boundary_condition.boundary_value_function(x, t, equations)
 end
 
@@ -39,7 +39,7 @@ end
                                                                          x,
                                                                          t,
                                                                          operator_type::Trixi.Divergence,
-                                                                         equations::AbstractDiffusionEquation1D)
+                                                                         equations::Trixi.AbstractEquationsParabolic{1})
     u_boundary = boundary_condition.boundary_value_function(x, t, equations)
     penalty_strength = boundary_condition.penalty_function(x, t, equations)
     normal_sign = iseven(direction) ? one(penalty_strength) : -one(penalty_strength)
@@ -52,7 +52,7 @@ end
                                                                          x,
                                                                          t,
                                                                          operator_type::Trixi.Gradient,
-                                                                         equations::AbstractDiffusionEquation1D)
+                                                                         equations::Trixi.AbstractEquationsParabolic{1})
     return boundary_condition.boundary_value_function(x, t, equations)
 end
 
@@ -62,7 +62,7 @@ end
                                                                          x,
                                                                          t,
                                                                          operator_type::Trixi.Divergence,
-                                                                         equations::AbstractDiffusionEquation1D)
+                                                                         equations::Trixi.AbstractEquationsParabolic{1})
     u_boundary = boundary_condition.boundary_value_function(x, t, equations)
     penalty_strength = boundary_condition.penalty_function(x, t, equations)
     normal_sign = sign(sum(normal))
