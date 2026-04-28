@@ -59,13 +59,13 @@ ode = semidiscretize(semi, tspan)
 
 if isnothing(saveat)
     sol = solve(ode,
-                default_algorithm();
+                default_algorithm(semi);
                 dt = dt,
                 adaptive = adaptive,
                 save_everystep = save_everystep)
 else
     sol = solve(ode,
-                default_algorithm();
+                default_algorithm(semi);
                 dt = dt,
                 adaptive = adaptive,
                 saveat = saveat)

@@ -18,15 +18,18 @@ include("auxiliary/auxiliary.jl")
 include("equations/equations.jl")
 include("solvers/solvers.jl")
 include("semidiscretization/semidiscretization.jl")
+
+include("equations/problems/problems.jl")
 include("time_integration/time_integration.jl")
 include("visualization/visualization.jl")
 
 export LinearDiffusionEquation1D
+export HydrologicProblem
 export RichardsEquation1D
+export Haverkamp
 export VanGenuchten
-export AbstractDiffusionEquation1D
+export HydrologicProblemCelia1990
 export BoundaryConditionDirichletPenalty
-export SemidiscretizationParabolic
 export SemidiscretizationConstitutive
 export default_algorithm
 export plot_solution_1d

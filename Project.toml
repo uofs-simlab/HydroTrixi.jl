@@ -22,6 +22,7 @@ julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TrixiTest = "0a316866-cbd0-4425-8bcb-08103b2c1f26"
 
 [targets]
-test = ["Test"]
+test = ["Test", "TrixiTest"]

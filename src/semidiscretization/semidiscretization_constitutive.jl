@@ -90,7 +90,3 @@ function Trixi.semidiscretize(semi::SemidiscretizationConstitutive, tspan;
                                                                 tspan,
                                                                 semi)
 end
-
-function default_algorithm(::SemidiscretizationConstitutive)
-    OrdinaryDiffEq.Rodas5P(autodiff = OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoFiniteDiff())
-end
