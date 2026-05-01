@@ -17,7 +17,7 @@ with Julia v1.10 and newer. We recommend using the latest stable release.
 Install and run HydroTrixi.jl from a local clone:
 
 ```bash
-git clone https://github.com/tristanmontoya/HydroTrixi.jl.git
+git clone https://github.com/uofs-simlab/HydroTrixi.jl.git
 cd HydroTrixi.jl
 julia --project=.
 ```
