@@ -66,7 +66,7 @@ plot_solution_1d(sol;
                  component = 2,
                  xlabel = L"$z$ (m)",
                  ylabel = L"$\psi$ (m)",
-                 size = (525, 350),
+                 size = (500, 350),
                  ylims = (-0.65, -0.15),
                  output_path = joinpath("plots",
                                         "richards_celia_1990_pressure_head.png"))
@@ -81,7 +81,7 @@ animate_solution_1d(sol;
                     component = 2,
                     xlabel = L"$z$ (m)",
                     ylabel = L"$\psi$ (m)",
-                    size = (525, 350),
+                    size = (500, 350),
                     ylims = (-0.65, -0.15),
                     output_path = joinpath("plots",
                                            "richards_celia_1990_pressure_head.gif"),
@@ -115,7 +115,7 @@ using LaTeXStrings
 
 plot_solution_1d(sol;
                  exact_solution = exact_solution,
-                 size = (525, 350),
+                 size = (500, 350),
                  output_path = joinpath("plots",
                                         "diffusion_equation_1d_mixed_dirichlet_neumann_solution.png"))
 ```
@@ -126,7 +126,7 @@ Generate an animation from the same solution:
 ```julia
 animate_solution_1d(sol;
                     exact_solution = exact_solution,
-                    size = (525, 350),
+                    size = (500, 350),
                     output_path = joinpath("plots",
                                            "diffusion_equation_1d_mixed_dirichlet_neumann_solution_long.gif"),
                     ylims = (0.5, 1.5),
