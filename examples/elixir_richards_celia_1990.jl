@@ -3,7 +3,7 @@
 # (Haverkamp soil model, Dirichlet at both ends, depth z in m on [0, 0.4],
 # t in seconds on [0, 360]).
 
-using DiffuSEM
+using HydroTrixi
 using SciMLBase
 using Trixi
 
@@ -27,8 +27,8 @@ mesh = TreeMesh(lower,
                 periodicity = false)
 solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
 
-semi = SemidiscretizationConstitutive(mesh, problem, solver;
-                                      solver_parabolic = solver_parabolic)
+semi = SemidiscretizationImplicit(mesh, problem, solver;
+                                  solver_parabolic = solver_parabolic)
 ode = semidiscretize(semi, tspan)
 
 sol = solve(ode,

@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  test:
-    name: Julia 1.10 - ubuntu-latest - x64 - ${{ github.event_name }}
+  test-core:
+    name: Julia 1.10 - core tests - ubuntu-latest - x64 - ${{ github.event_name }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -29,7 +29,20 @@ jobs:
           show-versioninfo: true
       - uses: julia-actions/cache@v2
 
-      - name: Run tests
-        uses: julia-actions/julia-runtest@v1
+      - name: Run core tests
+        run: julia --project=. -e 'using Pkg; Pkg.test(test_args=["core"])'
+
+  test-visualization:
+    name: Julia 1.10 - visualization tests - ubuntu-latest - x64 - ${{ github.event_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: julia-actions/setup-julia@v2
         with:
-          coverage: false
+          version: '1.10'
+          arch: x64
+          show-versioninfo: true
+      - uses: julia-actions/cache@v2
+
+      - name: Run visualization tests
+        run: julia --project=. -e 'using Pkg; Pkg.test(test_args=["visualization"])'

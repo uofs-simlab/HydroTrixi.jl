@@ -1,7 +1,7 @@
 # Example: compare LDG and BR1 on the mixed Dirichlet-Neumann diffusion
 # problem by running the same refinement study for both parabolic schemes.
 
-using DiffuSEM
+using HydroTrixi
 using Printf: @printf
 using Trixi
 

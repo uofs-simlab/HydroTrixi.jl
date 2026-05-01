@@ -45,6 +45,7 @@ end
 @inline Trixi.varnames(::typeof(Trixi.cons2cons), ::RichardsEquation1D) = ("psi",)
 @inline Trixi.varnames(::typeof(Trixi.cons2prim), ::RichardsEquation1D) = ("psi",)
 @inline Trixi.varnames(::typeof(Trixi.cons2entropy), ::RichardsEquation1D) = ("psi",)
+@inline Trixi.default_analysis_integrals(::RichardsEquation1D) = ()
 
 @inline Trixi.cons2prim(u, ::RichardsEquation1D) = u
 @inline Trixi.cons2entropy(u, ::RichardsEquation1D) = u

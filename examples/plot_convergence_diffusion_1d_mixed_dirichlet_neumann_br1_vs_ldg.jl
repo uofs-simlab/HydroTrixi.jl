@@ -2,7 +2,7 @@
 # Dirichlet-Neumann diffusion refinement study.
 
 using CairoMakie
-using DiffuSEM
+using HydroTrixi
 using LaTeXStrings
 
 plots_dir = mkpath(joinpath(dirname(@__DIR__), "plots"))
@@ -10,11 +10,11 @@ plots_dir = mkpath(joinpath(dirname(@__DIR__), "plots"))
 ldg = results["LDG"]
 br1 = results["BR1"]
 
-DiffuSEM.set_serif_tex_theme!()
-plot_font = DiffuSEM.DEFAULT_PLOT_FONT
+HydroTrixi.set_serif_tex_theme!()
+plot_font = HydroTrixi.DEFAULT_PLOT_FONT
 
-fig = Figure(size = DiffuSEM.DEFAULT_CONVERGENCE_FIGSIZE, fontsize = 15)
-xticks = DiffuSEM._doubling_dof_ticks(ldg.ndofs; base = 10)
+fig = Figure(size = HydroTrixi.DEFAULT_CONVERGENCE_FIGSIZE, fontsize = 15)
+xticks = HydroTrixi.doubling_dof_ticks(ldg.ndofs; base = 10)
 ax = Axis(fig[1, 1];
           xlabel = LaTeXString("Degrees of freedom"),
           ylabel = LaTeXString("Error"),
@@ -30,34 +30,34 @@ ax.xminorgridvisible = false
 ax.xminorticksvisible = false
 
 colors = Makie.wong_colors()
-scatterlines!(ax,
-              ldg.ndofs,
-              ldg.l2_errors;
-              label = L"\mathrm{LDG}\ L^2",
-              color = colors[1],
-              linestyle = :solid,
-              linewidth = 1.8,)
-scatterlines!(ax,
-              br1.ndofs,
-              br1.l2_errors;
-              label = L"\mathrm{BR1}\ L^2",
-              color = colors[2],
-              linestyle = :solid,
-              linewidth = 1.8,)
-scatterlines!(ax,
-              ldg.ndofs,
-              ldg.linf_errors;
-              label = L"\mathrm{LDG}\ L^\infty",
-              color = colors[1],
-              linestyle = :dash,
-              linewidth = 1.8,)
-scatterlines!(ax,
-              br1.ndofs,
-              br1.linf_errors;
-              label = L"\mathrm{BR1}\ L^\infty",
-              color = colors[2],
-              linestyle = :dash,
-              linewidth = 1.8,)
+lines!(ax,
+       ldg.ndofs,
+       ldg.l2_errors;
+       label = L"\mathrm{LDG}\ L^2",
+       color = colors[1],
+       linestyle = :solid,
+       linewidth = 1.8,)
+lines!(ax,
+       br1.ndofs,
+       br1.l2_errors;
+       label = L"\mathrm{BR1}\ L^2",
+       color = colors[2],
+       linestyle = :solid,
+       linewidth = 1.8,)
+lines!(ax,
+       ldg.ndofs,
+       ldg.linf_errors;
+       label = L"\mathrm{LDG}\ L^\infty",
+       color = colors[1],
+       linestyle = :dash,
+       linewidth = 1.8,)
+lines!(ax,
+       br1.ndofs,
+       br1.linf_errors;
+       label = L"\mathrm{BR1}\ L^\infty",
+       color = colors[2],
+       linestyle = :dash,
+       linewidth = 1.8,)
 
 triangle_order = 4
 x_ref_left = ldg.ndofs[end - 1]
@@ -66,14 +66,14 @@ y_ref = min(ldg.l2_errors[end - 1],
             ldg.linf_errors[end - 1],
             br1.l2_errors[end - 1],
             br1.linf_errors[end - 1])
-DiffuSEM._plot_bottom_triangle!(ax,
-                                x_ref_left,
-                                x_ref_right,
-                                y_ref,
-                                triangle_order;
-                                triangle_shift = 1.5,
-                                trianglefontsize = 15,
-                                font = plot_font)
+HydroTrixi.plot_bottom_triangle!(ax,
+                                 x_ref_left,
+                                 x_ref_right,
+                                 y_ref,
+                                 triangle_order;
+                                 triangle_shift = 1.5,
+                                 trianglefontsize = 15,
+                                 font = plot_font)
 
 axislegend(ax; position = (:right, :top), labelsize = 14, font = plot_font)
 

@@ -1,7 +1,9 @@
 # Example: save the LDG convergence plot for an existing mixed
 # Dirichlet-Neumann diffusion refinement study.
 
-using DiffuSEM
+using CairoMakie
+using HydroTrixi
+using LaTeXStrings
 
 plots_dir = mkpath(joinpath(dirname(@__DIR__), "plots"))
 

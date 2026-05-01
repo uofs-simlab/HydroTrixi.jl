@@ -1,7 +1,9 @@
 # Example: save a time-resolved animation for an existing mixed
 # Dirichlet-Neumann diffusion solution.
 
-using DiffuSEM
+using CairoMakie
+using HydroTrixi
+using LaTeXStrings
 plots_dir = mkpath(joinpath(dirname(@__DIR__), "plots"))
 if !@isdefined(animation_format)
     animation_format = "mp4"

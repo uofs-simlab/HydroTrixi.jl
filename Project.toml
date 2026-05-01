@@ -1,16 +1,21 @@
-name = "DiffuSEM"
+name = "HydroTrixi"
 uuid = "7af077dc-b170-402d-9829-aaaeff984f5f"
 authors = ["Tristan Montoya <montoya.tristan@gmail.com>"]
 version = "0.1.0-DEV"
 
 [deps]
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Trixi = "a7f1ee26-1774-49b1-8366-f1abc58fbfcb"
+
+[weakdeps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+
+[extensions]
+HydroTrixiVisualizationExt = ["CairoMakie", "LaTeXStrings"]
 
 [compat]
 CairoMakie = "0.15"
@@ -21,8 +26,10 @@ Trixi = "0.16.5"
 julia = "1.10"
 
 [extras]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TrixiTest = "0a316866-cbd0-4425-8bcb-08103b2c1f26"
 
 [targets]
-test = ["Test", "TrixiTest"]
+test = ["CairoMakie", "LaTeXStrings", "Test", "TrixiTest"]

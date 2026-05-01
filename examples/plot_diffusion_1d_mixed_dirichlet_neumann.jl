@@ -1,7 +1,9 @@
 # Example: save a single final-time comparison plot for an existing mixed
 # Dirichlet-Neumann diffusion solution.
 
-using DiffuSEM
+using CairoMakie
+using HydroTrixi
+using LaTeXStrings
 plots_dir = mkpath(joinpath(dirname(@__DIR__), "plots"))
 if !@isdefined(plot_format)
     plot_format = "pdf"

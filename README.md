@@ -1,22 +1,24 @@
-# DiffuSEM.jl
+# HydroTrixi.jl
 
-[![CI](https://github.com/tristanmontoya/DiffuSEM.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/tristanmontoya/DiffuSEM.jl/actions/workflows/ci.yml)
+[![CI](https://github.com/tristanmontoya/HydroTrixi.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/tristanmontoya/HydroTrixi.jl/actions/workflows/ci.yml)
 
-DiffuSEM.jl is a discontinuous spectral-element framework for solving linear and nonlinear 
-parabolic PDEs using the Trixi.jl and SciML ecosystems. The package architecture is designed to 
-support additional linear/nonlinear parabolic PDE models as they are added.
+**HydroTrixi.jl** is an adaptive discontinuous spectral-element framework for hydrologic problems. It builds upon the parabolic spatial discretization capabilities in
+[Trixi.jl](https://github.com/trixi-framework/Trixi.jl) and the time integration methods in [SciML ecosystem](https://sciml.ai/), adding the following technical features to support the solution of the **Richards equation** in one spatial dimension:
+- Mixed formulations that can advance different variables in time from those used in the spatial operator, with the constitutive relation imposed as a constraint as part of a differential algebraic equation
+- Flexible parabolic boundary conditions allowing penalty-type numerical fluxes that depend on the inner and outer solution and flux values
+- Tools to facilitate problem setup and visualization, with examples for standard hydrologic bencmark cases
 
 ## Installation
 
 If you have not yet installed Julia, please [follow the instructions for your
-operating system](https://julialang.org/downloads/platform/). DiffuSEM.jl works
+operating system](https://julialang.org/downloads/platform/). HydroTrixi.jl works
 with Julia v1.10 and newer. We recommend using the latest stable release.
 
-Install and run DiffuSEM.jl from a local clone:
+Install and run HydroTrixi.jl from a local clone:
 
 ```bash
-git clone https://github.com/tristanmontoya/DiffuSEM.jl.git
-cd DiffuSEM.jl
+git clone https://github.com/tristanmontoya/HydroTrixi.jl.git
+cd HydroTrixi.jl
 julia --project=.
 ```
 
@@ -34,17 +36,70 @@ Optional sanity check:
 julia> Pkg.test()
 ```
 
+Visualization is optional. Loading `CairoMakie` and `LaTeXStrings` activates
+the plotting extension.
+
 ## Example usage
+
+### Celia *et al.* (1990) infiltration benchmark
+
+Run the provided "elixir" for Richards' equation in mixed form:
+
+```julia
+using HydroTrixi
+using Trixi: trixi_include
+
+elixir = joinpath(HydroTrixi.examples_dir(),
+                  "elixir_richards_celia_1990.jl")
+trixi_include(elixir;
+              saveat = 0.0:2.0:360.0)
+```
+
+Plot the final-time pressure-head profile. Since there is no analytical
+solution in this example, the plot contains only the numerical curve:
+
+```julia
+using CairoMakie
+using LaTeXStrings
+
+plot_solution_1d(sol;
+                 component = 2,
+                 xlabel = L"$z$ (m)",
+                 ylabel = L"$\psi$ (m)",
+                 ylims = (-0.65, -0.15),
+                 output_path = joinpath("plots",
+                                        "richards_celia_1990_pressure_head.png"))
+```
+
+![Celia pressure-head profile](assets/images/richards_celia_1990_pressure_head.png)
+
+Generate an animation of the evolving pressure-head profile:
+
+```julia
+using CairoMakie
+using LaTeXStrings
+
+animate_solution_1d(sol;
+                    component = 2,
+                    xlabel = L"$z$ (m)",
+                    ylabel = L"$\psi$ (m)",
+                    ylims = (-0.65, -0.15),
+                    output_path = joinpath("plots",
+                                           "richards_celia_1990_pressure_head.gif"),
+                    framerate = 30)
+```
+
+![Celia pressure-head animation](assets/images/richards_celia_1990_pressure_head.gif)
 
 ### Linear diffusion with mixed Dirichlet-Neumann boundary conditions
 
 Run the simulation using `trixi_include`:
 
 ```julia
-using DiffuSEM
-using Trixi
+using HydroTrixi
+using Trixi: trixi_include
 
-elixir = joinpath(DiffuSEM.examples_dir(),
+elixir = joinpath(HydroTrixi.examples_dir(),
                   "elixir_diffusion_1d_mixed_dirichlet_neumann.jl")
 tspan = (0.0, 1.0)
 trixi_include(elixir;
@@ -56,6 +111,9 @@ Plot the final-time solution profile at `t = 1.0` using the provided
 visualization utilities based on `CairoMakie`:
 
 ```julia
+using CairoMakie
+using LaTeXStrings
+
 plot_solution_1d(sol;
                  exact_solution = exact_solution,
                  title = "t = 1.0",
@@ -67,6 +125,9 @@ plot_solution_1d(sol;
 
 Generate an animation from the same solution:
 ```julia
+using CairoMakie
+using LaTeXStrings
+
 animate_solution_1d(sol;
                     exact_solution = exact_solution,
                     output_path = joinpath("plots",
@@ -80,14 +141,14 @@ animate_solution_1d(sol;
 Run the BR1-vs-LDG convergence study:
 
 ```julia
-include(joinpath(DiffuSEM.examples_dir(),
+include(joinpath(HydroTrixi.examples_dir(),
                  "convergence_diffusion_1d_mixed_dirichlet_neumann_br1_vs_ldg.jl"))
 ```
 
 Generate the convergence plot from the computed study data:
 
 ```julia
-include(joinpath(DiffuSEM.examples_dir(),
+include(joinpath(HydroTrixi.examples_dir(),
                  "plot_convergence_diffusion_1d_mixed_dirichlet_neumann_br1_vs_ldg.jl"))
 ```
 

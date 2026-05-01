@@ -1,7 +1,7 @@
 # Example: Trixi-style elixir for the one-dimensional diffusion problem with
 # homogeneous Dirichlet conditions at both boundaries.
 
-using DiffuSEM
+using HydroTrixi
 using SciMLBase
 using Trixi
 

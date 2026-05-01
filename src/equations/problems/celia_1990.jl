@@ -1,28 +1,25 @@
 @doc raw"""
     HydrologicProblemCelia1990()
 
-Return the one-dimensional Richards-equation infiltration benchmark introduced
-by Celia, Bouloutas, and Zarba (1990) as a `HydrologicProblem` ready to pass into
-DiffuSEM semidiscretizations.
+Return the one-dimensional Richards-equation infiltration benchmark introduced by Celia,
+Bouloutas, and Zarba (1990) as a `HydrologicProblem` for HydroTrixi semidiscretizations.
 
-The benchmark uses the Haverkamp constitutive laws in the form reported by
-Ireson et al. (2023), Eq. (25):
+The benchmark uses the Haverkamp constitutive laws in the form reported by Ireson et al.
+(2023), Eq. (25):
 ```math
 \theta(\psi) = \theta_r + (\theta_s - \theta_r)
 \frac{\alpha}{\alpha + |\psi|^\beta},
 \qquad
 K(\psi) = K_s\,\frac{A}{A + |\psi|^\gamma},
 ```
-for ``\psi < 0``, with saturated values ``\theta = \theta_s`` and
-``K = K_s`` for ``\psi \ge 0``. The setup uses depth ``z`` in metres,
-positive downward on ``z \in [0, 0.4]``, and time in seconds on
-``t \in [0, 360]``. The pressure head is initialized at ``-0.615`` m, with a
-Dirichlet boundary value of ``-0.207`` m at the top boundary (`x_neg`) and
-``-0.615`` m at the bottom boundary (`x_pos`).
+for ``\psi < 0``, with saturated values ``\theta = \theta_s`` and ``K = K_s`` for
+``\psi \ge 0``. The setup uses depth ``z`` in metres, positive downward on
+``z \in [0, 0.4]``, and time in seconds on ``t \in [0, 360]``. The pressure head is
+initialized at ``-0.615`` m, with a Dirichlet boundary value of ``-0.207`` m at the top
+boundary (`x_neg`) and ``-0.615`` m at the bottom boundary (`x_pos`).
 
-The returned problem setup contains the fields `equations`,
-`constitutive_relation`, `initial_condition`, `boundary_conditions`, `domain`,
-and `tspan`.
+The returned problem setup contains the fields `equations`, `constitutive_relation`,
+`initial_condition`, `boundary_conditions`, `domain`, and `tspan`.
 
 # References
 - Celia, M. A., Bouloutas, E. T., Zarba, R. L. (1990). A general

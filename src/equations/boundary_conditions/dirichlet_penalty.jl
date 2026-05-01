@@ -4,11 +4,11 @@
 @doc raw"""
     BoundaryConditionDirichletPenalty(boundary_value_function; penalty=1.0)
 
-Dirichlet boundary condition with a configurable boundary penalty of the form 
-``\tau (u_{\text{inner}} - u_b)`` added to the boundary flux on the divergence pass
-for parabolic diffusion operators. The `boundary_value_function` is called as
-`boundary_value_function(x, t, equations)`, and `penalty` may be either a scalar or a
-function called as `penalty(x, t, equations)`.
+Dirichlet boundary condition with a configurable boundary penalty of the form
+``\tau (u_{\text{inner}} - u_b)`` added to the boundary flux on the divergence pass for
+parabolic diffusion operators. The `boundary_value_function` is called as
+`boundary_value_function(x, t, equations)`, and `penalty` may be either a scalar or
+a function called as `penalty(x, t, equations)`.
 
 # References
 - Arnold, D. N. (1982). An interior penalty finite element method with

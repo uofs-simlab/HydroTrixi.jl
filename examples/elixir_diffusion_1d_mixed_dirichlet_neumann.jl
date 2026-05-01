@@ -2,7 +2,7 @@
 # time-dependent Dirichlet condition at the left boundary and a homogeneous
 # Neumann condition at the right boundary.
 
-using DiffuSEM
+using HydroTrixi
 using SciMLBase
 using Trixi
 

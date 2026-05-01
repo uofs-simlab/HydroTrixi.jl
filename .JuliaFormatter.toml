@@ -1,5 +1,6 @@
 # Use SciML style: https://github.com/SciML/SciMLStyle
 style = "sciml"
+margin = 92
 
 # Python style alignment. See https://github.com/domluna/JuliaFormatter.jl/pull/732.
 yas_style_nesting = true

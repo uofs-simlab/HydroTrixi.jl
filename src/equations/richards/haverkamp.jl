@@ -4,18 +4,17 @@
 @doc raw"""
     Haverkamp(; saturated_hydraulic_conductivity, alpha, beta, A, gamma, theta_s, theta_r)
 
-A Haverkamp constitutive model for Richards' equation, written in the form
-used by Celia et al. (1990) and Ireson et al. (2023). For ``\psi < 0``, the
-effective saturation and hydraulic conductivity are
+A Haverkamp constitutive model for Richards' equation, written in the form used by Celia
+et al. (1990) and Ireson et al. (2023). For ``\psi < 0``, the effective saturation and
+hydraulic conductivity are
 ```math
 S_e(\psi) = \frac{\alpha}{\alpha + |\psi|^\beta},
 \qquad
 K(\psi) = K_s\,\frac{A}{A + |\psi|^\gamma},
 ```
-with saturated values recovered for ``\psi \ge 0``. The parameters ``\alpha``
-and ``A`` carry units of ``[L]^\beta`` and ``[L]^\gamma`` respectively, where
-``[L]`` is the length unit chosen by the caller for ``\psi``. The associated
-water content is
+with saturated values recovered for ``\psi \ge 0``. The parameters ``\alpha`` and ``A``
+carry units of ``[L]^\beta`` and ``[L]^\gamma`` respectively, where ``[L]`` is the
+length unit chosen by the caller for ``\psi``. The associated water content is
 ```math
 \theta(\psi) = \theta_r + (\theta_s - \theta_r) S_e(\psi).
 ```
@@ -74,5 +73,4 @@ end
     return model.saturated_hydraulic_conductivity * model.A /
            (model.A + abs(psi)^model.gamma)
 end
-
 end # @muladd

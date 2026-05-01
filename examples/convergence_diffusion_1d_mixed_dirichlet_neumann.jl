@@ -1,7 +1,7 @@
 # Example: run a mesh-refinement study for the mixed Dirichlet-Neumann
 # diffusion problem with the LDG discretization.
 
-using DiffuSEM
+using HydroTrixi
 using Trixi
 
 elixir = joinpath(dirname(@__FILE__), "elixir_diffusion_1d_mixed_dirichlet_neumann.jl")

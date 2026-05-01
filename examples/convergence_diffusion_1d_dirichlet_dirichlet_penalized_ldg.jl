@@ -1,4 +1,4 @@
-using DiffuSEM
+using HydroTrixi
 using Printf: @printf
 using Trixi
 

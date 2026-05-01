@@ -1,4 +1,4 @@
-# Render an animation of the Celia (1990) Richards-equation infiltration
+# Render an animation of the closed-column Richards-equation redistribution
 # profile. Re-runs the elixir with a denser `saveat` so the solution carries
 # enough frames for a smooth animation, then animates the pressure-head block
 # of the constitutive ODE state (component = 2).
@@ -8,8 +8,17 @@ using HydroTrixi
 using LaTeXStrings
 using Trixi: trixi_include
 
-trixi_include(joinpath(@__DIR__, "elixir_richards_celia_1990.jl");
-              saveat = 0.0:2.0:360.0)
+if !@isdefined(final_time)
+    final_time = 1440.0
+end
+
+if !@isdefined(saveat)
+    saveat = 0.0:8.0:final_time
+end
+
+trixi_include(joinpath(@__DIR__, "elixir_richards_closed_column.jl");
+              final_time = final_time,
+              saveat = saveat)
 
 plots_dir = mkpath(joinpath(dirname(@__DIR__), "plots"))
 if !@isdefined(animation_format)
@@ -17,15 +26,15 @@ if !@isdefined(animation_format)
 end
 
 output_path = joinpath(plots_dir,
-                       "richards_celia_1990_pressure_head.$(animation_format)")
+                       "richards_closed_column_pressure_head_t$(round(Int, final_time)).$(animation_format)")
 
 animate_solution_1d(sol;
                     component = 2,
                     xlabel = L"$z$ (m)",
                     ylabel = L"$\psi$ (m)",
-                    ylims = (-0.65, -0.15),
+                    ylims = (-1.05, -0.55),
                     output_path = output_path,
                     framerate = 30)
 
-println("Saved Celia ψ(z,t) animation to: $(output_path)")
+println("Saved closed-column ψ(z,t) animation to: $(output_path)")
 @show sol.t[end]

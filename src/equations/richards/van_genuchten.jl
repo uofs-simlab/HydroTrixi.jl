@@ -6,8 +6,7 @@
                    m = 1 - 1 / n, pore_connectivity = 1 / 2)
 
 A van Genuchten-Mualem soil-hydraulic model, written in terms of the effective
-saturation following Ireson et al. (2023). For ``\psi < 0`` the effective
-saturation is
+saturation following Ireson et al. (2023). For ``\psi < 0`` the effective saturation is
 ```math
 S_e(\psi) = \left(1 + (\alpha |\psi|)^n\right)^{-m},
 ```
@@ -16,11 +15,10 @@ with ``S_e(\psi) = 1`` for ``\psi \ge 0``. The hydraulic conductivity is
 K(\psi) = K_s S_e(\psi)^l
 \left(1 - \left(1 - S_e(\psi)^{1 / m}\right)^m\right)^2,
 ```
-where ``K_s`` is the `saturated_hydraulic_conductivity` parameter and ``l`` is
-the `pore_connectivity` parameter. The volumetric water content
-``\theta(\psi) = \theta_r + (\theta_s - \theta_r) S_e(\psi)`` follows from the
-generic [`water_content`](@ref) relation using the residual and saturated water
-contents `theta_r` and `theta_s`.
+where ``K_s`` is the `saturated_hydraulic_conductivity` parameter and ``l`` is the
+`pore_connectivity` parameter. The volumetric water content ``\theta(\psi) = \theta_r +
+(\theta_s - \theta_r) S_e(\psi)`` follows from the generic [`water_content`](@ref)
+relation using the residual and saturated water contents `theta_r` and `theta_s`.
 
 # References
 - van Genuchten, M. Th. (1980). A closed-form equation for predicting the
