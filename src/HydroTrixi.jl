@@ -38,7 +38,7 @@ export examples_dir
 # Visualization methods are added by HydroTrixiVisualizationExt when CairoMakie is
 # loaded, to avoid making CairoMakie a hard dependency
 const DEFAULT_PLOT_FONT = "CMU Serif"
-const DEFAULT_SOLUTION_FIGSIZE = (700, 350)
+const DEFAULT_SOLUTION_FIGSIZE = (525, 350)
 const DEFAULT_CONVERGENCE_FIGSIZE = (525, 350)
 function plot_solution_1d end
 function animate_solution_1d end

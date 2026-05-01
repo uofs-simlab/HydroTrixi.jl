@@ -30,34 +30,38 @@ ax.xminorgridvisible = false
 ax.xminorticksvisible = false
 
 colors = Makie.wong_colors()
-lines!(ax,
-       ldg.ndofs,
-       ldg.l2_errors;
-       label = L"\mathrm{LDG}\ L^2",
-       color = colors[1],
-       linestyle = :solid,
-       linewidth = 1.8,)
-lines!(ax,
-       br1.ndofs,
-       br1.l2_errors;
-       label = L"\mathrm{BR1}\ L^2",
-       color = colors[2],
-       linestyle = :solid,
-       linewidth = 1.8,)
-lines!(ax,
-       ldg.ndofs,
-       ldg.linf_errors;
-       label = L"\mathrm{LDG}\ L^\infty",
-       color = colors[1],
-       linestyle = :dash,
-       linewidth = 1.8,)
-lines!(ax,
-       br1.ndofs,
-       br1.linf_errors;
-       label = L"\mathrm{BR1}\ L^\infty",
-       color = colors[2],
-       linestyle = :dash,
-       linewidth = 1.8,)
+scatterlines!(ax,
+              ldg.ndofs,
+              ldg.l2_errors;
+              label = L"\mathrm{LDG}\ L^2",
+              color = colors[1],
+              linestyle = :solid,
+              linewidth = 1.8,
+              markersize = 7.0)
+scatterlines!(ax,
+              br1.ndofs,
+              br1.l2_errors;
+              label = L"\mathrm{BR1}\ L^2",
+              color = colors[2],
+              linestyle = :solid,
+              linewidth = 1.8,
+              markersize = 7.0)
+scatterlines!(ax,
+              ldg.ndofs,
+              ldg.linf_errors;
+              label = L"\mathrm{LDG}\ L^\infty",
+              color = colors[1],
+              linestyle = :dash,
+              linewidth = 1.8,
+              markersize = 7.0)
+scatterlines!(ax,
+              br1.ndofs,
+              br1.linf_errors;
+              label = L"\mathrm{BR1}\ L^\infty",
+              color = colors[2],
+              linestyle = :dash,
+              linewidth = 1.8,
+              markersize = 7.0)
 
 triangle_order = 4
 x_ref_left = ldg.ndofs[end - 1]

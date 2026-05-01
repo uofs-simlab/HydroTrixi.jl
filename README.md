@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/tristanmontoya/HydroTrixi.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/tristanmontoya/HydroTrixi.jl/actions/workflows/ci.yml)
 
-**HydroTrixi.jl** is an adaptive discontinuous spectral-element framework for hydrologic problems. It builds upon the parabolic spatial discretization capabilities in
+**HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic problems. It builds upon the parabolic spatial discretization capabilities in
 [Trixi.jl](https://github.com/trixi-framework/Trixi.jl) and the time integration methods in [SciML ecosystem](https://sciml.ai/), adding the following technical features to support the solution of the **Richards equation** in one spatial dimension:
 - Mixed formulations that can advance different variables in time from those used in the spatial operator, with the constitutive relation imposed as a constraint as part of a differential algebraic equation
 - Flexible parabolic boundary conditions allowing penalty-type numerical fluxes that depend on the inner and outer solution and flux values
@@ -55,7 +55,7 @@ trixi_include(elixir;
               saveat = 0.0:2.0:360.0)
 ```
 
-Plot the final-time pressure-head profile. Since there is no analytical
+Plot the final time pressure head profile. Since there is no analytical
 solution in this example, the plot contains only the numerical curve:
 
 ```julia
@@ -66,6 +66,7 @@ plot_solution_1d(sol;
                  component = 2,
                  xlabel = L"$z$ (m)",
                  ylabel = L"$\psi$ (m)",
+                 size = (525, 350),
                  ylims = (-0.65, -0.15),
                  output_path = joinpath("plots",
                                         "richards_celia_1990_pressure_head.png"))
@@ -73,16 +74,14 @@ plot_solution_1d(sol;
 
 ![Celia pressure-head profile](assets/images/richards_celia_1990_pressure_head.png)
 
-Generate an animation of the evolving pressure-head profile:
+Generate an animation of the evolving pressure head profile:
 
 ```julia
-using CairoMakie
-using LaTeXStrings
-
 animate_solution_1d(sol;
                     component = 2,
                     xlabel = L"$z$ (m)",
                     ylabel = L"$\psi$ (m)",
+                    size = (525, 350),
                     ylims = (-0.65, -0.15),
                     output_path = joinpath("plots",
                                            "richards_celia_1990_pressure_head.gif"),
@@ -116,7 +115,7 @@ using LaTeXStrings
 
 plot_solution_1d(sol;
                  exact_solution = exact_solution,
-                 title = "t = 1.0",
+                 size = (525, 350),
                  output_path = joinpath("plots",
                                         "diffusion_equation_1d_mixed_dirichlet_neumann_solution.png"))
 ```
@@ -125,11 +124,9 @@ plot_solution_1d(sol;
 
 Generate an animation from the same solution:
 ```julia
-using CairoMakie
-using LaTeXStrings
-
 animate_solution_1d(sol;
                     exact_solution = exact_solution,
+                    size = (525, 350),
                     output_path = joinpath("plots",
                                            "diffusion_equation_1d_mixed_dirichlet_neumann_solution_long.gif"),
                     ylims = (0.5, 1.5),
@@ -153,3 +150,6 @@ include(joinpath(HydroTrixi.examples_dir(),
 ```
 
 ![BR1 vs LDG convergence](assets/images/diffusion_equation_1d_mixed_dirichlet_neumann_convergence_br1_vs_ldg.png)
+
+## Acknowledgements
+The developers of this package acknowledge funding support from the [Cooperative Institute for Research to Operations in Hydrology (CIROH)](https://ciroh.ua.edu/).

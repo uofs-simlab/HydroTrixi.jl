@@ -49,7 +49,6 @@ function HydroTrixi.animate_solution_1d(sol;
     ax = solution_axis(fig;
                        xlabel = xlabel,
                        ylabel = ylabel,
-                       title = "",
                        xlabelfont = xlabelfont,
                        ylabelfont = ylabelfont,
                        titlefont = titlefont,
@@ -91,7 +90,7 @@ function HydroTrixi.animate_solution_1d(sol;
     outdir = dirname(output_path)
     outdir == "" || mkpath(outdir)
 
-    record(fig, output_path, indices; framerate = framerate) do i
+    record(fig, output_path, indices; framerate = framerate, px_per_unit = 1) do i
         _, y_frame = plot_curve_1d(sol.u[i], semi; component = component)
         y_obs[] = y_frame
 

@@ -61,7 +61,6 @@ end
 function solution_axis(fig;
                        xlabel,
                        ylabel,
-                       title = "",
                        xlabelfont = DEFAULT_PLOT_FONT,
                        ylabelfont = DEFAULT_PLOT_FONT,
                        titlefont = DEFAULT_PLOT_FONT,
@@ -76,8 +75,7 @@ function solution_axis(fig;
               ylabelfont = ylabelfont,
               titlefont = titlefont,
               xticklabelfont = xticklabelfont,
-              yticklabelfont = yticklabelfont,
-              title = title,)
+              yticklabelfont = yticklabelfont,)
     apply_axis_limits!(ax; xlims = xlims, ylims = ylims)
 
     return ax
@@ -128,9 +126,8 @@ function HydroTrixi.plot_solution_1d(sol;
                                      exact_label = LaTeXString("Exact"),
                                      xlabel = L"$x$",
                                      ylabel = L"$u(x,t)$",
-                                     title = "",
                                      font = DEFAULT_PLOT_FONT,
-                                     size = DEFAULT_CONVERGENCE_FIGSIZE,
+                                     size = DEFAULT_SOLUTION_FIGSIZE,
                                      fontsize = 15,
                                      legendfontsize = 14,
                                      linewidth = 2.0,
@@ -154,7 +151,6 @@ function HydroTrixi.plot_solution_1d(sol;
     ax = solution_axis(fig;
                        xlabel = xlabel,
                        ylabel = ylabel,
-                       title = title,
                        xlabelfont = xlabelfont,
                        ylabelfont = ylabelfont,
                        titlefont = titlefont,
