@@ -33,6 +33,8 @@ plots/
 # Track only the top-level README for now
 *.md
 !README.md
+!docs/src/license.md
+!docs/src/reference.md
 
 # macOS Finder metadata
 .DS_Store

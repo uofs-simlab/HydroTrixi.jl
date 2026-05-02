@@ -5,9 +5,17 @@ on:
     branches:
       - main
     tags: ['*']
+    paths-ignore:
+      - 'docs/**'
+      - '.github/workflows/Documenter.yml'
+      - '.github/workflows/DocPreviewCleanup.yml'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - '.github/workflows/Documenter.yml'
+      - '.github/workflows/DocPreviewCleanup.yml'
   workflow_dispatch:
 
 concurrency:

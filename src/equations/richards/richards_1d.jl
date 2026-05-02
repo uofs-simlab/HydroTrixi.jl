@@ -8,11 +8,15 @@ A one-dimensional Richards equation model written in terms of the pressure head 
 for use with Trixi.jl's parabolic spatial discretization infrastructure. It represents the
 spatial operator in either the pressure head form
 ```math
-\frac{\partial \theta}{\partial \psi}\partial_t \psi = \partial_z \left( K(\psi) (\partial_z \psi - 1) \right),
+\frac{\partial \theta}{\partial \psi} \frac{\partial \psi}{\partial t} =
+\frac{\partial}{\partial z}
+\left( K(\psi) \left( \frac{\partial \psi}{\partial z} - 1 \right) \right),
 ```
 or the mixed form
 ```math
-\partial_t \theta = \partial_z \left( K(\psi) (\partial_z \psi - 1) \right),
+\frac{\partial \theta}{\partial t} =
+\frac{\partial}{\partial z}
+\left( K(\psi) \left( \frac{\partial \psi}{\partial z} - 1 \right) \right),
 ```
 where the constitutive relation between ``\theta`` and ``\psi`` is supplied by a separate
 semidiscretization wrapper. The hydraulic conductivity is supplied through
@@ -55,6 +59,12 @@ end
     return hydraulic_conductivity(u, equations.soil_model)
 end
 
+@doc raw"""
+    water_content(u, equations::RichardsEquation1D)
+
+Return the volumetric water content associated with the pressure head state `u` under the
+Richards equation model `equations`.
+"""
 @inline function water_content(u, equations::RichardsEquation1D)
     soil_model = equations.soil_model
     S_e = effective_saturation(pressure_head(u), soil_model)

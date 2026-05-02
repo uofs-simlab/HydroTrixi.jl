@@ -5,7 +5,7 @@ abstract type AbstractTemporalOperator end
 
 A semidiscretization wrapper that augments a spatial semidiscretization with a temporal
 operator, so that the semidiscrete problem is not restricted to the explicit form
-``\partial_t \mathbf{u} = R(\mathbf{u}, t)``.
+``\mathrm{d}\mathbf{u}/\mathrm{d}t = R(\mathbf{u}, t)``.
 """
 struct SemidiscretizationImplicit{Semidiscretization <: Trixi.AbstractSemidiscretization,
                                   TemporalOperator <: AbstractTemporalOperator} <:
@@ -21,7 +21,8 @@ Temporal operator for the mixed Richards form with constitutive relation
 ``\mathbf{u}_\mathrm{evolved} = \Theta(\mathbf{u}_\mathrm{state})``. It forms the
 semidiscrete system
 ```math
-\partial_t \mathbf{u}_\mathrm{evolved} = R(\mathbf{u}_\mathrm{state}, t), \qquad
+\frac{\mathrm{d}\mathbf{u}_\mathrm{evolved}}{\mathrm{d} t} =
+R(\mathbf{u}_\mathrm{state}, t), \qquad
 0 = \mathbf{u}_\mathrm{evolved} - \Theta(\mathbf{u}_\mathrm{state}).
 ```
 """

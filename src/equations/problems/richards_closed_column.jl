@@ -12,9 +12,10 @@ The problem uses the mixed Richards formulation with constitutive relation
 \psi(z, 0) = C + z + A \left( 1 - \cos\left(\frac{2\pi (z - z_{\min})}{L}\right) \right),
 ```
 where ``C`` is `base_head`, ``A`` is `amplitude`, and ``L = z_{\max} - z_{\min}``.
-This profile satisfies ``\partial_z \psi = 1`` at both boundaries, and therefore the flux
+This profile satisfies ``\partial \psi / \partial z = 1`` at both boundaries, and
+therefore the flux
 ```math
-q = K(\psi) (\partial_z \psi - 1)
+q = K(\psi) \left( \frac{\partial \psi}{\partial z} - 1 \right)
 ```
 vanishes at ``z = z_{\min}`` and ``z = z_{\max}`` at the initial time, and should remain zero for all time due to the homogeneous Neumann boundary conditions.
 

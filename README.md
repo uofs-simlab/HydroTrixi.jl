@@ -1,6 +1,8 @@
 # HydroTrixi.jl
 
-[![CI](https://github.com/tristanmontoya/HydroTrixi.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/tristanmontoya/HydroTrixi.jl/actions/workflows/ci.yml)
+[![CI](https://github.com/uofs-simlab/HydroTrixi.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/uofs-simlab/HydroTrixi.jl/actions/workflows/ci.yml)
+[![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://tjbmontoya.com/HydroTrixi.jl/stable)
+[![docs-dev](https://img.shields.io/badge/docs-dev-blueviolet.svg)](https://tjbmontoya.com/HydroTrixi.jl/dev)
 
 **HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic problems. It builds upon the parabolic spatial discretization capabilities in
 [Trixi.jl](https://github.com/trixi-framework/Trixi.jl) and the time integration methods in [SciML ecosystem](https://sciml.ai/), adding the following technical features to support the solution of the **Richards equation** in one spatial dimension:

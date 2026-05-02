@@ -1,0 +1,12 @@
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterInterLinks = "d12716ef-a0f6-4df4-a9f1-a5a34e75c656"
+HydroTrixi = "7af077dc-b170-402d-9829-aaaeff984f5f"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+
+[compat]
+CairoMakie = "0.15"
+Documenter = "1.3"
+DocumenterInterLinks = "0.3.1, 1"
+LaTeXStrings = "1"
