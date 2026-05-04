@@ -4,8 +4,11 @@ abstract type AbstractTemporalOperator end
     SemidiscretizationImplicit{Semidiscretization, TemporalOperator}
 
 A semidiscretization wrapper that augments a spatial semidiscretization with a temporal
-operator, so that the semidiscrete problem is not restricted to the explicit form
-``\mathrm{d}\mathbf{u}/\mathrm{d}t = R(\mathbf{u}, t)``.
+operator, so that the semi-discrete problem is not restricted to the explicit form
+``\mathrm{d}\mathbf{u}/\mathrm{d}t = R(\mathbf{u}, t)``. Currently, the only supported 
+temporal operator is [`TemporalOperatorConstitutive`](@ref), which allows for a 
+constitutive relation to be enforced between the state variable(s) and the evolved 
+variable(s) in the system of equations.
 """
 struct SemidiscretizationImplicit{Semidiscretization <: Trixi.AbstractSemidiscretization,
                                   TemporalOperator <: AbstractTemporalOperator} <:
@@ -17,14 +20,26 @@ end
 @doc raw"""
     TemporalOperatorConstitutive{ConstitutiveRelation}
 
-Temporal operator for the mixed Richards form with constitutive relation
-``\mathbf{u}_\mathrm{evolved} = \Theta(\mathbf{u}_\mathrm{state})``. It forms the
-semidiscrete system
+Temporal operator for a [`SemidiscretizationImplicit`](@ref) that takes the form
 ```math
 \frac{\mathrm{d}\mathbf{u}_\mathrm{evolved}}{\mathrm{d} t} =
 R(\mathbf{u}_\mathrm{state}, t), \qquad
-0 = \mathbf{u}_\mathrm{evolved} - \Theta(\mathbf{u}_\mathrm{state}).
+0 = \mathbf{u}_\mathrm{evolved} - C(\mathbf{u}_\mathrm{state}),
 ```
+where ``R`` is the operator associated with the spatial discretization `semi_base`, and 
+``C`` is a constitutive relation that maps the state variable(s) to the evolved 
+variable(s). In the case of the Richards equation, for example, the state variable is the
+pressure head, and the evolved variable is the water content, which are related by the
+water retention curve (i.e., [`water_content`](@ref)). HydroTrixi.jl then uses SciML's DAE
+solvers to integrate the resulting system of equations based on the following mass-matrix
+form:
+```math
+\begin{bmatrix} I & 0 \\ 0 & 0 \end{bmatrix} \frac{\mathrm{d}}{\mathrm{d} t}
+\begin{bmatrix} \mathbf{u}_\mathrm{evolved} \\ \mathbf{u}_\mathrm{state} \end{bmatrix} = 
+\begin{bmatrix} 
+R(\mathbf{u}_\mathrm{state}, t) \\ 
+\mathbf{u}_\mathrm{evolved} - C(\mathbf{u}_\mathrm{state}) 
+\end{bmatrix}.
 """
 struct TemporalOperatorConstitutive{ConstitutiveRelation} <: AbstractTemporalOperator
     constitutive_relation::ConstitutiveRelation
