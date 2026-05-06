@@ -17,6 +17,16 @@ struct SemidiscretizationImplicit{Semidiscretization <: Trixi.AbstractSemidiscre
     operator_temporal::TemporalOperator
 end
 
+function Base.show(io::IO, semi::SemidiscretizationImplicit)
+    @nospecialize semi # reduce precompilation time
+
+    print(io, "SemidiscretizationImplicit(")
+    print(io, semi.semi_base)
+    print(io, ", ", semi.operator_temporal |> typeof |> nameof)
+    print(io, ")")
+    return nothing
+end
+
 @doc raw"""
     TemporalOperatorConstitutive{ConstitutiveRelation}
 
@@ -45,6 +55,14 @@ struct TemporalOperatorConstitutive{ConstitutiveRelation} <: AbstractTemporalOpe
     constitutive_relation::ConstitutiveRelation
 end
 
+print_temporal_operator_summary(io::IO, ::AbstractTemporalOperator) = nothing
+
+function print_temporal_operator_summary(io::IO,
+                                         operator_temporal::TemporalOperatorConstitutive)
+    return Trixi.summary_line(io, "constitutive relation",
+                              operator_temporal.constitutive_relation)
+end
+
 # Wrapper to drive dispatch based on the temporal operator type on methods that take
 # mesh, equations, solver, and cache as separate arguments.
 struct CacheImplicit{Cache, TemporalOperator <: AbstractTemporalOperator}
@@ -69,6 +87,32 @@ end
 
 @inline Base.ndims(semi::SemidiscretizationImplicit) = ndims(semi.semi_base)
 @inline Base.real(semi::SemidiscretizationImplicit) = real(semi.semi_base)
+
+function Base.show(io::IO, ::MIME"text/plain", semi::SemidiscretizationImplicit)
+    @nospecialize semi # reduce precompilation time
+
+    if get(io, :compact, false)
+        show(io, semi)
+    else
+        semi_base = semi.semi_base
+
+        Trixi.summary_header(io, "SemidiscretizationImplicit")
+        Trixi.summary_line(io, "#spatial dimensions", ndims(semi))
+        Trixi.summary_line(io, "mesh", semi_base.mesh)
+        Trixi.summary_line(io, "equations", semi_base.equations |> typeof |> nameof)
+        Trixi.summary_line(io, "initial condition", semi_base.initial_condition)
+        print_boundary_conditions_summary(io, semi_base.boundary_conditions)
+        Trixi.summary_line(io, "source terms", semi_base.source_terms)
+        Trixi.summary_line(io, "solver", semi_base.solver |> typeof |> nameof)
+        Trixi.summary_line(io, "parabolic solver",
+                           semi_base.solver_parabolic |> typeof |> nameof)
+        Trixi.summary_line(io, "temporal operator",
+                           semi.operator_temporal |> typeof |> nameof)
+        print_temporal_operator_summary(io, semi.operator_temporal)
+        Trixi.summary_line(io, "total #DOFs per field", Trixi.ndofsglobal(semi))
+        Trixi.summary_footer(io)
+    end
+end
 
 @inline evolved_variable_view(u_ode) = @view(u_ode[1:(length(u_ode) ÷ 2)])
 @inline state_variable_view(u_ode) = @view(u_ode[(length(u_ode) ÷ 2 + 1):end])

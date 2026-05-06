@@ -13,10 +13,4 @@ end
 
 docs_generated_dir(name) = mkpath(joinpath(docs_src_dir(), "assets", "generated", name))
 
-function quietly(f)
-    redirect_stdout(devnull) do
-        return f()
-    end
-end
-
 end

@@ -19,6 +19,20 @@ struct HydrologicProblem{NDIMS, Equations, InitialCondition, BoundaryConditions,
     constitutive_relation::ConstitutiveRelation
 end
 
+function Base.show(io::IO, hydrologic_problem::HydrologicProblem)
+    @nospecialize hydrologic_problem # reduce precompilation time
+
+    print(io, "HydrologicProblem(")
+    print(io, hydrologic_problem.equations)
+    print(io, ", ", hydrologic_problem.initial_condition)
+    print(io, ", ", hydrologic_problem.boundary_conditions)
+    print(io, ", ", hydrologic_problem.domain)
+    print(io, ", ", hydrologic_problem.tspan)
+    print(io, ", ", hydrologic_problem.constitutive_relation)
+    print(io, ")")
+    return nothing
+end
+
 function HydrologicProblem(; equations,
                            initial_condition,
                            boundary_conditions,
@@ -43,6 +57,56 @@ function HydrologicProblem(; equations,
 end
 
 Base.ndims(::HydrologicProblem{NDIMS}) where {NDIMS} = NDIMS
+
+@inline function boundary_condition_summary_name(boundary_condition)
+    return nameof(typeof(boundary_condition))
+end
+
+function pretty_boundary_name(boundary_name::Symbol)
+    boundary_name === :x_neg && return "negative x"
+    boundary_name === :x_pos && return "positive x"
+    boundary_name === :y_neg && return "negative y"
+    boundary_name === :y_pos && return "positive y"
+    boundary_name === :z_neg && return "negative z"
+    boundary_name === :z_pos && return "positive z"
+    return String(boundary_name)
+end
+
+function print_boundary_conditions_summary(io::IO, boundary_conditions::NamedTuple)
+    Trixi.summary_line(io, "boundary conditions", length(boundary_conditions))
+    for (boundary_name, boundary_condition) in pairs(boundary_conditions)
+        Trixi.summary_line(Trixi.increment_indent(io),
+                           pretty_boundary_name(boundary_name),
+                           boundary_condition_summary_name(boundary_condition))
+    end
+    return nothing
+end
+
+function print_boundary_conditions_summary(io::IO, boundary_conditions)
+    return Trixi.summary_line(io, "boundary conditions",
+                              boundary_condition_summary_name(boundary_conditions))
+end
+
+function Base.show(io::IO, ::MIME"text/plain", hydrologic_problem::HydrologicProblem)
+    @nospecialize hydrologic_problem # reduce precompilation time
+
+    if get(io, :compact, false)
+        show(io, hydrologic_problem)
+    else
+        Trixi.summary_header(io, "HydrologicProblem")
+        Trixi.summary_line(io, "#spatial dimensions", ndims(hydrologic_problem))
+        Trixi.summary_line(io, "equations",
+                           hydrologic_problem.equations |> typeof |> nameof)
+        Trixi.summary_line(io, "initial condition",
+                           hydrologic_problem.initial_condition)
+        print_boundary_conditions_summary(io, hydrologic_problem.boundary_conditions)
+        Trixi.summary_line(io, "domain", hydrologic_problem.domain)
+        Trixi.summary_line(io, "time interval", hydrologic_problem.tspan)
+        Trixi.summary_line(io, "constitutive relation",
+                           hydrologic_problem.constitutive_relation)
+        Trixi.summary_footer(io)
+    end
+end
 
 function SemidiscretizationImplicit(mesh, hydrologic_problem::HydrologicProblem, solver;
                                     solver_parabolic,

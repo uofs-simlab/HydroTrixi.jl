@@ -4,11 +4,12 @@
 #
 # # Celia (1990) infiltration problem
 #
-# This tutorial runs the one-dimensional Richards problem from the following paper:
+# This tutorial runs the one-dimensional Richards benchmark from the following paper:
 #
 # Celia, M. A., Bouloutas, E. T., Zarba, R. L. (1990). A general
 # mass-conservative numerical solution for the unsaturated flow equation.
-# *Water Resources Research*, 26(7), 1483-1496.
+# *Water Resources Research*, 26(7), 1483-1496. 
+# [DOI: 10.1029/WR026i007p01483](https://doi.org/10.1029/WR026i007p01483)
 #
 # First, we load the required packages.
 
@@ -19,13 +20,13 @@ using Trixi
 tutorial_utils_root = get(ENV, "HYDROTRIXI_DOCS_LITERATE", @__DIR__) #hide
 tutorial_utils_path = joinpath(tutorial_utils_root, "tutorial_utils.jl") #hide
 include(tutorial_utils_path) #hide
-using .TutorialUtils: docs_generated_dir, quietly #hide
+using .TutorialUtils: docs_generated_dir #hide
 nothing #hide
 
 # ## Solve the Richards problem
 #
 # The setup below follows the
-# [elixir_richards_celia_1990.jl](https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/examples/elixir_richards_celia_1990.jl)
+# [`elixir_richards_celia_1990.jl`](https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/examples/elixir_richards_celia_1990.jl)
 # example, but we keep a saved time history so the same solution object can drive
 # the animation step later in the tutorial.
 
@@ -38,48 +39,43 @@ asset_dir = docs_generated_dir("celia_1990")
 # the standard infiltration problem.
 
 problem = HydrologicProblemCelia1990()
-(; domain, tspan) = problem
-lower, upper = domain
 
 # ### 2. Build the mesh
 #
-# The benchmark is one-dimensional, so a `TreeMesh` on the interval `[0, 0.4]`
-# with five initial refinement levels gives `2^5 = 32` cells before time
-# integration begins.
+# The benchmark is one-dimensional, so a `TreeMesh` with five levels of initial refinement 
+# gives 32 cells before time integration begins.
 
-mesh = TreeMesh(lower,
-                upper,
+mesh = TreeMesh(problem.domain...,
                 initial_refinement_level = 5,
                 n_cells_max = 30_000)
 
-# ### 3. Choose the spatial and temporal semidiscretization
+# ### 3. Set up the spatial discretization
 #
-# We use a polynomial degree of `3` together with the mixed implicit Richards
-# semidiscretization [`SemidiscretizationImplicit`](@ref) using a local DG (LDG) 
-# formulation.
+# We use a polynomial degree of $N = 3$ together with the mixed implicit Richards
+# semidiscretization [`SemidiscretizationImplicit`](@ref), using a local DG (LDG) 
+# formulation for the parabolic solver.
 
 solver = DGSEM(polydeg = 3)
 
 semi = SemidiscretizationImplicit(mesh, problem, solver;
                                   solver_parabolic = ParabolicFormulationLocalDG())
-ode = semidiscretize(semi, tspan)
 
 # ### 4. Solve and keep a time history
 #
-# The Richards problem is stiff, so [`default_algorithm`](@ref) selects the
-# implicit Rosenbrock method recommended by HydroTrixi. We save a solution every
-# six seconds so the same run can be used for both the final-time figure and the
-# animation. The `quietly` block suppresses the usual solver output in this tutorial.
+# The Richards problem is stiff, so [`default_algorithm`](@ref) selects the `Rodas5P` Rosenbrock method from the SciML ecosystem. The time step is adaptive, with an initial step 
+# size of $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify `saveat = 0.0:6.0:360.0` to
+# save a solution every six seconds, which will be used to create an animation in the next 
+# tutorial section.
 
-sol = quietly() do
-    solve(ode,
-          default_algorithm(semi);
-          dt = 1.0e-2,
-          adaptive = true,
-          saveat = 0.0:6.0:360.0,
-          save_everystep = false,
-          maxiters = typemax(Int))
-end
+ode = semidiscretize(semi, problem.tspan)
+
+sol = solve(ode,
+            default_algorithm(semi);
+            dt = 1.0e-2,
+            adaptive = true,
+            saveat = 0.0:6.0:360.0,
+            save_everystep = false,
+            maxiters = typemax(Int))
 
 println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) saved states.")
 
