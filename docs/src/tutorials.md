@@ -4,9 +4,9 @@ EditURL = "https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/docs/src/tutor
 
 # Tutorials
 
-This tutorial is authored as a self-contained `Literate.jl` source under
-`docs/literate` and executed as part of the documentation build.
+The following tutorials are authored as a self-contained `Literate.jl` source under
+`docs/literate` and executed as part of the documentation build:
 
-- [Celia (1990) infiltration problem](tutorials/celia_1990.md)
+- [Celia *et al.* (1990) infiltration problem](tutorials/celia_1990.md)
 
-The rendered page includes the figures and GIF animations generated during CI.
+The rendered pages include the figures and GIF animations generated during CI.

@@ -2,7 +2,7 @@
 # CurrentModule = HydroTrixi
 # ```
 #
-# # Celia (1990) infiltration problem
+# # Celia *et al.* (1990) infiltration problem
 #
 # This tutorial runs the one-dimensional Richards benchmark from the following paper:
 #

@@ -68,7 +68,7 @@ makedocs(; modules = [HydroTrixi],
                                   assets = String[]),
          pages = ["Home" => "index.md",
                   "Tutorials" => ["Overview" => "tutorials.md",
-                                  "Celia (1990) infiltration problem" =>
+                                  "Celia *et al.* (1990) infiltration problem" =>
                                       "tutorials/celia_1990.md"],
                   "Reference" => "reference.md",
                   "License" => "license.md"],
