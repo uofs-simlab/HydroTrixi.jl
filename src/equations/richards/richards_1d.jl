@@ -23,7 +23,7 @@ semidiscretization wrapper. The hydraulic conductivity is supplied through
 `soil_model`, with `hydraulic_conductivity(psi, equations)` dispatching
 on the model type parameter `SoilModel`. If `soil_model` is omitted, it
 defaults to a [`Haverkamp`](@ref) model parameterized with the Celia (1990)
-benchmark values reported in Ireson et al. (2023), Eq. (25), in SI units
+reference values reported in Ireson et al. (2023), Eq. (25), in SI units
 (lengths in m, time in seconds).
 """
 struct RichardsEquation1D{SoilModel} <:

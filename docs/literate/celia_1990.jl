@@ -1,0 +1,129 @@
+# ```@meta
+# CurrentModule = HydroTrixi
+# ```
+#
+# # Celia (1990) infiltration problem
+#
+# This tutorial runs the one-dimensional Richards problem from the following paper:
+#
+# Celia, M. A., Bouloutas, E. T., Zarba, R. L. (1990). A general
+# mass-conservative numerical solution for the unsaturated flow equation.
+# *Water Resources Research*, 26(7), 1483-1496.
+#
+# First, we load the required packages.
+
+using HydroTrixi
+using SciMLBase
+using Trixi
+
+tutorial_utils_root = get(ENV, "HYDROTRIXI_DOCS_LITERATE", @__DIR__) #hide
+tutorial_utils_path = joinpath(tutorial_utils_root, "tutorial_utils.jl") #hide
+include(tutorial_utils_path) #hide
+using .TutorialUtils: docs_generated_dir, quietly #hide
+nothing #hide
+
+# ## Solve the Richards problem
+#
+# The setup below follows the
+# [elixir_richards_celia_1990.jl](https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/examples/elixir_richards_celia_1990.jl)
+# example, but we keep a saved time history so the same solution object can drive
+# the animation step later in the tutorial.
+
+asset_dir = docs_generated_dir("celia_1990")
+
+# ### 1. Load the benchmark definition
+#
+# [`HydrologicProblemCelia1990`](@ref) packages the Richards equation,
+# constitutive relation, boundary data, spatial domain, and time interval for
+# the standard infiltration problem.
+
+problem = HydrologicProblemCelia1990()
+(; domain, tspan) = problem
+lower, upper = domain
+
+# ### 2. Build the mesh
+#
+# The benchmark is one-dimensional, so a `TreeMesh` on the interval `[0, 0.4]`
+# with five initial refinement levels gives `2^5 = 32` cells before time
+# integration begins.
+
+mesh = TreeMesh(lower,
+                upper,
+                initial_refinement_level = 5,
+                n_cells_max = 30_000)
+
+# ### 3. Choose the spatial and temporal semidiscretization
+#
+# We use a polynomial degree of `3` together with the mixed implicit Richards
+# semidiscretization [`SemidiscretizationImplicit`](@ref) using a local DG (LDG) 
+# formulation.
+
+solver = DGSEM(polydeg = 3)
+
+semi = SemidiscretizationImplicit(mesh, problem, solver;
+                                  solver_parabolic = ParabolicFormulationLocalDG())
+ode = semidiscretize(semi, tspan)
+
+# ### 4. Solve and keep a time history
+#
+# The Richards problem is stiff, so [`default_algorithm`](@ref) selects the
+# implicit Rosenbrock method recommended by HydroTrixi. We save a solution every
+# six seconds so the same run can be used for both the final-time figure and the
+# animation. The `quietly` block suppresses the usual solver output in this tutorial.
+
+sol = quietly() do
+    solve(ode,
+          default_algorithm(semi);
+          dt = 1.0e-2,
+          adaptive = true,
+          saveat = 0.0:6.0:360.0,
+          save_everystep = false,
+          maxiters = typemax(Int))
+end
+
+println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) saved states.")
+
+# ## Plot the final pressure head profile
+#
+# Now that the solve is complete, we load the optional plotting packages.
+
+using CairoMakie
+using LaTeXStrings
+
+# 
+# The mixed Richards formulation stores both evolved and state variables. The pressure head
+# lives in the state block, so we plot `component = 2` with
+# [`plot_solution_1d`](@ref). The output file is written into the docs asset
+# directory prepared by the build.
+
+plot_path = joinpath(asset_dir, "richards_celia_1990_pressure_head.png")
+
+_ = plot_solution_1d(sol;
+                     component = 2,
+                     xlabel = L"$z$ (m)",
+                     ylabel = L"$\psi$ (m)",
+                     ylims = (-0.65, -0.15),
+                     output_path = plot_path)
+
+println("Saved final-time plot to $(plot_path)")
+
+# ![Final-time pressure head profile](../assets/generated/celia_1990/richards_celia_1990_pressure_head.png)
+#
+# ## Render the GIF animation
+#
+# Because the solve already stored a time history, [`animate_solution_1d`](@ref)
+# only needs to read the saved states and render them.
+
+animation_path = joinpath(asset_dir, "richards_celia_1990_pressure_head.gif")
+
+_ = animate_solution_1d(sol;
+                        component = 2,
+                        xlabel = L"$z$ (m)",
+                        ylabel = L"$\psi$ (m)",
+                        ylims = (-0.65, -0.15),
+                        output_path = animation_path,
+                        framerate = 20)
+
+println("Saved animation to $(animation_path)")
+
+# ![Pressure head animation](../assets/generated/celia_1990/richards_celia_1990_pressure_head.gif)

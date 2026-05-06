@@ -1,5 +1,5 @@
-# Example: Trixi-style elixir for the Celia (1990) Richards-equation infiltration
-# benchmark. The problem definition lives in `HydrologicProblemCelia1990()`
+# Example: Trixi-style elixir for the Celia et al. (1990) Richards equation infiltration
+# problem. The problem definition lives in `HydrologicProblemCelia1990()`
 # (Haverkamp soil model, Dirichlet at both ends, depth z in m on [0, 0.4],
 # t in seconds on [0, 360]).
 

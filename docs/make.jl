@@ -3,6 +3,7 @@ using DocumenterInterLinks
 using CairoMakie
 using LaTeXStrings
 using HydroTrixi
+using Literate
 
 # Fix for https://github.com/trixi-framework/Trixi.jl/issues/668
 if (get(ENV, "CI", nothing) != "true") &&
@@ -10,11 +11,11 @@ if (get(ENV, "CI", nothing) != "true") &&
     push!(LOAD_PATH, dirname(@__DIR__))
 end
 
-const REPOSITORY_ROOT = dirname(@__DIR__)
 const DOCS_ROOT = @__DIR__
 const DOCS_SRC = joinpath(DOCS_ROOT, "src")
-const README_ASSETS = joinpath(REPOSITORY_ROOT, "assets", "images")
-const DOCS_ASSETS = joinpath(DOCS_SRC, "assets", "images")
+const DOCS_LITERATE = joinpath(DOCS_ROOT, "literate")
+const DOCS_TUTORIALS = joinpath(DOCS_SRC, "tutorials")
+const DOCS_GENERATED_ASSETS = joinpath(DOCS_SRC, "assets", "generated")
 
 links = InterLinks("Trixi" => ("https://trixi-framework.github.io/TrixiDocumentation/stable/",
                                "https://trixi-framework.github.io/TrixiDocumentation/stable/objects.inv"))
@@ -30,36 +31,33 @@ if isnothing(Base.get_extension(HydroTrixi, :HydroTrixiVisualizationExt))
     error("HydroTrixiVisualizationExt did not load in the documentation environment.")
 end
 
-function sync_readme_assets!()
-    isdir(README_ASSETS) || return nothing
+function prepare_generated_docs!()
+    rm(DOCS_TUTORIALS; recursive = true, force = true)
+    mkpath(DOCS_TUTORIALS)
 
-    mkpath(DOCS_ASSETS)
+    rm(DOCS_GENERATED_ASSETS; recursive = true, force = true)
+    mkpath(DOCS_GENERATED_ASSETS)
 
-    for (root, _, files) in walkdir(README_ASSETS)
-        relative_root = relpath(root, README_ASSETS)
-        destination_root = if relative_root == "."
-            DOCS_ASSETS
-        else
-            joinpath(DOCS_ASSETS, relative_root)
-        end
-        mkpath(destination_root)
+    return nothing
+end
 
-        for file in files
-            cp(joinpath(root, file), joinpath(destination_root, file); force = true)
-        end
+function generate_tutorials!()
+    ENV["HYDROTRIXI_DOCS_SRC"] = DOCS_SRC
+    ENV["HYDROTRIXI_DOCS_LITERATE"] = DOCS_LITERATE
+
+    for source in ("celia_1990.jl",)
+        Literate.markdown(joinpath(DOCS_LITERATE, source),
+                          DOCS_TUTORIALS;
+                          execute = true,
+                          flavor = Literate.DocumenterFlavor(),
+                          credit = false)
     end
 
     return nothing
 end
 
-function sync_readme_homepage!()
-    readme_text = read(joinpath(REPOSITORY_ROOT, "README.md"), String)
-    write(joinpath(DOCS_SRC, "index.md"), readme_text)
-    return nothing
-end
-
-sync_readme_assets!()
-sync_readme_homepage!()
+prepare_generated_docs!()
+generate_tutorials!()
 
 makedocs(; modules = [HydroTrixi],
          repo = Remotes.GitHub("uofs-simlab", "HydroTrixi.jl"),
@@ -69,6 +67,9 @@ makedocs(; modules = [HydroTrixi],
                                   edit_link = "main",
                                   assets = String[]),
          pages = ["Home" => "index.md",
+                  "Tutorials" => ["Overview" => "tutorials.md",
+                                  "Celia (1990) infiltration problem" =>
+                                      "tutorials/celia_1990.md"],
                   "Reference" => "reference.md",
                   "License" => "license.md"],
          plugins = [links, fallbacks])

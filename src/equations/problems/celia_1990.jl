@@ -1,10 +1,10 @@
 @doc raw"""
     HydrologicProblemCelia1990()
 
-Return the one-dimensional Richards-equation infiltration benchmark introduced by Celia,
+Return the one-dimensional Richards-equation infiltration problem introduced by Celia,
 Bouloutas, and Zarba (1990) as a `HydrologicProblem` for HydroTrixi semidiscretizations.
 
-The benchmark uses the Haverkamp constitutive laws in the form reported by Ireson et al.
+The problem uses the Haverkamp constitutive laws in the form reported by Ireson et al.
 (2023), Eq. (25):
 ```math
 \theta(\psi) = \theta_r + (\theta_s - \theta_r)
