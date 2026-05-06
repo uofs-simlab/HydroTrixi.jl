@@ -17,7 +17,7 @@ repository README.
 
 The main entry points for new users are the executed `Literate.jl` tutorials:
 
-- [Celia (1990) infiltration problem](tutorials/celia_1990.md)
+- [Celia *et al.* (1990) infiltration problem](tutorials/celia_1990.md)
 
 ## Installation
 
