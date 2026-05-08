@@ -5,14 +5,16 @@ using Trixi
 ###############################################################################
 # semidiscretization of the closed-column Richards equation
 
-final_time = 360.0
+final_time = 86400.0
 tspan = (0.0, final_time)
+
 # Use standard loam van Genuchten-Mualem parameters in SI units
 soil_model = VanGenuchten(saturated_hydraulic_conductivity = 24.96e-2 / 86_400,
                           alpha = 3.6,
                           n = 1.56,
                           theta_s = 0.43,
                           theta_r = 0.078)
+
 problem = HydrologicProblemRichardsClosedColumn(tspan = tspan,
                                                 soil_model = soil_model)
 
@@ -49,19 +51,33 @@ analysis_callback = AnalysisCallback(semi,
 
 alive_callback = AliveCallback(analysis_interval = analysis_interval)
 
+amr_indicator = IndicatorLoehner(semi, variable = HydroTrixi.water_content)
+amr_controller = ControllerThreeLevel(semi, amr_indicator;
+                                      base_level = 1,
+                                      med_level = 3, med_threshold = 1.0e-3,
+                                      max_level = 7, max_threshold = 1.0e-2)
+amr_callback = AMRCallback(semi, amr_controller;
+                           interval = 10,
+                           adapt_initial_condition = true,
+                           adapt_initial_condition_only_refine = true)
+
 callbacks = CallbackSet(summary_callback,
-                        analysis_callback, alive_callback)
+                        analysis_callback, alive_callback,
+                        amr_callback)
 
 ###############################################################################
 # run the simulation
 
 dt = 1.0e-2
 adaptive = true
-saveat = 0.0:10.0:final_time
+saveat = Float64[]
+run_simulation = true
 
-sol = solve(ode, default_algorithm(semi);
-            dt = dt,
-            adaptive = adaptive,
-            saveat = saveat,
-            ode_default_options()..., callback = callbacks,
-            maxiters = typemax(Int))
+if run_simulation
+    sol = solve(ode, default_algorithm(semi);
+                dt = dt,
+                adaptive = adaptive,
+                saveat = saveat,
+                ode_default_options()..., callback = callbacks,
+                maxiters = typemax(Int))
+end

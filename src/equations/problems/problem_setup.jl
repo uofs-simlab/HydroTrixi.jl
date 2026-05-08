@@ -1,22 +1,23 @@
 @doc raw"""
     HydrologicProblem(; equations, initial_condition, boundary_conditions, domain, tspan,
-                        constitutive_relation = nothing)
+                        state_to_evolved = nothing, evolved_to_state = nothing)
 
 A container for reusable hydrologic PDE problem data. It stores the governing `equations`,
 an `initial_condition`, `boundary_conditions`, the spatial `domain`, the time interval
-`tspan`, and an optional `constitutive_relation` for mixed-form Richards' equation problems.
+`tspan`, and optional state-to-evolved and evolved-to-state maps for mixed-form problems.
 
 The `domain` must be a pair `(x_min, x_max)` of coordinate tuples with matching dimension.
 The type parameter `NDIMS` records that dimension for dispatch and introspection.
 """
 struct HydrologicProblem{NDIMS, Equations, InitialCondition, BoundaryConditions,
-                         Domain, Tspan, ConstitutiveRelation}
+                         Domain, Tspan, StateToEvolved, EvolvedToState}
     equations::Equations
     initial_condition::InitialCondition
     boundary_conditions::BoundaryConditions
     domain::Domain
     tspan::Tspan
-    constitutive_relation::ConstitutiveRelation
+    state_to_evolved::StateToEvolved
+    evolved_to_state::EvolvedToState
 end
 
 function Base.show(io::IO, hydrologic_problem::HydrologicProblem)
@@ -28,7 +29,8 @@ function Base.show(io::IO, hydrologic_problem::HydrologicProblem)
     print(io, ", ", hydrologic_problem.boundary_conditions)
     print(io, ", ", hydrologic_problem.domain)
     print(io, ", ", hydrologic_problem.tspan)
-    print(io, ", ", hydrologic_problem.constitutive_relation)
+    print(io, ", ", hydrologic_problem.state_to_evolved)
+    print(io, ", ", hydrologic_problem.evolved_to_state)
     print(io, ")")
     return nothing
 end
@@ -38,22 +40,26 @@ function HydrologicProblem(; equations,
                            boundary_conditions,
                            domain,
                            tspan,
-                           constitutive_relation = nothing)
+                           state_to_evolved = nothing,
+                           evolved_to_state = nothing)
     length(domain) == 2 ||
         throw(ArgumentError("Expected `domain` to be a pair of coordinate tuples."))
     lower, upper = domain
     ndims = length(lower)
     length(upper) == ndims ||
-        throw(ArgumentError("Expected lower and upper domain bounds to have matching dimension."))
+        throw(ArgumentError("Expected lower and upper domain bounds to have " *
+                            "matching dimension."))
 
     return HydrologicProblem{ndims, typeof(equations), typeof(initial_condition),
                              typeof(boundary_conditions), typeof(domain), typeof(tspan),
-                             typeof(constitutive_relation)}(equations,
-                                                            initial_condition,
-                                                            boundary_conditions,
-                                                            domain,
-                                                            tspan,
-                                                            constitutive_relation)
+                             typeof(state_to_evolved),
+                             typeof(evolved_to_state)}(equations,
+                                                       initial_condition,
+                                                       boundary_conditions,
+                                                       domain,
+                                                       tspan,
+                                                       state_to_evolved,
+                                                       evolved_to_state)
 end
 
 Base.ndims(::HydrologicProblem{NDIMS}) where {NDIMS} = NDIMS
@@ -102,8 +108,8 @@ function Base.show(io::IO, ::MIME"text/plain", hydrologic_problem::HydrologicPro
         print_boundary_conditions_summary(io, hydrologic_problem.boundary_conditions)
         Trixi.summary_line(io, "domain", hydrologic_problem.domain)
         Trixi.summary_line(io, "time interval", hydrologic_problem.tspan)
-        Trixi.summary_line(io, "constitutive relation",
-                           hydrologic_problem.constitutive_relation)
+        Trixi.summary_line(io, "state to evolved", hydrologic_problem.state_to_evolved)
+        Trixi.summary_line(io, "evolved to state", hydrologic_problem.evolved_to_state)
         Trixi.summary_footer(io)
     end
 end
@@ -111,17 +117,20 @@ end
 function SemidiscretizationImplicit(mesh, hydrologic_problem::HydrologicProblem, solver;
                                     solver_parabolic,
                                     kwargs...)
-    constitutive_relation = hydrologic_problem.constitutive_relation
-    isnothing(constitutive_relation) &&
-        throw(ArgumentError("Hydrologic problem does not define a constitutive relation."))
+    state_to_evolved = hydrologic_problem.state_to_evolved
+    evolved_to_state = hydrologic_problem.evolved_to_state
+    boundary_conditions = hydrologic_problem.boundary_conditions
+    isnothing(state_to_evolved) &&
+        throw(ArgumentError("Hydrologic problem does not define `state_to_evolved`."))
 
     semi_base = Trixi.SemidiscretizationParabolic(mesh,
                                                   hydrologic_problem.equations,
                                                   hydrologic_problem.initial_condition,
                                                   solver;
-                                                  boundary_conditions = hydrologic_problem.boundary_conditions,
+                                                  boundary_conditions = boundary_conditions,
                                                   solver_parabolic = solver_parabolic,
                                                   kwargs...)
-    operator_temporal = TemporalOperatorConstitutive(constitutive_relation)
+    operator_temporal = TemporalOperatorConstitutive(state_to_evolved;
+                                                     evolved_to_state = evolved_to_state)
     return SemidiscretizationImplicit(semi_base, operator_temporal)
 end

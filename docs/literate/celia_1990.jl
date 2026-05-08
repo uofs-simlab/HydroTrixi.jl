@@ -35,8 +35,8 @@ asset_dir = docs_generated_dir("celia_1990")
 # ### 1. Load the benchmark definition
 #
 # [`HydrologicProblemCelia1990`](@ref) packages the Richards equation,
-# constitutive relation, boundary data, spatial domain, and time interval for
-# the standard infiltration problem.
+# water retention maps, boundary data, spatial domain, and time interval for the
+# standard infiltration problem.
 
 problem = HydrologicProblemCelia1990()
 
@@ -62,10 +62,13 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 
 # ### 4. Solve and keep a time history
 #
-# The Richards problem is stiff, so [`default_algorithm`](@ref) selects the `Rodas5P` Rosenbrock method from the SciML ecosystem. The time step is adaptive, with an initial step 
-# size of $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify `saveat = 0.0:6.0:360.0` to
-# save a solution every six seconds, which will be used to create an animation in the next 
-# tutorial section.
+# The Richards problem is stiff, so [`default_algorithm`](@ref) selects the `Rodas5P`
+# Rosenbrock method from the SciML ecosystem. The time step is adaptive, with an initial
+# step size of $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify
+# `saveat = 0.0:6.0:360.0` to save a solution every six seconds, which will be used to
+# create an animation in the next tutorial section. The `adaptive = true` keyword below
+# controls time adaptivity only; see `examples/elixir_richards_celia_1990_amr.jl` for
+# mesh adaptivity based on water content.
 
 ode = semidiscretize(semi, problem.tspan)
 

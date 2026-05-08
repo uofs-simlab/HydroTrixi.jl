@@ -1,23 +1,17 @@
-# Example: Trixi-style elixir for the one-dimensional diffusion problem with
-# homogeneous Dirichlet conditions at both boundaries.
-
 using HydroTrixi
 using SciMLBase
 using Trixi
 
+###############################################################################
+# semidiscretization of the linear diffusion equation
+
 diffusivity = 0.5
-tspan = (0.0, 0.25)
-solver_parabolic = ParabolicFormulationLocalDG()
+equations = Trixi.LinearDiffusionEquation1D(diffusivity)
+
 initial_refinement_level = 3
 polydeg = 3
 n_cells_max = 30_000
-dt_factor = 0.01
-dt = dt_factor * (1.0 / (2.0^initial_refinement_level))^2
-adaptive = false
-saveat = nothing
-save_everystep = false
-use_boundary_penalty = false
-penalty_prefactor = 1.0
+solver_parabolic = ParabolicFormulationLocalDG()
 
 mesh = TreeMesh((0.0,),
                 (1.0,),
@@ -25,11 +19,13 @@ mesh = TreeMesh((0.0,),
                 n_cells_max = n_cells_max,
                 periodicity = false)
 solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
-equations = Trixi.LinearDiffusionEquation1D(diffusivity)
 
 exact_solution(x, t) = exp(-diffusivity * pi^2 * t) * sinpi(x[1])
 initial_condition(x, t, equations) = SVector(exact_solution(x, t))
 zero_dirichlet(x, t, equations) = SVector(0.0)
+
+use_boundary_penalty = false
+penalty_prefactor = 1.0
 
 if use_boundary_penalty
     h = 1.0 / (2.0^initial_refinement_level)
@@ -51,21 +47,33 @@ semi = SemidiscretizationParabolic(mesh,
                                    solver;
                                    boundary_conditions = boundary_conditions,
                                    solver_parabolic = solver_parabolic)
-analysis_callback = AnalysisCallback(semi, interval = typemax(Int))
+
+###############################################################################
+# ODE solvers, callbacks etc.
+
+tspan = (0.0, 0.25)
 ode = semidiscretize(semi, tspan)
 
-if isnothing(saveat)
-    sol = solve(ode,
-                default_algorithm(semi);
-                dt = dt,
-                adaptive = adaptive,
-                save_everystep = save_everystep,
-                maxiters = typemax(Int))
-else
-    sol = solve(ode,
-                default_algorithm(semi);
-                dt = dt,
-                adaptive = adaptive,
-                saveat = saveat,
-                maxiters = typemax(Int))
-end
+summary_callback = SummaryCallback()
+
+analysis_interval = 1000
+analysis_callback = AnalysisCallback(semi, interval = analysis_interval)
+
+alive_callback = AliveCallback(analysis_interval = analysis_interval)
+
+callbacks = CallbackSet(summary_callback,
+                        analysis_callback, alive_callback)
+
+###############################################################################
+# run the simulation
+
+dt_factor = 0.01
+dt = dt_factor * (1.0 / (2.0^initial_refinement_level))^2
+saveat = Float64[]
+
+sol = solve(ode, default_algorithm(semi);
+            dt = dt,
+            adaptive = false,
+            saveat = saveat,
+            ode_default_options()..., callback = callbacks,
+            maxiters = typemax(Int))

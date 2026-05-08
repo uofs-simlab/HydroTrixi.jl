@@ -16,6 +16,7 @@ include("auxiliary/auxiliary.jl")
 include("equations/equations.jl")
 include("solvers/solvers.jl")
 include("semidiscretization/semidiscretization.jl")
+include("callbacks_step/amr/amr.jl")
 include("analysis/analysis.jl")
 
 include("equations/problems/problems.jl")
@@ -25,11 +26,13 @@ export HydrologicProblem
 export RichardsEquation1D
 export Haverkamp
 export VanGenuchten
+export water_content, pressure_head
 export HydrologicProblemCelia1990
 export HydrologicProblemRichardsClosedColumn
 export BoundaryConditionDirichletPenalty
 export SemidiscretizationImplicit
 export TemporalOperatorConstitutive
+export pressure_head_from_water_content
 export default_algorithm
 export compute_eoc
 export examples_dir
@@ -39,6 +42,7 @@ export examples_dir
 const DEFAULT_PLOT_FONT = "CMU Serif"
 const DEFAULT_SOLUTION_FIGSIZE = (500, 350)
 const DEFAULT_CONVERGENCE_FIGSIZE = (500, 350)
+
 @doc raw"""
     plot_solution_1d(sol; kwargs...)
 
@@ -51,17 +55,6 @@ This method is provided by `HydroTrixiVisualizationExt` and becomes available wh
 function plot_solution_1d end
 
 @doc raw"""
-    animate_solution_1d(sol; kwargs...)
-
-Animate the one-dimensional solution history stored in `sol`, save it to `output_path`,
-and return the output path.
-
-This method is provided by `HydroTrixiVisualizationExt` and becomes available when
-`CairoMakie` and `LaTeXStrings` are loaded.
-"""
-function animate_solution_1d end
-
-@doc raw"""
     plot_convergence_1d(ndofs, l2_errors, linf_errors; kwargs...)
 
 Plot one-dimensional convergence data against the number of degrees of freedom, save the
@@ -71,6 +64,8 @@ This method is provided by `HydroTrixiVisualizationExt` and becomes available wh
 `CairoMakie` and `LaTeXStrings` are loaded.
 """
 function plot_convergence_1d end
+
+function animate_solution_1d end
 function set_serif_tex_theme! end
 function doubling_dof_ticks end
 function plot_bottom_triangle! end

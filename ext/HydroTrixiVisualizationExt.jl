@@ -3,6 +3,7 @@ module HydroTrixiVisualizationExt
 using CairoMakie
 using HydroTrixi
 using LaTeXStrings
+using SciMLBase
 using Trixi
 
 const DEFAULT_PLOT_FONT = HydroTrixi.DEFAULT_PLOT_FONT

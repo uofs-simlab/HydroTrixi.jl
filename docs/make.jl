@@ -67,11 +67,10 @@ makedocs(; modules = [HydroTrixi],
                                   edit_link = "main",
                                   assets = String[]),
          pages = ["Home" => "index.md",
-                  "Tutorials" => ["Overview" => "tutorials.md",
-                                  "Celia *et al.* (1990) infiltration problem" =>
-                                      "tutorials/celia_1990.md"],
-                  "Reference" => "reference.md",
-                  "License" => "license.md"],
+             "Tutorials" => ["Overview" => "tutorials.md",
+                 "Celia *et al.* (1990) infiltration problem" => "tutorials/celia_1990.md"],
+             "Reference" => "reference.md",
+             "License" => "license.md"],
          plugins = [links, fallbacks])
 
 deploydocs(; repo = "github.com/uofs-simlab/HydroTrixi.jl.git",

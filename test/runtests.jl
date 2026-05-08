@@ -11,13 +11,17 @@ macro test_trixi_include(args...)
 end
 
 @trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl" begin
-    @test_trixi_include joinpath(EXAMPLES_DIR,
-                                 "elixir_diffusion_1d_dirichlet_dirichlet.jl")
+    @test_trixi_include(joinpath(EXAMPLES_DIR,
+                                 "elixir_diffusion_1d_dirichlet_dirichlet.jl"),
+                        l2=[4.688250908054879e-5],
+                        linf=[0.00035212174570349586])
 end
 
 @trixi_testset "elixir_diffusion_1d_mixed_dirichlet_neumann.jl" begin
-    @test_trixi_include joinpath(EXAMPLES_DIR,
-                                 "elixir_diffusion_1d_mixed_dirichlet_neumann.jl")
+    @test_trixi_include(joinpath(EXAMPLES_DIR,
+                                 "elixir_diffusion_1d_mixed_dirichlet_neumann.jl"),
+                        l2=[2.7083226488116088e-5],
+                        linf=[0.00022679747793086236])
 end
 
 @trixi_testset "elixir_richards_celia_1990.jl" begin
@@ -30,49 +34,11 @@ end
                   final_time = 360.0,
                   saveat = 0.0:10.0:360.0)
 
-    storage = similar(sol.t, length(sol.t))
-    rate = similar(sol.t, length(sol.t))
-    for (i, (u_ode, t)) in enumerate(zip(sol.u, sol.t))
-        du_ode = similar(u_ode)
-        Trixi.default_rhs(semi)(du_ode, u_ode, semi, t)
-        storage[i] = Trixi.analyze(HydroTrixi.water_content, du_ode, u_ode, t, semi)
-        rate[i] = Trixi.analyze(HydroTrixi.water_content_timederivative, du_ode, u_ode, t,
-                                semi)
-    end
-
+    storage = [only(HydroTrixi.evolved_variables_integral(u_ode, semi))
+               for u_ode in sol.u]
     initial_storage = first(storage)
-    relative_storage_drift = maximum(abs.(storage .- initial_storage)) /
-                             abs(initial_storage)
-    relative_rate = maximum(abs.(rate)) / abs(initial_storage)
-
-    @test relative_storage_drift < 5.0e-6
-    @test relative_rate < 5.0e-6
-
-    base_semi = semi.semi_base
-    u_ode = sol.u[end]
-    t = sol.t[end]
-
-    storage_direct = Trixi.integrate(Trixi.cons2cons,
-                                     HydroTrixi.evolved_variable_view(u_ode),
-                                     base_semi;
-                                     normalize = false)
-    @test HydroTrixi.evolved_variables_integral(u_ode, semi) ≈ storage_direct
-    @test Trixi.analyze(HydroTrixi.water_content, u_ode, u_ode, t, semi) ≈
-          first(storage_direct)
-
-    du_ode = similar(u_ode)
-    Trixi.default_rhs(semi)(du_ode, u_ode, semi, t)
-
-    rate_direct = Trixi.integrate(Trixi.cons2cons,
-                                  HydroTrixi.evolved_variable_view(du_ode),
-                                  base_semi;
-                                  normalize = false)
-    @test HydroTrixi.evolved_variables_timederivative(u_ode, semi, t) ≈ rate_direct
-    @test Trixi.analyze(HydroTrixi.water_content_timederivative, du_ode, u_ode, t, semi) ≈
-          first(rate_direct)
-
-    @test Trixi.analyze(HydroTrixi.water_content, du_ode, u_ode, t, semi) ≈
-          first(storage_direct)
+    @test isapprox(storage, fill(initial_storage, length(storage));
+                   rtol = 0, atol = 100 * eps(initial_storage))
 end
 
 if isempty(ARGS) || "visualization" in ARGS

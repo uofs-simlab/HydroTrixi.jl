@@ -6,21 +6,22 @@ homogeneous Neumann boundary conditions at both ends. The setup is intended for
 mass-conservation studies because the net boundary flux vanishes, so the total water
 content should remain constant up to time-integration and nonlinear-solve tolerances.
 
-The problem uses the mixed Richards formulation with constitutive relation
+The problem uses the mixed Richards formulation with state-to-evolved map
 ``\theta = \Theta(\psi)``. The pressure head is initialized as
 ```math
-\psi(z, 0) = C + z + A \left( 1 - \cos\left(\frac{2\pi (z - z_{\min})}{L}\right) \right),
+\psi(z, 0) = \psi_{\text{base}} + z + A \left( 1 - \cos\left(\frac{2\pi (z - z_{\min})}{L}\right) \right),
 ```
-where ``C`` is `base_head`, ``A`` is `amplitude`, and ``L = z_{\max} - z_{\min}``.
-This profile satisfies ``\partial \psi / \partial z = 1`` at both boundaries, and
-therefore the flux
+where ``\psi_{\text{base}}`` is `base_head`, ``A`` is `amplitude`, and 
+``L = z_{\max} - z_{\min}``. This profile satisfies ``\partial \psi / \partial z = 1`` at 
+both boundaries, and therefore the flux
 ```math
 q = K(\psi) \left( \frac{\partial \psi}{\partial z} - 1 \right)
 ```
-vanishes at ``z = z_{\min}`` and ``z = z_{\max}`` at the initial time, and should remain zero for all time due to the homogeneous Neumann boundary conditions.
+vanishes at ``z = z_{\min}`` and ``z = z_{\max}`` at the initial time, and should
+remain zero for all time due to the homogeneous Neumann boundary conditions.
 
-The returned problem setup contains the fields `equations`, `constitutive_relation`,
-`initial_condition`, `boundary_conditions`, `domain`, and `tspan`.
+The returned problem setup contains the fields `equations`, `state_to_evolved`,
+`evolved_to_state`, `initial_condition`, `boundary_conditions`, `domain`, and `tspan`.
 """
 function HydrologicProblemRichardsClosedColumn(; soil_model = default_soil_model(),
                                                domain = ((0.0,), (0.4,)),
@@ -35,7 +36,8 @@ function HydrologicProblemRichardsClosedColumn(; soil_model = default_soil_model
         throw(ArgumentError("Expected a positive domain length."))
 
     equations = RichardsEquation1D(soil_model = soil_model)
-    constitutive_relation(psi, equations) = water_content(psi, equations)
+    state_to_evolved = water_content
+    evolved_to_state = pressure_head_from_water_content
 
     function initial_condition(x, t, equations)
         z = x[1]
@@ -50,7 +52,8 @@ function HydrologicProblemRichardsClosedColumn(; soil_model = default_soil_model
                            x_pos = Trixi.BoundaryConditionNeumann(zero_boundary_flux),)
 
     return HydrologicProblem(equations = equations,
-                             constitutive_relation = constitutive_relation,
+                             state_to_evolved = state_to_evolved,
+                             evolved_to_state = evolved_to_state,
                              initial_condition = initial_condition,
                              boundary_conditions = boundary_conditions,
                              domain = domain,

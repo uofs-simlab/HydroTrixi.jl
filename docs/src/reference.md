@@ -20,6 +20,7 @@ compute_eoc
 HydrologicProblem
 RichardsEquation1D
 water_content
+pressure_head_from_water_content
 Haverkamp
 VanGenuchten
 HydrologicProblemCelia1990
