@@ -31,7 +31,7 @@ The returned problem setup contains the fields `equations`, `state_to_evolved`,
   equation (openRE, v1.0). *Geoscientific Model Development*, 16, 659-677.
   [DOI: 10.5194/gmd-16-659-2023](https://doi.org/10.5194/gmd-16-659-2023)
 """
-function HydrologicProblemCelia1990(tspan = (0.0, 360.0))
+function HydrologicProblemCelia1990(; tspan = (0.0, 360.0))
     soil_model = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
                            alpha = 0.01936848004,
                            beta = 3.96,
