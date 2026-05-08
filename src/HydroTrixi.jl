@@ -65,7 +65,21 @@ This method is provided by `HydroTrixiVisualizationExt` and becomes available wh
 """
 function plot_convergence_1d end
 
+@doc raw"""
+    animate_solution_1d(sol; kwargs...)
+    animate_solution_1d(ode::SciMLBase.ODEProblem; callback, kwargs...)
+
+Animate a one-dimensional solution and save it to `output_path`.
+
+The first method renders frames from saved states in `sol`. The second method advances
+an `ODEProblem` to the requested frame times while applying `callback`, which is useful
+for animations with adaptive meshes.
+
+These methods are provided by `HydroTrixiVisualizationExt` and become available when
+`CairoMakie` and `LaTeXStrings` are loaded.
+"""
 function animate_solution_1d end
+
 function set_serif_tex_theme! end
 function doubling_dof_ticks end
 function plot_bottom_triangle! end
