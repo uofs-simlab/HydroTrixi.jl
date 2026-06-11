@@ -10,12 +10,8 @@ problems. It builds upon the parabolic spatial discretization capabilities in
 methods in the [SciML ecosystem](https://sciml.ai/), with support for one-dimensional
 Richards and diffusion problems.
 
-The package documentation focuses on runnable tutorial cases rather than mirroring the
-repository README.
-
 ## Tutorials
 
-The main entry points for new users are the executed `Literate.jl` tutorials:
 
 - [Celia *et al.* (1990) infiltration problem](tutorials/celia_1990.md)
 
