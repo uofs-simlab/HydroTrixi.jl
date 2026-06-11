@@ -1,7 +1,6 @@
 # HydroTrixi.jl
 
 [![CI](https://github.com/uofs-simlab/HydroTrixi.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/uofs-simlab/HydroTrixi.jl/actions/workflows/ci.yml)
-[![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://tjbmontoya.com/HydroTrixi.jl/stable)
 [![docs-dev](https://img.shields.io/badge/docs-dev-blueviolet.svg)](https://tjbmontoya.com/HydroTrixi.jl/dev)
 
 **HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic problems. It builds upon the parabolic spatial discretization capabilities in
@@ -42,7 +41,7 @@ Visualization is optional. Loading `CairoMakie` and `LaTeXStrings` activates
 the plotting extension.
 
 Worked examples and tutorials are provided in the
-[documentation](https://tjbmontoya.com/HydroTrixi.jl/stable).
+[documentation](https://tjbmontoya.com/HydroTrixi.jl/dev).
 
 ## Acknowledgements
 The developers of this package acknowledge funding support from the [Cooperative Institute for Research to Operations in Hydrology (CIROH)](https://ciroh.ua.edu/).

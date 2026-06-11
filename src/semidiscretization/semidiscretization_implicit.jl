@@ -123,8 +123,7 @@ function print_temporal_operator_summary(io::IO,
 end
 
 @inline passive_variable_count(::NoPassiveVariables) = 0
-@inline passive_variable_count(passive_variables::PassiveVariables) =
-    passive_variables.nvariables
+@inline passive_variable_count(passive_variables::PassiveVariables) = passive_variables.nvariables
 @inline passive_variable_count(::PassiveVariablesBoundaryFlux1D) = 2
 
 print_passive_variables_summary(io::IO, ::NoPassiveVariables) = nothing
@@ -466,7 +465,7 @@ function Trixi.compute_coefficients(t, semi::SemidiscretizationImplicit)
 
     # Passive initial values are appended after the physical DAE state
     coefficients_passive = passive_initial_values(semi.passive_variables, semi_base, t,
-                                                 eltype(coefficients_physical))
+                                                  eltype(coefficients_physical))
     return vcat(coefficients_physical, coefficients_passive)
 end
 
