@@ -32,6 +32,12 @@ export HydrologicProblemRichardsClosedColumn
 export BoundaryConditionDirichletPenalty
 export SemidiscretizationImplicit
 export TemporalOperatorConstitutive
+export NoPassiveVariables
+export PassiveVariables
+export PassiveVariablesBoundaryFlux1D
+export passive_variable_view
+export passive_variables
+export boundary_flux_integrals
 export pressure_head_from_water_content
 export default_algorithm
 export compute_eoc

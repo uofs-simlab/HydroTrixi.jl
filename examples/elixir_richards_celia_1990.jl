@@ -19,9 +19,11 @@ mesh = TreeMesh(coordinates_min,
                 n_cells_max = n_cells_max,
                 periodicity = false)
 solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
+passive_variables = PassiveVariablesBoundaryFlux1D()
 
 semi = SemidiscretizationImplicit(mesh, problem, solver;
-                                  solver_parabolic = solver_parabolic)
+                                  solver_parabolic = solver_parabolic,
+                                  passive_variables = passive_variables)
 
 ###############################################################################
 # ODE solvers, callbacks etc.

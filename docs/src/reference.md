@@ -28,6 +28,12 @@ HydrologicProblemRichardsClosedColumn
 BoundaryConditionDirichletPenalty
 SemidiscretizationImplicit
 TemporalOperatorConstitutive
+NoPassiveVariables
+PassiveVariables
+PassiveVariablesBoundaryFlux1D
+passive_variable_view
+passive_variables
+boundary_flux_integrals
 ```
 
 ## Visualization

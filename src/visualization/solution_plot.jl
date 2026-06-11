@@ -4,7 +4,8 @@
 @inline function plot_component_data(pd, component)
     ncomponents = size(pd.data, 2)
     1 <= component <= ncomponents ||
-        throw(ArgumentError("Component $component is out of bounds for $ncomponents variables."))
+        throw(ArgumentError("Component $component is out of bounds for " *
+                            "$ncomponents variables."))
     return vec(pd.data[:, component])
 end
 
@@ -12,12 +13,13 @@ function plot_data_1d(u_ode, semi; component = 1)
     if semi isa SemidiscretizationImplicit
         nstate_variables = Trixi.nvariables(semi.semi_base)
         1 <= component <= 2 * nstate_variables ||
-            throw(ArgumentError("Component $component is out of bounds for $(2 * nstate_variables) variables."))
+            throw(ArgumentError("Component $component is out of bounds for " *
+                                "$(2 * nstate_variables) variables."))
         if component <= nstate_variables
-            data = evolved_variable_view(u_ode)
+            data = evolved_variable_view(u_ode, semi)
             local_component = component
         else
-            data = state_variable_view(u_ode)
+            data = state_variable_view(u_ode, semi)
             local_component = component - nstate_variables
         end
         pd = Trixi.PlotData1D(data, semi.semi_base;

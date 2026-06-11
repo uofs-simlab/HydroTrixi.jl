@@ -1,18 +1,54 @@
+function fill_mass_matrix_diagonal!(diagonal_entries,
+                                    ::TemporalOperatorConstitutive)
+    fill!(diagonal_entries, zero(eltype(diagonal_entries)))
+
+    half = length(diagonal_entries) ÷ 2
+    @inbounds diagonal_entries[1:half] .= one(eltype(diagonal_entries))
+
+    return nothing
+end
+
+function fill_mass_matrix_diagonal!(diagonal_entries, ::AbstractTemporalOperator)
+    fill!(diagonal_entries, one(eltype(diagonal_entries)))
+    return nothing
+end
+
 function update_mass_matrix!(mass_matrix::Diagonal, u_ode,
-                             ::TemporalOperatorConstitutive,
+                             operator_temporal::TemporalOperatorConstitutive,
                              semi_base::Trixi.AbstractSemidiscretization)
     diagonal_entries = mass_matrix.diag
     resize!(diagonal_entries, length(u_ode))
-    fill!(diagonal_entries, zero(eltype(diagonal_entries)))
+    fill_mass_matrix_diagonal!(diagonal_entries, operator_temporal)
 
-    half = length(u_ode) ÷ 2
-    @inbounds diagonal_entries[1:half] .= one(eltype(diagonal_entries))
+    return nothing
+end
+
+function update_mass_matrix!(mass_matrix_implicit::Diagonal, u_ode,
+                             semi::SemidiscretizationImplicit)
+    n_passive = passive_variable_count(semi)
+    n_physical = length(u_ode) - n_passive
+    diagonal_entries = mass_matrix_implicit.diag
+    resize!(diagonal_entries, length(u_ode))
+
+    # The physical block keeps the temporal-operator mass matrix layout
+    diagonal_entries_physical = @view diagonal_entries[1:n_physical]
+    fill_mass_matrix_diagonal!(diagonal_entries_physical, semi.operator_temporal)
+
+    if n_passive > 0
+        # Passive scalar variables are differential variables
+        diagonal_entries_passive = @view diagonal_entries[(n_physical + 1):end]
+        fill!(diagonal_entries_passive, one(eltype(diagonal_entries)))
+    end
 
     return nothing
 end
 
 function update_mass_matrix!(mass_matrix, u_ode, operator_temporal,
                              semi_base::Trixi.AbstractSemidiscretization)
+    return nothing
+end
+
+function update_mass_matrix!(mass_matrix, u_ode, semi::SemidiscretizationImplicit)
     return nothing
 end
 
@@ -23,6 +59,17 @@ function update_mass_matrix!(ode_function::SciMLBase.ODEFunction, u_ode,
 
     if ode_function.f isa SciMLBase.ODEFunction
         update_mass_matrix!(ode_function.f, u_ode, operator_temporal, semi_base)
+    end
+
+    return nothing
+end
+
+function update_mass_matrix!(ode_function::SciMLBase.ODEFunction, u_ode,
+                             semi::SemidiscretizationImplicit)
+    update_mass_matrix!(ode_function.mass_matrix, u_ode, semi)
+
+    if ode_function.f isa SciMLBase.ODEFunction
+        update_mass_matrix!(ode_function.f, u_ode, semi)
     end
 
     return nothing
@@ -138,7 +185,7 @@ function (amr_callback::AMRCallbackConstitutive)(integrator; kwargs...)
 
     has_changed = amr_callback(u_ode, semi, integrator.t, integrator.iter; kwargs...)
     if has_changed
-        update_mass_matrix!(integrator.f, u_ode, semi.operator_temporal, semi.semi_base)
+        update_mass_matrix!(integrator.f, u_ode, semi)
         resize!(integrator, length(u_ode))
         refresh_linear_solver_cache!(integrator.cache)
         SciMLBase.u_modified!(integrator, true)
@@ -159,7 +206,8 @@ function (amr_callback::AMRCallbackConstitutive)(u_ode::AbstractVector,
         error("MPI AMR has not been verified for `SemidiscretizationImplicit`.")
     end
 
-    u_state = Trixi.wrap_array(state_variable_view(u_ode), mesh, equations, dg, cache)
+    u_state = Trixi.wrap_array(state_variable_view(u_ode, semi),
+                               mesh, equations, dg, cache)
     lambda = amr_callback.controller(u_state, mesh, equations, dg, cache;
                                      t = t, iter = iter)
     leaf_cell_ids = Trixi.leaf_cells(mesh.tree)
@@ -182,7 +230,8 @@ function (amr_callback::AMRCallbackConstitutive)(u_ode::AbstractVector,
         end
     end
 
-    evolved_ode = collect(evolved_variable_view(u_ode))
+    evolved_ode = collect(evolved_variable_view(u_ode, semi))
+    passive_ode = collect(passive_variable_view(u_ode, semi))
     refined_original_cells = refine_evolved_variables!(evolved_ode, amr_callback,
                                                        semi_base, to_refine,
                                                        only_coarsen)
@@ -193,9 +242,11 @@ function (amr_callback::AMRCallbackConstitutive)(u_ode::AbstractVector,
 
     has_changed = !isempty(refined_original_cells) || !isempty(coarsened_original_cells)
     if has_changed
-        resize!(u_ode, 2 * length(evolved_ode))
-        evolved_variable_view(u_ode) .= evolved_ode
+        # Passive scalar variables are global diagnostics and are not adapted
+        resize!(u_ode, 2 * length(evolved_ode) + length(passive_ode))
+        evolved_variable_view(u_ode, semi) .= evolved_ode
         reconstruct_state_from_evolved!(u_ode, semi)
+        passive_variable_view(u_ode, semi) .= passive_ode
         mesh.unsaved_changes = true
     end
 
@@ -261,8 +312,8 @@ function coarsen_evolved_variables!(evolved_ode, amr_callback::AMRCallbackConsti
 end
 
 function reconstruct_state_from_evolved!(u_ode, semi::SemidiscretizationImplicit)
-    evolved_variable = evolved_variable_view(u_ode)
-    state_variable = state_variable_view(u_ode)
+    evolved_variable = evolved_variable_view(u_ode, semi)
+    state_variable = state_variable_view(u_ode, semi)
     equations = semi.semi_base.equations
     evolved_to_state = semi.operator_temporal.evolved_to_state
     isnothing(evolved_to_state) &&

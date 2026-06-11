@@ -114,9 +114,18 @@ function Base.show(io::IO, ::MIME"text/plain", hydrologic_problem::HydrologicPro
     end
 end
 
-function SemidiscretizationImplicit(mesh, hydrologic_problem::HydrologicProblem, solver;
-                                    solver_parabolic,
-                                    kwargs...)
+@doc raw"""
+    SemidiscretizationImplicit(mesh, hydrologic_problem, solver; solver_parabolic,
+                               passive_variables = NoPassiveVariables(), kwargs...)
+
+Create an implicit semidiscretization for `hydrologic_problem` using the parabolic
+spatial solver and the hydrologic problem's constitutive temporal operator. The optional
+`passive_variables` configuration appends diagnostic scalars after the physical DAE
+state. Extra keyword arguments are forwarded to `Trixi.SemidiscretizationParabolic`.
+"""
+function SemidiscretizationImplicit(mesh, hydrologic_problem::HydrologicProblem,
+                                    solver; solver_parabolic,
+                                    passive_variables = NoPassiveVariables(), kwargs...)
     state_to_evolved = hydrologic_problem.state_to_evolved
     evolved_to_state = hydrologic_problem.evolved_to_state
     boundary_conditions = hydrologic_problem.boundary_conditions
@@ -132,5 +141,5 @@ function SemidiscretizationImplicit(mesh, hydrologic_problem::HydrologicProblem,
                                                   kwargs...)
     operator_temporal = TemporalOperatorConstitutive(state_to_evolved;
                                                      evolved_to_state = evolved_to_state)
-    return SemidiscretizationImplicit(semi_base, operator_temporal)
+    return SemidiscretizationImplicit(semi_base, operator_temporal, passive_variables)
 end
