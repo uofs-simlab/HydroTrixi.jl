@@ -36,5 +36,4 @@ animate_solution_1d(ode;
                     output_path = output_path,
                     framerate = 30)
 
-println("Saved closed-column AMR pressure-head animation to: $(output_path)")
-@show last(saveat)
+println("Saved closed-column AMR pressure head animation to: $(output_path)")

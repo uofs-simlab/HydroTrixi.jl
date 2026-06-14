@@ -84,7 +84,15 @@ println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) save
 
 # ## Plot the final pressure head profile
 #
-# Now that the solve is complete, we load the optional plotting packages.
+# Now that the solve is complete, we load the optional plotting packages. HydroTrixi
+# declares these packages as weak dependencies, so a fresh package environment may not
+# have them installed yet. If `using CairoMakie` fails, install the plotting packages in
+# the active environment before continuing:
+#
+# ```julia
+# using Pkg
+# Pkg.add(["CairoMakie", "LaTeXStrings"])
+# ```
 
 using CairoMakie
 using LaTeXStrings

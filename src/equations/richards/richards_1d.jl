@@ -6,7 +6,7 @@
 
 A one-dimensional Richards equation model written in terms of the pressure head ``\psi``
 for use with Trixi.jl's parabolic spatial discretization infrastructure. It represents the
-spatial operator in either the pressure head form
+spatial operator in either the pressure-head form
 ```math
 \frac{\partial \theta}{\partial \psi} \frac{\partial \psi}{\partial t} =
 \frac{\partial}{\partial z}
@@ -39,6 +39,15 @@ end
                                          theta_s = 0.287,
                                          theta_r = 0.075)
 
+@doc raw"""
+    pressure_head(u)
+    pressure_head(u, equations::RichardsEquation1D)
+
+Return the pressure head ``\psi`` stored in state `u`.
+
+For scalar states, `u` is returned directly. For vector-like states, the first component
+is interpreted as pressure head.
+"""
 @inline pressure_head(psi::Number) = psi
 @inline pressure_head(u) = u[1]
 @inline pressure_head(u, ::RichardsEquation1D) = pressure_head(u)
@@ -70,6 +79,40 @@ Richards equation model `equations`.
     soil_model = equations.soil_model
     S_e = effective_saturation(pressure_head(u), soil_model)
     return soil_model.theta_r + (soil_model.theta_s - soil_model.theta_r) * S_e
+end
+
+@doc raw"""
+    water_capacity(u, equations::RichardsEquation1D)
+
+Return the water capacity ``C(\psi) = \mathrm{d}\theta / \mathrm{d}\psi`` associated
+with the pressure head state `u` under the Richards equation model `equations`.
+"""
+@inline function water_capacity(u, equations::RichardsEquation1D)
+    return water_capacity(pressure_head(u), equations.soil_model)
+end
+
+@inline function water_capacity(psi, model::Haverkamp)
+    if psi >= zero(psi)
+        return zero(psi)
+    end
+
+    abs_psi = abs(psi)
+    theta_range = model.theta_s - model.theta_r
+    denominator = model.alpha + abs_psi^model.beta
+    return theta_range * model.alpha * model.beta * abs_psi^(model.beta - 1) /
+           denominator^2
+end
+
+@inline function water_capacity(psi, model::VanGenuchten)
+    if psi >= zero(psi)
+        return zero(psi)
+    end
+
+    abs_psi = abs(psi)
+    theta_range = model.theta_s - model.theta_r
+    saturation_denominator = one(psi) + (model.alpha * abs_psi)^model.n
+    return theta_range * model.m * model.n * model.alpha^model.n *
+           abs_psi^(model.n - 1) * saturation_denominator^(-model.m - 1)
 end
 
 @doc raw"""

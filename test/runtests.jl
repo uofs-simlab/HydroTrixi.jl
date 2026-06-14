@@ -1,5 +1,6 @@
 using Test
 using HydroTrixi
+using SciMLBase: solve
 using Trixi: trixi_include
 import Trixi
 using TrixiTest
@@ -27,6 +28,83 @@ end
 @trixi_testset "elixir_richards_celia_1990.jl" begin
     @test_trixi_include joinpath(EXAMPLES_DIR,
                                  "elixir_richards_celia_1990.jl")
+end
+
+@trixi_testset "elixir_richards_manufactured_solution.jl mixed form" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR,
+                                 "elixir_richards_manufactured_solution.jl"),
+                        form=MixedForm(),
+                        final_time=120.0,
+                        initial_refinement_level=4,
+                        polydeg=3,
+                        reltol=1.0e-9,
+                        abstol=1.0e-11,
+                        saveat=Float64[],
+                        l2=[6.174720620257904e-5],
+                        linf=[0.0005052944044678376])
+end
+
+@trixi_testset "elixir_richards_manufactured_solution.jl pressure-head form" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR,
+                                 "elixir_richards_manufactured_solution.jl"),
+                        form=PressureHeadForm(),
+                        final_time=120.0,
+                        initial_refinement_level=4,
+                        polydeg=3,
+                        reltol=1.0e-9,
+                        abstol=1.0e-11,
+                        saveat=Float64[],
+                        l2=[6.174720554384852e-5],
+                        linf=[0.0005052944065825626])
+end
+
+@testset "elixir_richards_celia_1990_amr.jl mass bias" begin
+    Trixi.trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_celia_1990_amr.jl");
+                        final_time = 1.0,
+                        run_simulation = false,
+                        saveat = Float64[],
+                        amr_interval = 30,
+                        max_level = 6,
+                        reltol = 1.0e-7,
+                        abstol = 1.0e-11)
+
+    sol = solve(ode, default_algorithm(semi);
+                dt = dt,
+                adaptive = adaptive,
+                reltol = reltol,
+                abstol = abstol,
+                save_everystep = false,
+                save_start = false,
+                save_end = true,
+                maxiters = typemax(Int),
+                callback = callbacks)
+    @test abs(HydroTrixi.mass_bias(sol.u[end], semi)) < 1.0e-12
+end
+
+@testset "elixir_richards_celia_1990_amr.jl pressure-head form" begin
+    Trixi.trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_celia_1990_amr.jl");
+                        final_time = 1.0,
+                        form = PressureHeadForm(),
+                        run_simulation = false,
+                        saveat = Float64[],
+                        amr_interval = 30,
+                        max_level = 6,
+                        reltol = 1.0e-7,
+                        abstol = 1.0e-11)
+
+    @test semi.operator_temporal isa HydroTrixi.TemporalOperatorCapacity
+
+    pressure_head_solution = solve(ode, default_algorithm(semi);
+                                   dt = dt,
+                                   adaptive = adaptive,
+                                   reltol = reltol,
+                                   abstol = abstol,
+                                   save_everystep = false,
+                                   save_start = false,
+                                   save_end = true,
+                                   maxiters = typemax(Int),
+                                   callback = callbacks)
+    @test pressure_head_solution.t[end] ≈ 1.0
 end
 
 @testset "elixir_richards_closed_column.jl mass conservation" begin

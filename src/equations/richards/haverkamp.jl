@@ -73,4 +73,15 @@ end
     return model.saturated_hydraulic_conductivity * model.A /
            (model.A + abs(psi)^model.gamma)
 end
+
+@inline function hydraulic_conductivity_derivative(psi, model::Haverkamp)
+    if psi >= zero(psi)
+        return zero(psi)
+    end
+
+    abs_psi = abs(psi)
+    denominator = model.A + abs_psi^model.gamma
+    return model.saturated_hydraulic_conductivity * model.A * model.gamma *
+           abs_psi^(model.gamma - 1) / denominator^2
+end
 end # @muladd

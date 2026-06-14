@@ -26,12 +26,19 @@ export HydrologicProblem
 export RichardsEquation1D
 export Haverkamp
 export VanGenuchten
-export water_content, pressure_head
+export water_content, water_content_timederivative, mass_bias, mass_bias_history
+export water_capacity, pressure_head
 export HydrologicProblemCelia1990
+export HydrologicProblemRichardsManufacturedSolution
 export HydrologicProblemRichardsClosedColumn
+export richards_manufactured_solution
+export source_terms_richards_manufactured_solution
 export BoundaryConditionDirichletPenalty
+export MixedForm
+export PressureHeadForm
 export SemidiscretizationImplicit
 export TemporalOperatorConstitutive
+export TemporalOperatorCapacity
 export NoPassiveVariables
 export PassiveVariables
 export PassiveVariablesBoundaryFlux1D
@@ -72,6 +79,24 @@ This method is provided by `HydroTrixiVisualizationExt` and becomes available wh
 function plot_convergence_1d end
 
 @doc raw"""
+    plot_mass_bias(sol; kwargs...)
+    plot_mass_bias(analysis_path::AbstractString;
+                   time_column = "time", mass_bias_column = "mass_bias", kwargs...)
+    plot_mass_bias(sources; labels, kwargs...)
+
+Plot the saved mass bias time history stored in `sol`, in a Trixi analysis file, or in
+multiple sources, save it to `output_path`, and return the `CairoMakie.Figure`. By
+default, the mass bias is scaled by an automatically selected power of ten and the
+corresponding exponent is shown above the top-left corner of the axis.
+Pass `absolute = true, yscale = log10` to plot ``|\epsilon_b|`` on a logarithmic
+axis.
+
+This method is provided by `HydroTrixiVisualizationExt` and becomes available when
+`CairoMakie` and `LaTeXStrings` are loaded.
+"""
+function plot_mass_bias end
+
+@doc raw"""
     animate_solution_1d(sol; kwargs...)
     animate_solution_1d(ode::SciMLBase.ODEProblem; callback, kwargs...)
 
@@ -92,5 +117,6 @@ function plot_bottom_triangle! end
 export plot_solution_1d
 export animate_solution_1d
 export plot_convergence_1d
+export plot_mass_bias
 
 end # module HydroTrixi

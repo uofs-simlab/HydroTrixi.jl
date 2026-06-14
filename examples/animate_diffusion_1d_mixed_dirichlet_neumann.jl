@@ -19,4 +19,3 @@ animate_solution_1d(sol;
                     framerate = 30)
 
 println("Saved solution animation to: $(output_path)")
-@show sol.t[end]

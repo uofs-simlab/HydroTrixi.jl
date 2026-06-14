@@ -9,15 +9,14 @@ problems. It builds upon the parabolic spatial discretization capabilities in
 ([Ranocha et al. (2022)](#references)) and the time integration methods in 
 [SciML](https://sciml.ai/), adding the following technical features to support
 the solution of the **Richards equation** in one spatial dimension:
-- Mixed formulations that can advance different variables in time from those used in the
-  spatial operator, with the constitutive relation imposed as a constraint as part of a
-  differential algebraic equation
+- Mixed and pressure-head formulations of the Richards equation, including
+  constitutive constraints and capacity-weighted temporal operators
 - Flexible parabolic boundary conditions allowing penalty-type numerical fluxes that
   depend on the inner and outer solution and flux values
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes,
   following [Ireson et al. (2023)](#references)
 - Tools to facilitate problem setup and visualization, with examples for standard hydrologic
-  bencmark cases
+  benchmark cases
 
 ## Installation
 
@@ -55,14 +54,14 @@ Worked examples and tutorials are provided in the
 
 ## References
 
-- Ireson, A. M., Spiteri, R. J., Clark, M. P., and Mathias, S. A. (2023).
-  [A simple, efficient, mass-conservative approach to solving the Richards equation
-  (openRE, v1.0)](https://doi.org/10.5194/gmd-16-659-2023). *Geoscientific
-  Model Development*, 16, 659-677.
 - Ranocha, H., Schlottke-Lakemper, M., Winters, A. R., Faulhaber, E., Chan, J.,
   and Gassner, G. J. (2022). [Adaptive numerical simulations with Trixi.jl: A
   case study of Julia for scientific computing](https://doi.org/10.21105/jcon.00077).
   *Proceedings of the JuliaCon Conferences*, 1(1), 77.
+- Ireson, A. M., Spiteri, R. J., Clark, M. P., and Mathias, S. A. (2023).
+  [A simple, efficient, mass-conservative approach to solving the Richards equation
+  (openRE, v1.0)](https://doi.org/10.5194/gmd-16-659-2023). *Geoscientific
+  Model Development*, 16, 659-677.
 
 ## Acknowledgements
 The developers of this package acknowledge funding support from the

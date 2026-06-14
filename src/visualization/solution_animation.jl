@@ -230,8 +230,8 @@ frame time, write the animation to `output_path`, and return `output_path`.
 This method is useful for adaptive meshes because the supplied `callback` is active while
 frames are generated, so mesh adaptation and other step callbacks remain synchronized with
 the plotted state. `saveat` gives the animation frame times and must be non-empty,
-sorted, and contained in `ode.tspan`. `alg`, `dt`, and `adaptive` control the integrator
-used for frame generation.
+sorted, and contained in `ode.tspan`. `alg`, `dt`, `adaptive`, and additional SciML
+integrator options control the integrator used for frame generation.
 """
 function HydroTrixi.animate_solution_1d(ode::SciMLBase.ODEProblem;
                                         callback,
@@ -264,7 +264,8 @@ function HydroTrixi.animate_solution_1d(ode::SciMLBase.ODEProblem;
                                         legend_position = :rb,
                                         xlims = nothing,
                                         ylims = nothing,
-                                        framerate = 24,)
+                                        framerate = 24,
+                                        kwargs...)
     frame_times = collect(saveat)
     isempty(frame_times) && throw(ArgumentError("`saveat` must not be empty."))
     issorted(frame_times) || throw(ArgumentError("`saveat` must be sorted."))
@@ -279,13 +280,15 @@ function HydroTrixi.animate_solution_1d(ode::SciMLBase.ODEProblem;
         SciMLBase.init(ode, alg;
                        adaptive = adaptive,
                        callback = callback,
-                       Trixi.ode_default_options()...)
+                       Trixi.ode_default_options()...,
+                       kwargs...)
     else
         SciMLBase.init(ode, alg;
                        dt = dt,
                        adaptive = adaptive,
                        callback = callback,
-                       Trixi.ode_default_options()...)
+                       Trixi.ode_default_options()...,
+                       kwargs...)
     end
 
     for frame_time in frame_times

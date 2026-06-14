@@ -1,6 +1,6 @@
 # Render an animation of the closed-column Richards-equation redistribution
 # profile. Re-runs the elixir with a denser `saveat` so the solution carries
-# enough frames for a smooth animation, then animates the pressure-head block
+# enough frames for a smooth animation, then animates the pressure head block
 # of the constitutive ODE state (component = 2).
 
 using CairoMakie
@@ -37,4 +37,3 @@ animate_solution_1d(sol;
                     framerate = 30)
 
 println("Saved closed-column ψ(z,t) animation to: $(output_path)")
-@show sol.t[end]

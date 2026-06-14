@@ -17,4 +17,3 @@ plot_solution_1d(sol;
                  output_path = output_path)
 
 println("Saved solution plot to: $(output_path)")
-@show sol.t[end]

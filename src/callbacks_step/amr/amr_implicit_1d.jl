@@ -100,7 +100,7 @@ function refresh_linear_solver_cache!(cache)
     return nothing
 end
 
-struct AMRCallbackConstitutive{Controller, Adaptor, Cache}
+struct AMRCallbackImplicit{Controller, Adaptor, Cache}
     controller::Controller
     interval::Int
     adapt_initial_condition::Bool
@@ -115,7 +115,8 @@ function Trixi.AMRCallback(semi::SemidiscretizationImplicit, controller, adaptor
                            adapt_initial_condition = true,
                            adapt_initial_condition_only_refine = true,
                            dynamic_load_balancing = true)
-    isnothing(semi.operator_temporal.evolved_to_state) &&
+    semi.operator_temporal isa TemporalOperatorConstitutive &&
+        isnothing(semi.operator_temporal.evolved_to_state) &&
         throw(ArgumentError("Constitutive AMR requires `evolved_to_state`."))
 
     if !(interval isa Integer && interval >= 0)
@@ -132,13 +133,13 @@ function Trixi.AMRCallback(semi::SemidiscretizationImplicit, controller, adaptor
     end
 
     amr_cache = (; to_refine = Int[], to_coarsen = Int[])
-    amr_callback = AMRCallbackConstitutive(controller,
-                                           Int(interval),
-                                           adapt_initial_condition,
-                                           adapt_initial_condition_only_refine,
-                                           dynamic_load_balancing,
-                                           adaptor,
-                                           amr_cache)
+    amr_callback = AMRCallbackImplicit(controller,
+                                       Int(interval),
+                                       adapt_initial_condition,
+                                       adapt_initial_condition_only_refine,
+                                       dynamic_load_balancing,
+                                       adaptor,
+                                       amr_cache)
 
     return SciMLBase.DiscreteCallback(condition, amr_callback;
                                       save_positions = (false, false),
@@ -152,7 +153,7 @@ end
 
 function initialize_amr!(cb::SciMLBase.DiscreteCallback{Condition, Affect!}, u, t,
                          integrator) where {Condition,
-                                            Affect! <: AMRCallbackConstitutive}
+                                            Affect! <: AMRCallbackImplicit}
     amr_callback = cb.affect!
     semi = integrator.p
 
@@ -179,7 +180,7 @@ function initialize_amr!(cb::SciMLBase.DiscreteCallback{Condition, Affect!}, u, 
     return nothing
 end
 
-function (amr_callback::AMRCallbackConstitutive)(integrator; kwargs...)
+function (amr_callback::AMRCallbackImplicit)(integrator; kwargs...)
     u_ode = integrator.u
     semi = integrator.p
 
@@ -194,11 +195,11 @@ function (amr_callback::AMRCallbackConstitutive)(integrator; kwargs...)
     return has_changed
 end
 
-function (amr_callback::AMRCallbackConstitutive)(u_ode::AbstractVector,
-                                                 semi::SemidiscretizationImplicit,
-                                                 t, iter;
-                                                 only_refine = false,
-                                                 only_coarsen = false)
+function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
+                                             semi::SemidiscretizationImplicit,
+                                             t, iter;
+                                             only_refine = false,
+                                             only_coarsen = false)
     semi_base = semi.semi_base
     mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi_base)
 
@@ -230,32 +231,80 @@ function (amr_callback::AMRCallbackConstitutive)(u_ode::AbstractVector,
         end
     end
 
-    evolved_ode = collect(evolved_variable_view(u_ode, semi))
+    transferred_ode = transferred_variables_for_amr(u_ode, semi,
+                                                    semi.operator_temporal)
     passive_ode = collect(passive_variable_view(u_ode, semi))
-    refined_original_cells = refine_evolved_variables!(evolved_ode, amr_callback,
-                                                       semi_base, to_refine,
-                                                       only_coarsen)
-    coarsened_original_cells = coarsen_evolved_variables!(evolved_ode, amr_callback,
-                                                          semi_base, to_coarsen,
-                                                          refined_original_cells,
-                                                          only_refine)
+    refined_original_cells = refine_transferred_variables!(transferred_ode,
+                                                           amr_callback, semi_base,
+                                                           to_refine, only_coarsen)
+    coarsened_original_cells = coarsen_transferred_variables!(transferred_ode,
+                                                              amr_callback, semi_base,
+                                                              to_coarsen,
+                                                              refined_original_cells,
+                                                              only_refine)
 
     has_changed = !isempty(refined_original_cells) || !isempty(coarsened_original_cells)
     if has_changed
-        # Passive scalar variables are global diagnostics and are not adapted
-        resize!(u_ode, 2 * length(evolved_ode) + length(passive_ode))
-        evolved_variable_view(u_ode, semi) .= evolved_ode
-        reconstruct_state_from_evolved!(u_ode, semi)
-        passive_variable_view(u_ode, semi) .= passive_ode
+        resize_after_amr!(u_ode, transferred_ode, passive_ode, semi,
+                          semi.operator_temporal)
         mesh.unsaved_changes = true
     end
 
     return has_changed
 end
 
-function refine_evolved_variables!(evolved_ode, amr_callback::AMRCallbackConstitutive,
-                                   semi_base::Trixi.AbstractSemidiscretization,
-                                   to_refine, only_coarsen)
+function transferred_variables_for_amr(u_ode, semi::SemidiscretizationImplicit,
+                                       ::AbstractTemporalOperator)
+    return collect(evolved_variable_view(u_ode, semi))
+end
+
+function transferred_variables_for_amr(u_ode, semi::SemidiscretizationImplicit,
+                                       operator_temporal::TemporalOperatorCapacity)
+    transferred_ode = collect(state_variable_view(u_ode, semi))
+    equations = semi.semi_base.equations
+    transfer_variables = operator_temporal.transfer_variables
+
+    # Convert the state to the variable used for AMR grid transfer
+    @inbounds for i in eachindex(transferred_ode)
+        transferred_ode[i] = transfer_variables(transferred_ode[i], equations)
+    end
+
+    return transferred_ode
+end
+
+function resize_after_amr!(u_ode, transferred_ode, passive_ode,
+                           semi::SemidiscretizationImplicit,
+                           operator_temporal::TemporalOperatorCapacity)
+    # Passive scalar variables are global diagnostics and are not adapted
+    resize!(u_ode, length(transferred_ode) + length(passive_ode))
+    state_variable = physical_variable_view(u_ode, semi)
+    equations = semi.semi_base.equations
+    transfer_to_state = operator_temporal.transfer_to_state
+
+    # Reconstruct the pressure head state from the transferred variable
+    @inbounds for i in eachindex(state_variable, transferred_ode)
+        state_variable[i] = transfer_to_state(transferred_ode[i], equations)
+    end
+
+    passive_variable_view(u_ode, semi) .= passive_ode
+    return nothing
+end
+
+function resize_after_amr!(u_ode, transferred_ode, passive_ode,
+                           semi::SemidiscretizationImplicit,
+                           ::TemporalOperatorConstitutive)
+    # Passive scalar variables are global diagnostics and are not adapted
+    resize!(u_ode, 2 * length(transferred_ode) + length(passive_ode))
+    evolved_variable_view(u_ode, semi) .= transferred_ode
+    reconstruct_state_from_evolved!(u_ode, semi)
+    passive_variable_view(u_ode, semi) .= passive_ode
+    return nothing
+end
+
+function refine_transferred_variables!(transferred_ode,
+                                       amr_callback::AMRCallbackImplicit,
+                                       semi_base::Trixi.AbstractSemidiscretization,
+                                       to_refine, only_coarsen)
     mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi_base)
 
     if only_coarsen || isempty(to_refine)
@@ -264,15 +313,16 @@ function refine_evolved_variables!(evolved_ode, amr_callback::AMRCallbackConstit
 
     refined_original_cells = Trixi.refine!(mesh.tree, to_refine)
     elements_to_refine = findall(in(refined_original_cells), cache.elements.cell_ids)
-    Trixi.refine!(evolved_ode, amr_callback.adaptor, mesh, equations, dg, cache,
+    Trixi.refine!(transferred_ode, amr_callback.adaptor, mesh, equations, dg, cache,
                   semi_base.cache_parabolic, elements_to_refine)
 
     return refined_original_cells
 end
 
-function coarsen_evolved_variables!(evolved_ode, amr_callback::AMRCallbackConstitutive,
-                                    semi_base::Trixi.AbstractSemidiscretization,
-                                    to_coarsen, refined_original_cells, only_refine)
+function coarsen_transferred_variables!(transferred_ode,
+                                        amr_callback::AMRCallbackImplicit,
+                                        semi_base::Trixi.AbstractSemidiscretization,
+                                        to_coarsen, refined_original_cells, only_refine)
     mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi_base)
 
     if only_refine || isempty(to_coarsen)
@@ -305,7 +355,7 @@ function coarsen_evolved_variables!(evolved_ode, amr_callback::AMRCallbackConsti
     end
 
     elements_to_remove = findall(in(removed_child_cells), cache.elements.cell_ids)
-    Trixi.coarsen!(evolved_ode, amr_callback.adaptor, mesh, equations, dg, cache,
+    Trixi.coarsen!(transferred_ode, amr_callback.adaptor, mesh, equations, dg, cache,
                    semi_base.cache_parabolic, elements_to_remove)
 
     return coarsened_original_cells

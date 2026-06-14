@@ -12,9 +12,10 @@ end
 function plot_data_1d(u_ode, semi; component = 1)
     if semi isa SemidiscretizationImplicit
         nstate_variables = Trixi.nvariables(semi.semi_base)
-        1 <= component <= 2 * nstate_variables ||
+        nvariables = Trixi.nvariables(semi)
+        1 <= component <= nvariables ||
             throw(ArgumentError("Component $component is out of bounds for " *
-                                "$(2 * nstate_variables) variables."))
+                                "$nvariables variables."))
         if component <= nstate_variables
             data = evolved_variable_view(u_ode, semi)
             local_component = component
@@ -68,6 +69,9 @@ function solution_axis(fig;
                        titlefont = DEFAULT_PLOT_FONT,
                        xticklabelfont = DEFAULT_PLOT_FONT,
                        yticklabelfont = DEFAULT_PLOT_FONT,
+                       xscale = identity,
+                       yscale = identity,
+                       xticks = nothing,
                        xlims = nothing,
                        ylims = nothing,)
     ax = Axis(fig[1, 1];
@@ -77,7 +81,10 @@ function solution_axis(fig;
               ylabelfont = ylabelfont,
               titlefont = titlefont,
               xticklabelfont = xticklabelfont,
-              yticklabelfont = yticklabelfont,)
+              yticklabelfont = yticklabelfont,
+              xscale = xscale,
+              yscale = yscale,)
+    isnothing(xticks) || (ax.xticks = xticks)
     apply_axis_limits!(ax; xlims = xlims, ylims = ylims)
 
     return ax
