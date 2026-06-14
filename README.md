@@ -6,7 +6,7 @@
 **HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic
 problems. It builds upon the parabolic spatial discretization capabilities in
 [Trixi.jl](https://github.com/trixi-framework/Trixi.jl)
-([Ranocha et al. (2022)](#references)) and the time integration methods in 
+[(Ranocha et al. 2022)](#references) and the time integration methods in 
 [SciML](https://sciml.ai/), adding the following technical features to support
 the solution of the **Richards equation** in one spatial dimension:
 - Mixed and pressure-head formulations of the Richards equation, including
