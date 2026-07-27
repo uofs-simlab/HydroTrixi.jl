@@ -44,6 +44,21 @@ end
                         linf=[0.0005052944044678376])
 end
 
+@trixi_testset "elixir_richards_manufactured_solution.jl sparse Jacobian" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR,
+                                 "elixir_richards_manufactured_solution.jl"),
+                        sparse_jacobian=true,
+                        form=MixedForm(),
+                        final_time=120.0,
+                        initial_refinement_level=4,
+                        polydeg=3,
+                        reltol=1.0e-9,
+                        abstol=1.0e-11,
+                        saveat=Float64[],
+                        l2=[6.174720620257904e-5],
+                        linf=[0.0005052944044678376])
+end
+
 @trixi_testset "elixir_richards_manufactured_solution.jl pressure-head form" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR,
                                  "elixir_richards_manufactured_solution.jl"),
@@ -56,6 +71,35 @@ end
                         saveat=Float64[],
                         l2=[6.174720554384852e-5],
                         linf=[0.0005052944065825626])
+end
+
+@testset "sparse Jacobian unsupported form" begin
+    trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_manufactured_solution.jl");
+                  form = PressureHeadForm(),
+                  run_simulation = false)
+
+    @test_throws ArgumentError Trixi.semidiscretize(semi, tspan;
+                                                    sparse_jacobian = true)
+end
+
+@testset "sparse Jacobian AMR guard" begin
+    trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_celia_1990_amr.jl");
+                  sparse_jacobian = true,
+                  passive_variables = NoPassiveVariables(),
+                  final_time = 1.0,
+                  run_simulation = false,
+                  saveat = Float64[])
+
+    @test_throws ArgumentError solve(ode, default_algorithm(semi);
+                                     dt = dt,
+                                     adaptive = adaptive,
+                                     reltol = reltol,
+                                     abstol = abstol,
+                                     save_everystep = false,
+                                     save_start = false,
+                                     save_end = true,
+                                     maxiters = typemax(Int),
+                                     callback = amr_callback)
 end
 
 @testset "elixir_richards_celia_1990_amr.jl mass bias" begin

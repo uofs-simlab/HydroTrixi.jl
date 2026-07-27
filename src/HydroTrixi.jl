@@ -11,6 +11,7 @@ using OrdinaryDiffEq
 using SciMLBase
 using Trixi
 using LinearAlgebra
+using SparseArrays
 
 include("auxiliary/auxiliary.jl")
 include("equations/equations.jl")

@@ -613,7 +613,8 @@ function rhs_implicit!(du_ode, u_ode, semi::SemidiscretizationImplicit, t)
 end
 
 function Trixi.semidiscretize(semi::SemidiscretizationImplicit, tspan;
-                              reset_threads = true)
+                              reset_threads = true,
+                              sparse_jacobian = false)
     if reset_threads
         Trixi.Polyester.reset_threads!()
     end
@@ -621,10 +622,23 @@ function Trixi.semidiscretize(semi::SemidiscretizationImplicit, tspan;
     u0_ode = Trixi.compute_coefficients(first(tspan), semi)
     check_ode_state(u0_ode, semi)
 
+    jac_prototype = if sparse_jacobian
+        prototype = jacobian_structure(u0_ode, semi)
+        isnothing(prototype) &&
+            throw(ArgumentError("`sparse_jacobian = true` is supported only for " *
+                                "serial, nonperiodic, fixed-mesh, one-dimensional " *
+                                "mixed Richards problems using Lobatto-Legendre DGSEM, " *
+                                "minimum-dissipation LDG, and no passive variables."))
+        prototype
+    else
+        nothing
+    end
+
     mass_matrix_implicit = mass_matrix(u0_ode, semi)
     ode_function_type = SciMLBase.ODEFunction{true, SciMLBase.FullSpecialize}
     ode_function = ode_function_type(rhs_implicit!;
-                                     mass_matrix = mass_matrix_implicit)
+                                     mass_matrix = mass_matrix_implicit,
+                                     jac_prototype = jac_prototype)
     return SciMLBase.ODEProblem{true, SciMLBase.FullSpecialize}(ode_function,
                                                                 u0_ode,
                                                                 tspan,

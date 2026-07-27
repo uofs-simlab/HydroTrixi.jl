@@ -26,7 +26,8 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # ODE solvers, callbacks etc.
 
 tspan = problem.tspan
-ode = semidiscretize(semi, tspan)
+sparse_jacobian = false
+ode = semidiscretize(semi, tspan; sparse_jacobian = sparse_jacobian)
 
 summary_callback = SummaryCallback()
 

@@ -43,3 +43,6 @@ run/
 
 # macOS Finder metadata
 .DS_Store
+
+# Underscore-prefixed directories
+**/_*/

@@ -9,6 +9,7 @@ problems. It builds upon the parabolic spatial discretization capabilities in
 [(Ranocha et al. 2022)](#references) and the time integration methods in 
 [SciML](https://sciml.ai/), adding the following technical features to support
 the solution of the **Richards equation** in one spatial dimension:
+
 - Mixed and pressure-head formulations of the Richards equation, including
   constitutive constraints and capacity-weighted temporal operators
 - Flexible parabolic boundary conditions allowing penalty-type numerical fluxes that
@@ -40,13 +41,13 @@ julia> using Pkg
 julia> Pkg.instantiate()
 ```
 
-Optional sanity check:
+Run the test suite:
 
 ```julia
 julia> Pkg.test()
 ```
 
-Visualization is optional. Loading `CairoMakie` and `LaTeXStrings` activates
+Loading `CairoMakie` and `LaTeXStrings` activates
 the plotting extension.
 
 Worked examples and tutorials are provided in the
@@ -64,6 +65,7 @@ Worked examples and tutorials are provided in the
   Model Development*, 16, 659-677.
 
 ## Acknowledgements
+
 The developers of this package acknowledge funding support from the
 [Cooperative Institute for Research to Operations in Hydrology
 (CIROH)](https://ciroh.ua.edu/).

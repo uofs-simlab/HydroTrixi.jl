@@ -181,6 +181,10 @@ function initialize_amr!(cb::SciMLBase.DiscreteCallback{Condition, Affect!}, u, 
 end
 
 function (amr_callback::AMRCallbackImplicit)(integrator; kwargs...)
+    isnothing(integrator.f.jac_prototype) ||
+        throw(ArgumentError("Sparse Jacobian structure cannot be used with adaptive " *
+                            "mesh refinement until the structure can be rebuilt."))
+
     u_ode = integrator.u
     semi = integrator.p
 
