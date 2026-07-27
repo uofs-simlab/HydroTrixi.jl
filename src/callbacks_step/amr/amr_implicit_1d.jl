@@ -318,7 +318,7 @@ function refine_transferred_variables!(transferred_ode,
     refined_original_cells = Trixi.refine!(mesh.tree, to_refine)
     elements_to_refine = findall(in(refined_original_cells), cache.elements.cell_ids)
     Trixi.refine!(transferred_ode, amr_callback.adaptor, mesh, equations, dg, cache,
-                  semi_base.cache_parabolic, elements_to_refine)
+                  semi_base.cache_parabolic, elements_to_refine, nothing)
 
     return refined_original_cells
 end
@@ -360,7 +360,7 @@ function coarsen_transferred_variables!(transferred_ode,
 
     elements_to_remove = findall(in(removed_child_cells), cache.elements.cell_ids)
     Trixi.coarsen!(transferred_ode, amr_callback.adaptor, mesh, equations, dg, cache,
-                   semi_base.cache_parabolic, elements_to_remove)
+                   semi_base.cache_parabolic, elements_to_remove, nothing)
 
     return coarsened_original_cells
 end
