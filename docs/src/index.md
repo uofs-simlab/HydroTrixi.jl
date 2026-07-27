@@ -12,8 +12,8 @@ Richards and diffusion problems.
 
 ## Tutorials
 
-
 - [Celia *et al.* (1990) infiltration problem](tutorials/celia_1990.md)
+- [Sparse finite-difference Jacobian evaluation](tutorials/richards_jacobian_sparsity.md)
 
 ## Installation
 
@@ -32,9 +32,6 @@ julia> using Pkg
 
 julia> Pkg.instantiate()
 ```
-
-Visualization is optional. Loading `CairoMakie` and `LaTeXStrings` activates the
-plotting extension.
 
 ## Acknowledgements
 

@@ -14,6 +14,7 @@ the solution of the **Richards equation** in one spatial dimension:
   constitutive constraints and capacity-weighted temporal operators
 - Flexible parabolic boundary conditions allowing penalty-type numerical fluxes that
   depend on the inner and outer solution and flux values
+- Implicit time integration using high-order Rosenbrock-Wanner methods with sparse Jacobian evaluation
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes,
   following [Ireson et al. (2023)](#references)
 - Tools to facilitate problem setup and visualization, with examples for standard hydrologic
@@ -46,9 +47,6 @@ Run the test suite:
 ```julia
 julia> Pkg.test()
 ```
-
-Loading `CairoMakie` and `LaTeXStrings` activates
-the plotting extension.
 
 Worked examples and tutorials are provided in the
 [documentation](https://tjbmontoya.com/HydroTrixi.jl/dev).

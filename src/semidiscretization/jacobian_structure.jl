@@ -32,17 +32,15 @@ function jacobian_structure(u_ode, mesh::Trixi.TreeMesh{1},
                                 "received $(length(u_ode))."))
 
     expected_nonzeros = n_elements * n_nodes^2 + 2 * n_nodes * n_interfaces +
-                        3 * n_physical_dofs
+                        2 * n_physical_dofs
     row_indices = Int[]
     column_indices = Int[]
     sizehint!(row_indices, expected_nonzeros)
     sizehint!(column_indices, expected_nonzeros)
     physical_indices = LinearIndices((n_nodes, n_elements))
 
-    # Add the mass and constitutive block diagonals
+    # Add the mixed identity and constitutive block diagonals
     for physical_dof in 1:n_physical_dofs
-        push!(row_indices, physical_dof)
-        push!(column_indices, physical_dof)
         push!(row_indices, n_physical_dofs + physical_dof)
         push!(column_indices, physical_dof)
         push!(row_indices, n_physical_dofs + physical_dof)
