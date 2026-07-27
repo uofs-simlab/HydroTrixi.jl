@@ -627,7 +627,7 @@ function Trixi.semidiscretize(semi::SemidiscretizationImplicit, tspan;
         isnothing(prototype) &&
             throw(ArgumentError("`sparse_jacobian = true` is supported only for " *
                                 "serial, nonperiodic, fixed-mesh, one-dimensional " *
-                                "mixed Richards problems using Lobatto-Legendre DGSEM, " *
+                                "mixed Richards problems using Gauss-Lobatto DGSEM, " *
                                 "minimum-dissipation LDG, and no passive variables."))
         prototype
     else
