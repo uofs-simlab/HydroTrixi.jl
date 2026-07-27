@@ -51,8 +51,10 @@ function Trixi.refine!(u_ode::AbstractVector,
                        dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                        cache,
                        cache_parabolic,
-                       elements_to_refine)
-    Trixi.refine!(u_ode, adaptor, mesh, equations, dg, cache, elements_to_refine)
+                       elements_to_refine,
+                       limiter!)
+    Trixi.refine!(u_ode, adaptor, mesh, equations, dg, cache, elements_to_refine,
+                  limiter!)
 
     (; parabolic_container, parabolic_boundaries) = cache_parabolic
     resize!(parabolic_container, equations, dg, cache)
@@ -68,8 +70,10 @@ function Trixi.coarsen!(u_ode::AbstractVector,
                         dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                         cache,
                         cache_parabolic,
-                        elements_to_remove)
-    Trixi.coarsen!(u_ode, adaptor, mesh, equations, dg, cache, elements_to_remove)
+                        elements_to_remove,
+                        limiter!)
+    Trixi.coarsen!(u_ode, adaptor, mesh, equations, dg, cache, elements_to_remove,
+                   limiter!)
 
     (; parabolic_container, parabolic_boundaries) = cache_parabolic
     resize!(parabolic_container, equations, dg, cache)
