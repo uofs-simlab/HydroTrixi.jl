@@ -13,11 +13,8 @@ polydeg = 3
 n_cells_max = 30_000
 solver_parabolic = ParabolicFormulationLocalDG()
 
-mesh = TreeMesh((0.0,),
-                (1.0,),
-                initial_refinement_level = initial_refinement_level,
-                n_cells_max = n_cells_max,
-                periodicity = false)
+mesh = TreeMesh((0.0,), (1.0,), initial_refinement_level = initial_refinement_level,
+                n_cells_max = n_cells_max, periodicity = false)
 solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
 
 exact_solution(x, t) = exp(-diffusivity * pi^2 * t) * sinpi(x[1])
@@ -36,15 +33,11 @@ if use_boundary_penalty
                            x_pos = BoundaryConditionDirichletPenalty(zero_dirichlet;
                                                                      penalty = penalty))
 else
-    boundary_conditions = (;
-                           x_neg = BoundaryConditionDirichlet(zero_dirichlet),
+    boundary_conditions = (; x_neg = BoundaryConditionDirichlet(zero_dirichlet),
                            x_pos = BoundaryConditionDirichlet(zero_dirichlet))
 end
 
-semi = SemidiscretizationParabolic(mesh,
-                                   equations,
-                                   initial_condition,
-                                   solver;
+semi = SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
                                    boundary_conditions = boundary_conditions,
                                    solver_parabolic = solver_parabolic)
 
@@ -61,8 +54,7 @@ analysis_callback = AnalysisCallback(semi, interval = analysis_interval)
 
 alive_callback = AliveCallback(analysis_interval = analysis_interval)
 
-callbacks = CallbackSet(summary_callback,
-                        analysis_callback, alive_callback)
+callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
 
 ###############################################################################
 # run the simulation
@@ -71,9 +63,5 @@ dt_factor = 0.01
 dt = dt_factor * (1.0 / (2.0^initial_refinement_level))^2
 saveat = Float64[]
 
-sol = solve(ode, default_algorithm(semi);
-            dt = dt,
-            adaptive = false,
-            saveat = saveat,
-            ode_default_options()..., callback = callbacks,
-            maxiters = typemax(Int))
+sol = solve(ode, default_algorithm(semi); dt = dt, adaptive = false, saveat = saveat,
+            ode_default_options()..., callback = callbacks, maxiters = typemax(Int))

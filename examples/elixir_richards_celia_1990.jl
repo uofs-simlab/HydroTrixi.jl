@@ -13,11 +13,9 @@ n_cells_max = 30_000
 solver_parabolic = ParabolicFormulationLocalDG()
 
 coordinates_min, coordinates_max = problem.domain
-mesh = TreeMesh(coordinates_min,
-                coordinates_max,
+mesh = TreeMesh(coordinates_min, coordinates_max,
                 initial_refinement_level = initial_refinement_level,
-                n_cells_max = n_cells_max,
-                periodicity = false)
+                n_cells_max = n_cells_max, periodicity = false)
 solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
 passive_variables = PassiveVariablesBoundaryFlux1D()
 
@@ -34,8 +32,7 @@ ode = semidiscretize(semi, tspan)
 summary_callback = SummaryCallback()
 
 analysis_interval = 20
-extra_analysis_integrals = (HydroTrixi.water_content,
-                            HydroTrixi.mass_bias)
+extra_analysis_integrals = (HydroTrixi.water_content, HydroTrixi.mass_bias)
 save_analysis = false
 output_directory = "out"
 analysis_filename = "analysis.dat"
@@ -48,8 +45,7 @@ analysis_callback = AnalysisCallback(semi, interval = analysis_interval,
 
 alive_callback = AliveCallback(analysis_interval = analysis_interval)
 
-callbacks = CallbackSet(summary_callback,
-                        analysis_callback, alive_callback)
+callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
 
 ###############################################################################
 # run the simulation
@@ -58,9 +54,5 @@ dt = 1.0e-2
 adaptive = true
 saveat = Float64[]
 
-sol = solve(ode, default_algorithm(semi);
-            dt = dt,
-            adaptive = adaptive,
-            saveat = saveat,
-            ode_default_options()..., callback = callbacks,
-            maxiters = typemax(Int))
+sol = solve(ode, default_algorithm(semi); dt = dt, adaptive = adaptive, saveat = saveat,
+            ode_default_options()..., callback = callbacks, maxiters = typemax(Int))

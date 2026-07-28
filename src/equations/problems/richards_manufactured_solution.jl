@@ -41,21 +41,28 @@ with Haverkamp constitutive laws,
 ```math
 s = C(\psi)\frac{\partial \psi}{\partial t}
 - \frac{\partial}{\partial z}
-\left(K(\psi)\left(\frac{\partial \psi}{\partial z} - 1\right)\right).
+\left(\mathcal{K}(\psi)\left(\frac{\partial \psi}{\partial z} - 1\right)\right),
+\qquad C(\psi) = \vartheta'(\psi).
 ```
 """
-@inline function source_terms_richards_manufactured_solution(u, gradients, x, t,
-                                                             equations)
+@inline function source_terms_richards_manufactured_solution(u, gradients, x, t, equations)
     soil_model = equations.soil_model
-    soil_model isa Haverkamp ||
-        throw(ArgumentError("Richards manufactured source terms require a " *
-                            "Haverkamp soil model."))
 
     psi, psi_t, psi_z, psi_zz = richards_manufactured_profile(x, t)
     conductivity = hydraulic_conductivity(psi, soil_model)
-    conductivity_derivative = hydraulic_conductivity_derivative(psi, soil_model)
-    flux_derivative = conductivity_derivative * psi_z * (psi_z - 1) +
-                      conductivity * psi_zz
+
+    # Differentiate the Haverkamp conductivity for the manufactured source term
+    if psi >= zero(psi)
+        conductivity_derivative = zero(psi)
+    else
+        abs_psi = abs(psi)
+        conductivity_denominator = soil_model.A + abs_psi^soil_model.gamma
+        conductivity_derivative = soil_model.saturated_hydraulic_conductivity *
+                                  soil_model.A * soil_model.gamma *
+                                  abs_psi^(soil_model.gamma - 1) /
+                                  conductivity_denominator^2
+    end
+    flux_derivative = conductivity_derivative * psi_z * (psi_z - 1) + conductivity * psi_zz
     storage_derivative = water_capacity(psi, equations) * psi_t
     return Trixi.SVector(storage_derivative - flux_derivative)
 end
@@ -64,9 +71,9 @@ end
     HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
                                                     soil_model = default_soil_model())
 
-Return a one-dimensional Richards equation manufactured-solution problem. The pressure
-head is given by [`richards_manufactured_solution`](@ref), the boundary conditions are
-Dirichlet values from that profile, and the source term is
+Return a one-dimensional manufactured-solution problem for the Richards equation. The
+pressure head is given by [`richards_manufactured_solution`](@ref), the boundary
+conditions are Dirichlet values from that profile, and the source term is
 [`source_terms_richards_manufactured_solution`](@ref). The default setup uses the same
 Haverkamp parameters as [`HydrologicProblemCelia1990`](@ref).
 
@@ -84,22 +91,16 @@ mixed and pressure-head forms of the Richards equation.
 """
 function HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
                                                        soil_model = default_soil_model())
-    soil_model isa Haverkamp ||
-        throw(ArgumentError("Richards manufactured solution requires a Haverkamp " *
-                            "soil model."))
-
     equations = RichardsEquation1D(soil_model = soil_model)
     state_to_evolved = water_content
     evolved_to_state = pressure_head_from_water_content
     boundary_condition = Trixi.BoundaryConditionDirichlet(richards_manufactured_solution)
     boundary_conditions = (; x_neg = boundary_condition, x_pos = boundary_condition)
 
-    return HydrologicProblem(equations = equations,
-                             state_to_evolved = state_to_evolved,
+    return HydrologicProblem(equations = equations, state_to_evolved = state_to_evolved,
                              evolved_to_state = evolved_to_state,
                              initial_condition = richards_manufactured_solution,
                              boundary_conditions = boundary_conditions,
                              source_terms = source_terms_richards_manufactured_solution,
-                             domain = ((0.0,), (0.2,)),
-                             tspan = tspan)
+                             domain = ((0.0,), (0.2,)), tspan = tspan)
 end

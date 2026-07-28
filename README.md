@@ -10,15 +10,28 @@ problems. It builds upon the parabolic spatial discretization capabilities in
 [SciML](https://sciml.ai/), adding the following technical features to support
 the solution of the **Richards equation** in one spatial dimension:
 
-- Mixed and pressure-head formulations of the Richards equation, including
-  constitutive constraints and capacity-weighted temporal operators
+- Mixed and pressure-head formulations that share an arbitrary-order local
+  discontinuous Galerkin spectral-element discretization with collocated
+  Legendre-Gauss-Lobatto quadrature
+- Direct evolution of water content in the mixed formulation through an algebraic
+  constitutive constraint, and capacity-weighted evolution of pressure head in the
+  pressure-head formulation
 - Flexible parabolic boundary conditions allowing penalty-type numerical fluxes that
   depend on the inner and outer solution and flux values
-- Implicit time integration using high-order Rosenbrock-Wanner methods with sparse Jacobian evaluation
+- Adaptive implicit time integration using high-order Rosenbrock-Wanner methods, with
+  sparse finite-difference Jacobian evaluation
+- Adaptive mesh refinement with conservative transfer of the mixed water-content variable
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes,
   following [Ireson et al. (2023)](#references)
 - Tools to facilitate problem setup and visualization, with examples for standard hydrologic
   benchmark cases
+
+The mixed formulation advances water content as the conserved variable while evaluating
+the nonlinear diffusion operator in terms of pressure head. Its fully discrete water mass
+balance is independent of spatial resolution and time step size, including under spatial
+and temporal adaptivity. The pressure-head formulation satisfies the same semi-discrete
+balance, but it does not generally retain that balance after time discretization because
+water content is a nonlinear function of its evolved state.
 
 ## Installation
 

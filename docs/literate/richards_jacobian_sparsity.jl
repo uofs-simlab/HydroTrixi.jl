@@ -2,37 +2,44 @@
 # CurrentModule = HydroTrixi
 # ```
 #
-# # Sparse finite-difference Jacobian evaluation for the mixed-form Richards equation
+# # Sparse Jacobian evaluation for the mixed-form Richards equation
 #
 # HydroTrixi.jl can supply a known Jacobian sparsity pattern to OrdinaryDiffEq.jl so that
-# finite differences and the associated linear algebraic operations use sparse matrices.
-# This is useful for implicit time integration, particularly for Rosenbrock-Wanner methods
-# that construct linear systems from an exact or approximate Jacobian matrix. You can
-# enable this path as follows when creating the ODE problem:
+# Jacobian evaluation and the associated linear algebraic operations can exploit sparse
+# matrices. The time-integration algorithm's `autodiff` setting determines how Jacobian
+# entries are computed. The default `AutoFiniteDiff()` setting in HydroTrixi.jl uses
+# graph-coloured finite differences with the sparse prototype. This is useful for
+# implicit time integration, particularly for Rosenbrock-Wanner methods that construct
+# linear systems from an exact or approximate Jacobian matrix. You can enable this path as
+# follows when creating the ODE problem:
 #
 # ```julia
-# ode = semidiscretize(semi, tspan; sparse_jacobian = true)
+# ode = semidiscretize(semi, tspan; jacobian = SparseJacobian())
 # ```
 #
-# This option does not change the Richards residual, local discontinuous Galerkin (LDG)
-# fluxes, or time-integration algorithm. It only supplies a structural prototype for
-# Jacobian construction and linear algebra. The default remains `sparse_jacobian = false`.
-#
-# !!! warning "Sparse Jacobian evaluation with adaptive mesh refinement (AMR)"
-#     The sparse prototype describes the mesh connectivity at semidiscretization time.
-#     HydroTrixi does not yet rebuild it after adaptive mesh refinement (AMR). Do not set
-#     `sparse_jacobian = true` for a solve with an AMR callback. HydroTrixi stops before the
-#     first mesh adaptation if both features are enabled.
+# This option supplies a structural prototype for Jacobian construction and linear algebra.
+# The default `jacobian = DefaultJacobian()` supplies no Jacobian information, and 
+# OrdinaryDiffEq.jl must resort to the most general path, which treats the Jacobian as a 
+# dense matrix and therefore requires far more function evaluations and memory than 
+# necessary for a sparse Jacobian such as that resulting from an LDG discretization of the 
+# Richards equation. With adaptive mesh refinement, HydroTrixi.jl rebuilds the sparse 
+# prototype and the associated Rosenbrock solver state whenever the mesh topology changes.
 #
 # For $K$ mesh elements and polynomial degree $N$, let $\boldsymbol{\Theta}(t)$ and
 # $\boldsymbol{\Psi}(t)$ denote the global water-content and pressure-head vectors,
 # respectively. Each vector has $K(N+1)$ entries. Consistent with the mixed formulation,
-# the global state and nonlinear right-hand side are
+# the global state, mass matrix, and nonlinear right-hand side are
 #
 # ```math
 # \boldsymbol{y}(t) =
 # \begin{bmatrix}
 # \boldsymbol{\Theta}(t) \\ \boldsymbol{\Psi}(t)
+# \end{bmatrix},
+# \qquad
+# \boldsymbol{A} =
+# \begin{bmatrix}
+# \boldsymbol{I} & \boldsymbol{0} \\
+# \boldsymbol{0} & \boldsymbol{0}
 # \end{bmatrix},
 # \qquad
 # \boldsymbol{\mathcal{F}}(\boldsymbol{y}(t),t) =
@@ -44,8 +51,11 @@
 # ```
 #
 # where $\boldsymbol{\mathcal{R}}$ is the global LDG spatial residual and
-# $\boldsymbol{\vartheta}$ applies the water-content function at each node. The Jacobian
-# of $\boldsymbol{\mathcal{F}}$ with respect to $\boldsymbol{y}$ has the block structure
+# $\boldsymbol{\vartheta}$ applies the water-content function at each node. This is the
+# mass-matrix system
+# $\boldsymbol{A}\dot{\boldsymbol{y}} =
+# \boldsymbol{\mathcal{F}}(\boldsymbol{y},t)$ from the mixed formulation. The residual
+# Jacobian has the block structure
 #
 # ```math
 # \boldsymbol{J}(\boldsymbol{y},t)
@@ -60,13 +70,13 @@
 # ```
 #
 # Here, $\boldsymbol{C}(\boldsymbol{\Psi})$ is the diagonal matrix of nodal capacity
-# values. HydroTrixi supplies the corresponding sparse pattern as the `jac_prototype`
-# used by OrdinaryDiffEq.jl.
+# values. HydroTrixi.jl supplies the corresponding sparse residual pattern as the
+# `jac_prototype` used by OrdinaryDiffEq.jl. For a Rosenbrock-Wanner step, OrdinaryDiffEq
+# solves systems with $\boldsymbol{A} - \gamma \Delta t_n \boldsymbol{J}_n$ and augments
+# its solver matrices with the differential-block diagonal from $\boldsymbol{A}$.
 #
-#
-# We now construct a small supported manufactured problem with $K=4$ and $N=3$. This
-# code follows `examples/elixir_richards_manufactured_solution.jl`, but only creates the
-# ODE problem; it does not perform a time integration.
+# We now construct a small problem with $K=4$ and $N=3$ following
+# `examples/elixir_richards_manufactured_solution.jl`.
 
 using CairoMakie
 using HydroTrixi
@@ -82,9 +92,7 @@ nothing #hide
 asset_dir = docs_generated_dir("richards_jacobian_sparsity")
 
 problem = HydrologicProblemRichardsManufacturedSolution(tspan = (0.0, 1.0))
-mesh = TreeMesh(problem.domain...;
-                initial_refinement_level = 2,
-                n_cells_max = 100,
+mesh = TreeMesh(problem.domain...; initial_refinement_level = 2, n_cells_max = 100,
                 periodicity = false)
 solver = DGSEM(polydeg = 3, surface_flux = flux_central)
 semi = SemidiscretizationImplicit(mesh, problem, solver;
@@ -92,7 +100,7 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
                                   form = MixedForm(),
                                   passive_variables = NoPassiveVariables())
 
-ode = semidiscretize(semi, problem.tspan; sparse_jacobian = true);
+ode = semidiscretize(semi, problem.tspan; jacobian = SparseJacobian());
 
 # For this one-dimensional Richards discretization, the Jacobian has
 # $K(N+1)^2 + 2(N+1)(K-1) + 2K(N+1)$ stored entries. The first term contains dense
@@ -113,7 +121,7 @@ expected_nonzeros = n_elements * n_nodes^2 + 2 * n_nodes * n_interfaces +
 
 @assert size(ode.f.sparsity) == (2 * n_physical_dofs, 2 * n_physical_dofs)
 @assert nnz(ode.f.sparsity) == expected_nonzeros
-#
+
 # Next, we will visualize the sparsity pattern of the Jacobian.
 
 interface_sparsity = spzeros(Bool, 2 * n_physical_dofs, 2 * n_physical_dofs)
@@ -138,8 +146,7 @@ spy!(jacobian_axis, transpose(ode.f.sparsity); color = :black)
 spy!(jacobian_axis, transpose(interface_sparsity); color = :orange)
 spy!(spatial_axis,
      transpose(ode.f.sparsity[1:n_physical_dofs,
-                              (n_physical_dofs + 1):(2 * n_physical_dofs)]);
-     color = :black)
+                              (n_physical_dofs + 1):(2 * n_physical_dofs)]); color = :black)
 spy!(spatial_axis,
      transpose(interface_sparsity[1:n_physical_dofs,
                                   (n_physical_dofs + 1):(2 * n_physical_dofs)]);
@@ -155,7 +162,8 @@ figure_path = joinpath(asset_dir, "pattern.png")
 save(figure_path, figure; px_per_unit = 2)
 println("Saved sparse Jacobian pattern with $(nnz(ode.f.sparsity)) entries to " *
         figure_path)
-# In the figure below, the sparsity pattern of the full Jacobian
+
+# In the figure below, the sparsity pattern of the full residual Jacobian
 # $\boldsymbol{J}(\boldsymbol{y},t)$ is shown on the left, and the sparsity pattern of the
 # spatial block
 # $\partial_{\boldsymbol{\Psi}}\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)$ is shown on

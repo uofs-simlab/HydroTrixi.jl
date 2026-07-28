@@ -12,13 +12,14 @@ S_e(\psi) = \left(1 + (\alpha |\psi|)^n\right)^{-m},
 ```
 with ``S_e(\psi) = 1`` for ``\psi \ge 0``. The hydraulic conductivity is
 ```math
-K(\psi) = K_s S_e(\psi)^l
+\mathcal{K}(\psi) = \mathcal{K}_s S_e(\psi)^l
 \left(1 - \left(1 - S_e(\psi)^{1 / m}\right)^m\right)^2,
 ```
-where ``K_s`` is the `saturated_hydraulic_conductivity` parameter and ``l`` is the
-`pore_connectivity` parameter. The volumetric water content ``\theta(\psi) = \theta_r +
-(\theta_s - \theta_r) S_e(\psi)`` follows from the generic [`water_content`](@ref)
-relation using the residual and saturated water contents `theta_r` and `theta_s`.
+where ``\mathcal{K}_s`` is the `saturated_hydraulic_conductivity` parameter and ``l`` is
+the `pore_connectivity` parameter. The volumetric water content
+``\vartheta(\psi) = \vartheta_r + (\vartheta_s - \vartheta_r) S_e(\psi)`` follows from
+the generic [`water_content`](@ref) relation using the residual and saturated water
+contents `theta_r` and `theta_s`.
 
 # References
 - van Genuchten, M. Th. (1980). A closed-form equation for predicting the
@@ -39,13 +40,8 @@ struct VanGenuchten{RealT}
     theta_r::RealT
 end
 
-function VanGenuchten(; saturated_hydraulic_conductivity,
-                      alpha,
-                      n,
-                      theta_s,
-                      theta_r,
-                      m = 1 - 1 / n,
-                      pore_connectivity = 1 / 2)
+function VanGenuchten(; saturated_hydraulic_conductivity, alpha, n, theta_s, theta_r,
+                      m = 1 - 1 / n, pore_connectivity = 1 / 2)
     RealT = promote_type(typeof(saturated_hydraulic_conductivity), typeof(alpha),
                          typeof(n), typeof(m), typeof(pore_connectivity),
                          typeof(theta_s), typeof(theta_r))

@@ -6,8 +6,7 @@ using LaTeXStrings
 
     mktempdir() do tmpdir
         output_path = joinpath(tmpdir, "diffusion_solution.png")
-        fig = plot_solution_1d(sol;
-                               exact_solution = exact_solution,
+        fig = plot_solution_1d(sol; exact_solution = exact_solution,
                                output_path = output_path)
 
         @test fig isa CairoMakie.Figure

@@ -2,29 +2,20 @@
 @inline scalar_value(u) = u[1]
 
 @inline function plot_component_data(pd, component)
-    ncomponents = size(pd.data, 2)
-    1 <= component <= ncomponents ||
-        throw(ArgumentError("Component $component is out of bounds for " *
-                            "$ncomponents variables."))
     return vec(pd.data[:, component])
 end
 
 function plot_data_1d(u_ode, semi; component = 1)
-    if semi isa SemidiscretizationImplicit
+    if semi isa HydroTrixi.SemidiscretizationImplicit
         nstate_variables = Trixi.nvariables(semi.semi_base)
-        nvariables = Trixi.nvariables(semi)
-        1 <= component <= nvariables ||
-            throw(ArgumentError("Component $component is out of bounds for " *
-                                "$nvariables variables."))
         if component <= nstate_variables
-            data = evolved_variable_view(u_ode, semi)
+            data = HydroTrixi.evolved_variable_view(u_ode, semi)
             local_component = component
         else
-            data = state_variable_view(u_ode, semi)
+            data = HydroTrixi.state_variable_view(u_ode, semi)
             local_component = component - nstate_variables
         end
-        pd = Trixi.PlotData1D(data, semi.semi_base;
-                              solution_variables = Trixi.cons2cons)
+        pd = Trixi.PlotData1D(data, semi.semi_base; solution_variables = Trixi.cons2cons)
         return pd, local_component
     end
 
@@ -33,7 +24,7 @@ end
 
 function plot_data_1d(sol; component = 1)
     semi = sol.prob.p
-    if semi isa SemidiscretizationImplicit
+    if semi isa HydroTrixi.SemidiscretizationImplicit
         return plot_data_1d(sol.u[end], semi; component = component)
     end
 
@@ -61,58 +52,30 @@ end
 
 @inline series_label(show_label, label) = show_label ? label : nothing
 
-function solution_axis(fig;
-                       xlabel,
-                       ylabel,
-                       xlabelfont = DEFAULT_PLOT_FONT,
-                       ylabelfont = DEFAULT_PLOT_FONT,
-                       titlefont = DEFAULT_PLOT_FONT,
-                       xticklabelfont = DEFAULT_PLOT_FONT,
-                       yticklabelfont = DEFAULT_PLOT_FONT,
-                       xscale = identity,
-                       yscale = identity,
-                       xticks = nothing,
-                       xlims = nothing,
+function solution_axis(fig; xlabel, ylabel, xlabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
+                       ylabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
+                       titlefont = HydroTrixi.DEFAULT_PLOT_FONT,
+                       xticklabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
+                       yticklabelfont = HydroTrixi.DEFAULT_PLOT_FONT, xscale = identity,
+                       yscale = identity, xticks = nothing, xlims = nothing,
                        ylims = nothing,)
-    ax = Axis(fig[1, 1];
-              xlabel = xlabel,
-              ylabel = ylabel,
-              xlabelfont = xlabelfont,
-              ylabelfont = ylabelfont,
-              titlefont = titlefont,
-              xticklabelfont = xticklabelfont,
-              yticklabelfont = yticklabelfont,
-              xscale = xscale,
-              yscale = yscale,)
+    ax = Axis(fig[1, 1]; xlabel = xlabel, ylabel = ylabel, xlabelfont = xlabelfont,
+              ylabelfont = ylabelfont, titlefont = titlefont,
+              xticklabelfont = xticklabelfont, yticklabelfont = yticklabelfont,
+              xscale = xscale, yscale = yscale,)
     isnothing(xticks) || (ax.xticks = xticks)
     apply_axis_limits!(ax; xlims = xlims, ylims = ylims)
 
     return ax
 end
 
-function plot_series!(ax, x, y;
-                      label = nothing,
-                      linestyle = :solid,
-                      linewidth = 2.0,
-                      markersize = 7.0,
-                      color,
-                      show_nodes = false)
+function plot_series!(ax, x, y; label = nothing, linestyle = :solid, linewidth = 2.0,
+                      markersize = 7.0, color, show_nodes = false)
     if show_nodes
-        scatterlines!(ax,
-                      x,
-                      y;
-                      label = label,
-                      linestyle = linestyle,
-                      linewidth = linewidth,
-                      markersize = markersize,
-                      color = color)
+        scatterlines!(ax, x, y; label = label, linestyle = linestyle, linewidth = linewidth,
+                      markersize = markersize, color = color)
     else
-        lines!(ax,
-               x,
-               y;
-               label = label,
-               linestyle = linestyle,
-               linewidth = linewidth,
+        lines!(ax, x, y; label = label, linestyle = linestyle, linewidth = linewidth,
                color = color)
     end
 
@@ -127,73 +90,47 @@ function add_legend!(ax; position, font, labelsize, show_legend)
     return nothing
 end
 
-function HydroTrixi.plot_solution_1d(sol;
-                                     output_path = joinpath(pwd(), "solution_1d.pdf"),
-                                     component = 1,
-                                     exact_solution = nothing,
+function HydroTrixi.plot_solution_1d(sol; output_path = joinpath(pwd(), "solution_1d.pdf"),
+                                     component = 1, exact_solution = nothing,
                                      numerical_label = LaTeXString("Numerical"),
-                                     exact_label = LaTeXString("Exact"),
-                                     xlabel = L"$x$",
+                                     exact_label = LaTeXString("Exact"), xlabel = L"$x$",
                                      ylabel = L"$u(x,t)$",
-                                     font = DEFAULT_PLOT_FONT,
-                                     size = DEFAULT_SOLUTION_FIGSIZE,
-                                     fontsize = 15,
-                                     legendfontsize = 14,
-                                     linewidth = 2.0,
-                                     markersize = 7.0,
-                                     show_nodes = false,
-                                     xlabelfont = DEFAULT_PLOT_FONT,
-                                     ylabelfont = DEFAULT_PLOT_FONT,
-                                     titlefont = DEFAULT_PLOT_FONT,
-                                     xticklabelfont = DEFAULT_PLOT_FONT,
-                                     yticklabelfont = DEFAULT_PLOT_FONT,
-                                     legendfont = DEFAULT_PLOT_FONT,
-                                     legend_position = :rb,
-                                     xlims = nothing,
+                                     font = HydroTrixi.DEFAULT_PLOT_FONT,
+                                     size = HydroTrixi.DEFAULT_SOLUTION_FIGSIZE,
+                                     fontsize = 15, legendfontsize = 14, linewidth = 2.0,
+                                     markersize = 7.0, show_nodes = false,
+                                     xlabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
+                                     ylabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
+                                     titlefont = HydroTrixi.DEFAULT_PLOT_FONT,
+                                     xticklabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
+                                     yticklabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
+                                     legendfont = HydroTrixi.DEFAULT_PLOT_FONT,
+                                     legend_position = :rb, xlims = nothing,
                                      ylims = nothing,)
-    set_serif_tex_theme!(font = font)
+    HydroTrixi.set_serif_tex_theme!(font = font)
 
     x, y = plot_curve_1d(sol; component = component)
     show_exact = !isnothing(exact_solution)
 
     fig = Figure(size = size, fontsize = fontsize)
-    ax = solution_axis(fig;
-                       xlabel = xlabel,
-                       ylabel = ylabel,
-                       xlabelfont = xlabelfont,
-                       ylabelfont = ylabelfont,
-                       titlefont = titlefont,
-                       xticklabelfont = xticklabelfont,
-                       yticklabelfont = yticklabelfont,
-                       xlims = xlims,
-                       ylims = ylims)
+    ax = solution_axis(fig; xlabel = xlabel, ylabel = ylabel, xlabelfont = xlabelfont,
+                       ylabelfont = ylabelfont, titlefont = titlefont,
+                       xticklabelfont = xticklabelfont, yticklabelfont = yticklabelfont,
+                       xlims = xlims, ylims = ylims)
 
-    plot_series!(ax,
-                 x,
-                 y;
-                 label = series_label(show_exact, numerical_label),
-                 linewidth = linewidth,
-                 markersize = markersize,
-                 color = Makie.wong_colors()[1],
-                 show_nodes = show_nodes)
+    plot_series!(ax, x, y; label = series_label(show_exact, numerical_label),
+                 linewidth = linewidth, markersize = markersize,
+                 color = Makie.wong_colors()[1], show_nodes = show_nodes)
 
     if show_exact
         t_final = sol.t[end]
         x_exact = exact_solution_x(x)
         y_exact = exact_solution_values(exact_solution, x_exact, t_final)
-        lines!(ax,
-               x_exact,
-               y_exact;
-               label = exact_label,
-               linewidth = linewidth,
-               linestyle = :dash,
-               color = Makie.wong_colors()[2],)
+        lines!(ax, x_exact, y_exact; label = exact_label, linewidth = linewidth,
+               linestyle = :dash, color = Makie.wong_colors()[2],)
     end
-    add_legend!(ax;
-                position = legend_position,
-                font = legendfont,
-                labelsize = legendfontsize,
-                show_legend = show_exact)
+    add_legend!(ax; position = legend_position, font = legendfont,
+                labelsize = legendfontsize, show_legend = show_exact)
 
     outdir = dirname(output_path)
     outdir == "" || mkpath(outdir)

@@ -1,8 +1,7 @@
-function HydroTrixi.set_serif_tex_theme!(; font = DEFAULT_PLOT_FONT)
+function HydroTrixi.set_serif_tex_theme!(; font = HydroTrixi.DEFAULT_PLOT_FONT)
     CairoMakie.set_theme!(CairoMakie.Theme(font = font,
                                            Axis = (xlabelfont = font,
-                                                   ylabelfont = font,
-                                                   titlefont = font,
+                                                   ylabelfont = font, titlefont = font,
                                                    subtitlefont = font,
                                                    xticklabelfont = font,
                                                    yticklabelfont = font),

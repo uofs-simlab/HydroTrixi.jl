@@ -17,8 +17,7 @@ if !@isdefined(saveat)
 end
 
 trixi_include(joinpath(@__DIR__, "elixir_richards_closed_column.jl");
-              final_time = final_time,
-              saveat = saveat)
+              final_time = final_time, saveat = saveat)
 
 plots_dir = mkpath(joinpath(dirname(@__DIR__), "plots"))
 if !@isdefined(animation_format)
@@ -28,12 +27,7 @@ end
 output_path = joinpath(plots_dir,
                        "richards_closed_column_pressure_head_t$(round(Int, final_time)).$(animation_format)")
 
-animate_solution_1d(sol;
-                    component = 2,
-                    xlabel = L"$z$ (m)",
-                    ylabel = L"$\psi$ (m)",
-                    ylims = (-1.05, -0.55),
-                    output_path = output_path,
-                    framerate = 30)
+animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+                    ylims = (-1.05, -0.55), output_path = output_path, framerate = 30)
 
 println("Saved closed-column ψ(z,t) animation to: $(output_path)")

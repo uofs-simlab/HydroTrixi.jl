@@ -32,8 +32,7 @@ end
 @inline function (boundary_condition::BoundaryConditionDirichletPenalty)(flux_inner,
                                                                          u_inner,
                                                                          orientation,
-                                                                         direction,
-                                                                         x,
+                                                                         direction, x,
                                                                          t,
                                                                          operator_type::Trixi.Gradient,
                                                                          equations::Trixi.AbstractEquationsParabolic{1})
@@ -43,8 +42,7 @@ end
 @inline function (boundary_condition::BoundaryConditionDirichletPenalty)(flux_inner,
                                                                          u_inner,
                                                                          orientation,
-                                                                         direction,
-                                                                         x,
+                                                                         direction, x,
                                                                          t,
                                                                          operator_type::Trixi.Divergence,
                                                                          equations::Trixi.AbstractEquationsParabolic{1})
@@ -57,8 +55,7 @@ end
 @inline function (boundary_condition::BoundaryConditionDirichletPenalty)(flux_inner,
                                                                          u_inner,
                                                                          normal::AbstractVector,
-                                                                         x,
-                                                                         t,
+                                                                         x, t,
                                                                          operator_type::Trixi.Gradient,
                                                                          equations::Trixi.AbstractEquationsParabolic{1})
     return boundary_condition.boundary_value_function(x, t, equations)
@@ -67,8 +64,7 @@ end
 @inline function (boundary_condition::BoundaryConditionDirichletPenalty)(flux_inner,
                                                                          u_inner,
                                                                          normal::AbstractVector,
-                                                                         x,
-                                                                         t,
+                                                                         x, t,
                                                                          operator_type::Trixi.Divergence,
                                                                          equations::Trixi.AbstractEquationsParabolic{1})
     u_boundary = boundary_condition.boundary_value_function(x, t, equations)

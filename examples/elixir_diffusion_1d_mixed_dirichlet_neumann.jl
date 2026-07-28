@@ -17,35 +17,26 @@ n_cells_max = 30_000
 solver_parabolic = ParabolicFormulationLocalDG()
 
 angular_frequency = 2 * pi * forcing_frequency
-mesh = TreeMesh((0.0,),
-                (1.0,),
-                initial_refinement_level = initial_refinement_level,
-                n_cells_max = n_cells_max,
-                periodicity = false)
+mesh = TreeMesh((0.0,), (1.0,), initial_refinement_level = initial_refinement_level,
+                n_cells_max = n_cells_max, periodicity = false)
 solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
 
 complex_wavenumber = sqrt(im * angular_frequency / diffusivity)
-harmonic_shape(x) = cosh(complex_wavenumber * (1 - x)) / cosh(complex_wavenumber)
 function exact_solution(x, t)
-    dirichlet_mean +
-    imag(forcing_amplitude * exp(im * angular_frequency * t) *
-         harmonic_shape(x[1]))
+    dirichlet_mean + imag(forcing_amplitude * exp(im * angular_frequency * t) *
+         cosh(complex_wavenumber * (1 - x[1])) / cosh(complex_wavenumber))
 end
 
 initial_condition(x, t, equations) = SVector(exact_solution(x, t))
-dirichlet_left(x, t) = dirichlet_mean + forcing_amplitude * sin(angular_frequency * t)
-neumann_right(x, t) = 0.0
-dirichlet_left_boundary(x, t, equations) = SVector(dirichlet_left(x, t))
-neumann_right_boundary(x, t, equations) = SVector(neumann_right(x, t))
+function dirichlet_left_boundary(x, t, equations)
+    SVector(dirichlet_mean + forcing_amplitude * sin(angular_frequency * t))
+end
+neumann_right_boundary(x, t, equations) = SVector(0.0)
 
-boundary_conditions = (;
-                       x_neg = BoundaryConditionDirichlet(dirichlet_left_boundary),
+boundary_conditions = (; x_neg = BoundaryConditionDirichlet(dirichlet_left_boundary),
                        x_pos = BoundaryConditionNeumann(neumann_right_boundary))
 
-semi = SemidiscretizationParabolic(mesh,
-                                   equations,
-                                   initial_condition,
-                                   solver;
+semi = SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
                                    boundary_conditions = boundary_conditions,
                                    solver_parabolic = solver_parabolic)
 
@@ -62,8 +53,7 @@ analysis_callback = AnalysisCallback(semi, interval = analysis_interval)
 
 alive_callback = AliveCallback(analysis_interval = analysis_interval)
 
-callbacks = CallbackSet(summary_callback,
-                        analysis_callback, alive_callback)
+callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
 
 ###############################################################################
 # run the simulation
@@ -72,8 +62,5 @@ dt_factor = 0.0032
 dt = dt_factor * (1.0 / (2.0^initial_refinement_level))^2
 saveat = Float64[]
 
-sol = solve(ode, default_algorithm(semi);
-            dt = dt,
-            adaptive = false,
-            saveat = saveat,
+sol = solve(ode, default_algorithm(semi); dt = dt, adaptive = false, saveat = saveat,
             ode_default_options()..., callback = callbacks)

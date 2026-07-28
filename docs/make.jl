@@ -22,10 +22,8 @@ links = InterLinks("Trixi" => ("https://trixi-framework.github.io/TrixiDocumenta
 
 fallbacks = ExternalFallbacks(; automatic = true)
 
-DocMeta.setdocmeta!(HydroTrixi,
-                    :DocTestSetup,
-                    :(using HydroTrixi, CairoMakie, LaTeXStrings);
-                    recursive = true)
+DocMeta.setdocmeta!(HydroTrixi, :DocTestSetup,
+                    :(using HydroTrixi, CairoMakie, LaTeXStrings); recursive = true)
 
 if isnothing(Base.get_extension(HydroTrixi, :HydroTrixiVisualizationExt))
     error("HydroTrixiVisualizationExt did not load in the documentation environment.")
@@ -46,11 +44,8 @@ function generate_tutorials!()
     ENV["HYDROTRIXI_DOCS_LITERATE"] = DOCS_LITERATE
 
     for source in ("celia_1990.jl", "richards_jacobian_sparsity.jl")
-        Literate.markdown(joinpath(DOCS_LITERATE, source),
-                          DOCS_TUTORIALS;
-                          execute = true,
-                          flavor = Literate.DocumenterFlavor(),
-                          credit = false)
+        Literate.markdown(joinpath(DOCS_LITERATE, source), DOCS_TUTORIALS; execute = true,
+                          flavor = Literate.DocumenterFlavor(), credit = false)
     end
 
     return nothing
@@ -59,21 +54,17 @@ end
 prepare_generated_docs!()
 generate_tutorials!()
 
-makedocs(; modules = [HydroTrixi],
-         repo = Remotes.GitHub("uofs-simlab", "HydroTrixi.jl"),
+makedocs(; modules = [HydroTrixi], repo = Remotes.GitHub("uofs-simlab", "HydroTrixi.jl"),
          sitename = "HydroTrixi.jl",
          format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true",
                                   canonical = "https://tjbmontoya.com/HydroTrixi.jl",
-                                  edit_link = "main",
-                                  assets = String[]),
+                                  edit_link = "main", assets = String[]),
          pages = ["Home" => "index.md",
              "Tutorials" => ["Overview" => "tutorials.md",
                  "Celia *et al.* (1990) infiltration problem" => "tutorials/celia_1990.md",
-                 "Sparse finite-difference Jacobian evaluation" => "tutorials/richards_jacobian_sparsity.md"
-             ],
-             "Reference" => "reference.md",
-             "License" => "license.md"],
-         plugins = [links, fallbacks])
+                 "Sparse Jacobian evaluation for the mixed formulation" => "tutorials/richards_jacobian_sparsity.md"
+             ], "Reference" => "reference.md",
+             "License" => "license.md"], plugins = [links, fallbacks])
 
 deploydocs(; repo = "github.com/uofs-simlab/HydroTrixi.jl.git",
            deploy_repo = "github.com/tristanmontoya/HydroTrixi.jl.git",

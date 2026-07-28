@@ -21,14 +21,10 @@ println("diffusivity = $(diffusivity), polydeg = $(polydeg), tspan = $(tspan)")
 println("forcing_amplitude = $(forcing_amplitude), forcing_frequency = $(forcing_frequency)")
 println()
 
-_, errors = convergence_test(@__MODULE__,
-                             elixir,
-                             iterations;
-                             diffusivity = diffusivity,
+_, errors = convergence_test(@__MODULE__, elixir, iterations; diffusivity = diffusivity,
                              forcing_amplitude = forcing_amplitude,
                              forcing_frequency = forcing_frequency,
-                             dirichlet_mean = dirichlet_mean,
-                             polydeg = polydeg,
+                             dirichlet_mean = dirichlet_mean, polydeg = polydeg,
                              tspan = tspan,
                              initial_refinement_level = base_initial_refinement_level,
                              dt_factor = dt_factor,

@@ -22,14 +22,10 @@ schemes = ((; name = "LDG", solver_parabolic = ParabolicFormulationLocalDG()),
 
 function run_scheme(scheme)
     initial_refinement_level = base_initial_refinement_level
-    _, errors = convergence_test(@__MODULE__,
-                                 elixir,
-                                 iterations;
-                                 diffusivity = diffusivity,
+    _, errors = convergence_test(@__MODULE__, elixir, iterations; diffusivity = diffusivity,
                                  forcing_amplitude = forcing_amplitude,
                                  forcing_frequency = forcing_frequency,
-                                 dirichlet_mean = dirichlet_mean,
-                                 polydeg = polydeg,
+                                 dirichlet_mean = dirichlet_mean, polydeg = polydeg,
                                  tspan = tspan,
                                  initial_refinement_level = initial_refinement_level,
                                  dt_factor = dt_factor,
@@ -38,9 +34,7 @@ function run_scheme(scheme)
     levels = initial_refinement_level:(initial_refinement_level + iterations - 1)
     ndofs = (polydeg + 1) .* (2 .^ collect(levels))
 
-    return (; levels = collect(levels),
-            ndofs,
-            l2_errors = vec(errors[:l2]),
+    return (; levels = collect(levels), ndofs, l2_errors = vec(errors[:l2]),
             linf_errors = vec(errors[:linf]))
 end
 
@@ -57,18 +51,10 @@ for scheme in schemes
     println("Scheme: $(scheme.name)")
     l2_eoc = compute_eoc(data.l2_errors)
     linf_eoc = compute_eoc(data.linf_errors)
-    @printf("%-7s %-10s %-14s %-8s %-14s %-8s\n",
-            "level",
-            "ndofs",
-            "L2 error",
-            "EOC",
-            "Linf error",
-            "EOC")
+    @printf("%-7s %-10s %-14s %-8s %-14s %-8s\n", "level", "ndofs", "L2 error", "EOC",
+            "Linf error", "EOC")
     for i in eachindex(data.levels)
-        @printf("%-7d %-10d %-14.6e ",
-                data.levels[i],
-                data.ndofs[i],
-                data.l2_errors[i])
+        @printf("%-7d %-10d %-14.6e ", data.levels[i], data.ndofs[i], data.l2_errors[i])
         isnan(l2_eoc[i]) ? @printf("%-8s ", "-") : @printf("%-8.3f ", l2_eoc[i])
         @printf("%-14.6e ", data.linf_errors[i])
         isnan(linf_eoc[i]) ? @printf("%-8s\n", "-") : @printf("%-8.3f\n", linf_eoc[i])
@@ -82,8 +68,6 @@ br1 = results["BR1"]
 println("BR1/LDG error ratio by level")
 @printf("%-7s %-12s %-12s\n", "level", "L2 ratio", "Linf ratio")
 for i in eachindex(ldg.levels)
-    @printf("%-7d %-12.4f %-12.4f\n",
-            ldg.levels[i],
-            br1.l2_errors[i]/ldg.l2_errors[i],
+    @printf("%-7d %-12.4f %-12.4f\n", ldg.levels[i], br1.l2_errors[i]/ldg.l2_errors[i],
             br1.linf_errors[i]/ldg.linf_errors[i])
 end

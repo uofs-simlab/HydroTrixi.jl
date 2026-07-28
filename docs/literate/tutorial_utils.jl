@@ -1,16 +1,15 @@
 module TutorialUtils
 
-function docs_src_dir()
-    if haskey(ENV, "HYDROTRIXI_DOCS_SRC")
-        return ENV["HYDROTRIXI_DOCS_SRC"]
+function docs_generated_dir(name)
+    docs_source_directory = if haskey(ENV, "HYDROTRIXI_DOCS_SRC")
+        ENV["HYDROTRIXI_DOCS_SRC"]
+    else
+        candidate = normpath(joinpath(@__DIR__, "..", "src"))
+        isdir(candidate) || error("Set HYDROTRIXI_DOCS_SRC before executing this tutorial.")
+        candidate
     end
 
-    candidate = normpath(joinpath(@__DIR__, "..", "src"))
-    isdir(candidate) && return candidate
-
-    error("Set HYDROTRIXI_DOCS_SRC before executing this tutorial.")
+    return mkpath(joinpath(docs_source_directory, "assets", "generated", name))
 end
-
-docs_generated_dir(name) = mkpath(joinpath(docs_src_dir(), "assets", "generated", name))
 
 end

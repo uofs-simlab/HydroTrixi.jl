@@ -5,8 +5,8 @@
 
 A container for reusable hydrologic PDE problem data. It stores the governing `equations`,
 an `initial_condition`, `boundary_conditions`, the spatial `domain`, the time interval
-`tspan`, optional `source_terms`, and optional state-to-evolved and evolved-to-state maps
-for mixed-form problems.
+`tspan`, optional `source_terms`, and optional maps between the spatial state and the
+evolved variable for mixed formulations.
 
 The `domain` must be a pair `(x_min, x_max)` of coordinate tuples with matching dimension.
 The type parameter `NDIMS` records that dimension for dispatch and introspection.
@@ -39,32 +39,22 @@ function Base.show(io::IO, hydrologic_problem::HydrologicProblem)
     return nothing
 end
 
-function HydrologicProblem(; equations,
-                           initial_condition,
-                           boundary_conditions,
-                           domain,
-                           tspan,
-                           source_terms = nothing,
-                           state_to_evolved = nothing,
+function HydrologicProblem(; equations, initial_condition, boundary_conditions, domain,
+                           tspan, source_terms = nothing, state_to_evolved = nothing,
                            evolved_to_state = nothing)
-    length(domain) == 2 ||
-        throw(ArgumentError("Expected `domain` to be a pair of coordinate tuples."))
     lower, upper = domain
     ndims = length(lower)
-    length(upper) == ndims ||
+    if length(upper) != ndims
         throw(ArgumentError("Expected lower and upper domain bounds to have " *
                             "matching dimension."))
+    end
 
     return HydrologicProblem{ndims, typeof(equations), typeof(initial_condition),
                              typeof(boundary_conditions), typeof(domain), typeof(tspan),
                              typeof(source_terms), typeof(state_to_evolved),
-                             typeof(evolved_to_state)}(equations,
-                                                       initial_condition,
-                                                       boundary_conditions,
-                                                       domain,
-                                                       tspan,
-                                                       source_terms,
-                                                       state_to_evolved,
+                             typeof(evolved_to_state)}(equations, initial_condition,
+                                                       boundary_conditions, domain, tspan,
+                                                       source_terms, state_to_evolved,
                                                        evolved_to_state)
 end
 
@@ -74,21 +64,26 @@ Base.ndims(::HydrologicProblem{NDIMS}) where {NDIMS} = NDIMS
     return nameof(typeof(boundary_condition))
 end
 
-function pretty_boundary_name(boundary_name::Symbol)
-    boundary_name === :x_neg && return "negative x"
-    boundary_name === :x_pos && return "positive x"
-    boundary_name === :y_neg && return "negative y"
-    boundary_name === :y_pos && return "positive y"
-    boundary_name === :z_neg && return "negative z"
-    boundary_name === :z_pos && return "positive z"
-    return String(boundary_name)
-end
-
 function print_boundary_conditions_summary(io::IO, boundary_conditions::NamedTuple)
     Trixi.summary_line(io, "boundary conditions", length(boundary_conditions))
     for (boundary_name, boundary_condition) in pairs(boundary_conditions)
-        Trixi.summary_line(Trixi.increment_indent(io),
-                           pretty_boundary_name(boundary_name),
+        # Expand coordinate boundary symbols for human-readable summaries
+        display_name = if boundary_name === :x_neg
+            "negative x"
+        elseif boundary_name === :x_pos
+            "positive x"
+        elseif boundary_name === :y_neg
+            "negative y"
+        elseif boundary_name === :y_pos
+            "positive y"
+        elseif boundary_name === :z_neg
+            "negative z"
+        elseif boundary_name === :z_pos
+            "positive z"
+        else
+            String(boundary_name)
+        end
+        Trixi.summary_line(Trixi.increment_indent(io), display_name,
                            boundary_condition_summary_name(boundary_condition))
     end
     return nothing
@@ -109,8 +104,7 @@ function Base.show(io::IO, ::MIME"text/plain", hydrologic_problem::HydrologicPro
         Trixi.summary_line(io, "#spatial dimensions", ndims(hydrologic_problem))
         Trixi.summary_line(io, "equations",
                            hydrologic_problem.equations |> typeof |> nameof)
-        Trixi.summary_line(io, "initial condition",
-                           hydrologic_problem.initial_condition)
+        Trixi.summary_line(io, "initial condition", hydrologic_problem.initial_condition)
         print_boundary_conditions_summary(io, hydrologic_problem.boundary_conditions)
         Trixi.summary_line(io, "domain", hydrologic_problem.domain)
         Trixi.summary_line(io, "time interval", hydrologic_problem.tspan)
@@ -127,8 +121,13 @@ abstract type AbstractImplicitForm end
     MixedForm()
 
 Select the mixed form of the Richards equation in
-[`SemidiscretizationImplicit`](@ref). The evolved variable is water content, and pressure
-head is recovered through the water retention relation.
+[`SemidiscretizationImplicit`](@ref). The nodal water-content vector ``\boldsymbol{\Theta}``
+is evolved directly, while the pressure-head vector ``\boldsymbol{\Psi}`` is constrained
+algebraically by
+```math
+\boldsymbol{\Theta} = \boldsymbol{\vartheta}(\boldsymbol{\Psi}).
+```
+Consequently, the discrete water content is a linear function of the evolved state.
 """
 struct MixedForm <: AbstractImplicitForm end
 
@@ -138,9 +137,14 @@ struct MixedForm <: AbstractImplicitForm end
 
 Select the pressure-head form of the Richards equation in
 [`SemidiscretizationImplicit`](@ref). The evolved state is pressure head, and the temporal
-operator divides the spatial residual by the nodal water capacity ``C(\psi)``. The
-optional `transfer_variables` map controls which variable is transferred during adaptive
-mesh refinement. The default transfers pressure head directly. Use
+operator divides the spatial residual by the nodal capacity
+``C(\psi) = \vartheta'(\psi)``. This formulation satisfies the same semi-discrete water
+mass balance as [`MixedForm`](@ref), but water content is a nonlinear function of the
+evolved state and is therefore not generally preserved as a linear invariant by the time
+integrator.
+
+The optional `transfer_variables` map controls which variable is transferred during
+adaptive mesh refinement. The default transfers pressure head directly. Use
 `transfer_variables = water_content` to transfer water content and reconstruct pressure
 head after each mesh update.
 """
@@ -156,39 +160,30 @@ end
 function implicit_temporal_operator(::MixedForm, hydrologic_problem, capacity_function)
     state_to_evolved = hydrologic_problem.state_to_evolved
     evolved_to_state = hydrologic_problem.evolved_to_state
-    isnothing(state_to_evolved) &&
-        throw(ArgumentError("Hydrologic problem does not define `state_to_evolved`."))
     return TemporalOperatorConstitutive(state_to_evolved;
                                         evolved_to_state = evolved_to_state)
+end
+
+# Select a problem-provided inverse only when the configured transfer map matches
+@inline function pressure_head_amr_transfer_to_state(::Val{true}, evolved_to_state)
+    return evolved_to_state
 end
 
 function implicit_temporal_operator(form::PressureHeadForm, hydrologic_problem,
                                     capacity_function)
     transfer_variables = form.transfer_variables
-    transfer_to_state = transfer_to_state_function(transfer_variables,
-                                                   hydrologic_problem)
+    transfer_to_state = if transfer_variables === pressure_head ||
+                           transfer_variables === Trixi.cons2cons
+        amr_transfer_identity
+    else
+        maps_problem_state = transfer_variables === hydrologic_problem.state_to_evolved
+        pressure_head_amr_transfer_to_state(Val(maps_problem_state),
+                                            hydrologic_problem.evolved_to_state)
+    end
 
     return TemporalOperatorCapacity(capacity_function;
                                     transfer_variables = transfer_variables,
                                     transfer_to_state = transfer_to_state)
-end
-
-# Pressure-head transfer inverses are inferred from the requested variables
-function transfer_to_state_function(transfer_variables, hydrologic_problem)
-    if transfer_variables === pressure_head || transfer_variables === Trixi.cons2cons
-        return amr_transfer_identity
-    end
-
-    if transfer_variables === hydrologic_problem.state_to_evolved
-        transfer_to_state = hydrologic_problem.evolved_to_state
-        isnothing(transfer_to_state) &&
-            throw(ArgumentError("AMR transfer requires `evolved_to_state`."))
-        return transfer_to_state
-    end
-
-    throw(ArgumentError("Pressure-head AMR transfer requires `transfer_variables` " *
-                        "to be `pressure_head`, `Trixi.cons2cons`, or the " *
-                        "hydrologic problem `state_to_evolved` map."))
 end
 
 @doc raw"""
@@ -198,13 +193,17 @@ end
                                source_terms = hydrologic_problem.source_terms,
                                capacity_function = water_capacity, kwargs...)
 
-Create an implicit semidiscretization for `hydrologic_problem` using the parabolic
-spatial solver and the selected temporal operator. Use `form = MixedForm()` for the
-constitutive mixed form, or `form = PressureHeadForm()` for the capacity-weighted
-pressure-head form. The optional `source_terms` keyword defaults to the hydrologic
-problem source terms, and `passive_variables` appends diagnostic scalars after the
-physical state. Extra keyword arguments are forwarded to
-`Trixi.SemidiscretizationParabolic`.
+Create an implicit semidiscretization for `hydrologic_problem` using the parabolic spatial
+solver and the selected temporal operator. With `form = MixedForm()`, the global state is
+ordered as ``\boldsymbol{y} = (\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}`` and
+defines an index-1 differential-algebraic equation when all nodal capacity values are
+strictly positive. With `form = PressureHeadForm()`, the state is
+``\boldsymbol{y} = \boldsymbol{\Psi}`` and defines an ordinary differential equation
+after division by the nodal capacity values.
+
+The optional `source_terms` keyword defaults to the hydrologic problem source terms, and
+`passive_variables` appends diagnostic scalars after the physical state. Extra keyword
+arguments are forwarded to `Trixi.SemidiscretizationParabolic`.
 """
 function SemidiscretizationImplicit(mesh, hydrologic_problem::HydrologicProblem,
                                     solver; solver_parabolic,
@@ -214,8 +213,7 @@ function SemidiscretizationImplicit(mesh, hydrologic_problem::HydrologicProblem,
                                     capacity_function = water_capacity, kwargs...)
     boundary_conditions = hydrologic_problem.boundary_conditions
 
-    semi_base = Trixi.SemidiscretizationParabolic(mesh,
-                                                  hydrologic_problem.equations,
+    semi_base = Trixi.SemidiscretizationParabolic(mesh, hydrologic_problem.equations,
                                                   hydrologic_problem.initial_condition,
                                                   solver;
                                                   boundary_conditions = boundary_conditions,

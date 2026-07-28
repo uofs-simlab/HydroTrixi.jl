@@ -15,23 +15,20 @@ solver_parabolic = ParabolicFormulationLocalDG()
 form = MixedForm()
 
 coordinates_min, coordinates_max = problem.domain
-mesh = TreeMesh(coordinates_min,
-                coordinates_max,
+mesh = TreeMesh(coordinates_min, coordinates_max,
                 initial_refinement_level = initial_refinement_level,
-                n_cells_max = n_cells_max,
-                periodicity = false)
+                n_cells_max = n_cells_max, periodicity = false)
 solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
 
 semi = SemidiscretizationImplicit(mesh, problem, solver;
-                                  solver_parabolic = solver_parabolic,
-                                  form = form)
+                                  solver_parabolic = solver_parabolic, form = form)
 
 ###############################################################################
 # ODE solvers, callbacks etc.
 
 tspan = problem.tspan
-sparse_jacobian = false
-ode = semidiscretize(semi, tspan; sparse_jacobian = sparse_jacobian)
+jacobian = DefaultJacobian()
+ode = semidiscretize(semi, tspan; jacobian = jacobian)
 
 summary_callback = SummaryCallback()
 
@@ -40,8 +37,7 @@ analysis_callback = AnalysisCallback(semi, interval = analysis_interval)
 
 alive_callback = AliveCallback(analysis_interval = analysis_interval)
 
-callbacks = CallbackSet(summary_callback,
-                        analysis_callback, alive_callback)
+callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
 
 ###############################################################################
 # run the simulation
@@ -54,12 +50,7 @@ saveat = Float64[]
 run_simulation = true
 
 if run_simulation
-    sol = solve(ode, default_algorithm(semi);
-                dt = dt,
-                adaptive = adaptive,
-                reltol = reltol,
-                abstol = abstol,
-                saveat = saveat,
-                ode_default_options()..., callback = callbacks,
-                maxiters = typemax(Int))
+    sol = solve(ode, default_algorithm(semi, jacobian); dt = dt, adaptive = adaptive,
+                reltol = reltol, abstol = abstol, saveat = saveat,
+                ode_default_options()..., callback = callbacks, maxiters = typemax(Int))
 end

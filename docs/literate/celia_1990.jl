@@ -35,8 +35,8 @@ asset_dir = docs_generated_dir("celia_1990")
 # ### 1. Load the benchmark definition
 #
 # [`HydrologicProblemCelia1990`](@ref) packages the Richards equation,
-# water retention maps, boundary data, spatial domain, and time interval for the
-# standard infiltration problem.
+# constitutive relations, boundary data, spatial domain, and time interval for the
+# standard infiltration problem. Depth is measured positive downward from the soil surface.
 
 problem = HydrologicProblemCelia1990()
 
@@ -45,15 +45,15 @@ problem = HydrologicProblemCelia1990()
 # The benchmark is one-dimensional, so a `TreeMesh` with five levels of initial refinement 
 # gives 32 cells before time integration begins.
 
-mesh = TreeMesh(problem.domain...,
-                initial_refinement_level = 5,
-                n_cells_max = 30_000)
+mesh = TreeMesh(problem.domain..., initial_refinement_level = 5, n_cells_max = 30_000)
 
 # ### 3. Set up the spatial discretization
 #
 # We use a polynomial degree of $N = 3$ together with the mixed implicit Richards
-# semidiscretization [`SemidiscretizationImplicit`](@ref), using a local DG (LDG) 
-# formulation for the parabolic solver.
+# semidiscretization [`SemidiscretizationImplicit`](@ref). The spatial discretization is a
+# local discontinuous Galerkin (LDG) spectral-element method with collocated
+# Legendre-Gauss-Lobatto quadrature. The mixed formulation evolves nodal water content
+# directly while enforcing its constitutive relation with pressure head algebraically.
 
 solver = DGSEM(polydeg = 3)
 
@@ -62,9 +62,10 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 
 # ### 4. Solve and keep a time history
 #
-# The Richards problem is stiff, so [`default_algorithm`](@ref) selects the `Rodas5P`
-# Rosenbrock method from the SciML ecosystem. The time step is adaptive, with an initial
-# step size of $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify
+# The Richards problem is stiff, so [`default_algorithm`](@ref) selects the eight-stage,
+# fifth-order `Rodas5P` Rosenbrock-Wanner method, with an embedded fourth-order
+# approximation for adaptive time stepping. The initial step size is
+# $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify
 # `saveat = 0.0:6.0:360.0` to save a solution every six seconds, which will be used to
 # create an animation in the next tutorial section. The `adaptive = true` keyword below
 # controls time adaptivity only; see `examples/elixir_richards_celia_1990_amr.jl` for
@@ -72,19 +73,14 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 
 ode = semidiscretize(semi, problem.tspan)
 
-sol = solve(ode,
-            default_algorithm(semi);
-            dt = 1.0e-2,
-            adaptive = true,
-            saveat = 0.0:6.0:360.0,
-            save_everystep = false,
-            maxiters = typemax(Int))
+sol = solve(ode, default_algorithm(semi); dt = 1.0e-2, adaptive = true,
+            saveat = 0.0:6.0:360.0, save_everystep = false, maxiters = typemax(Int))
 
 println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) saved states.")
 
 # ## Plot the final pressure head profile
 #
-# Now that the solve is complete, we load the optional plotting packages. HydroTrixi
+# Now that the solve is complete, we load the optional plotting packages. HydroTrixi.jl
 # declares these packages as weak dependencies, so a fresh package environment may not
 # have them installed yet. If `using CairoMakie` fails, install the plotting packages in
 # the active environment before continuing:
@@ -98,19 +94,17 @@ using CairoMakie
 using LaTeXStrings
 
 # 
-# The mixed Richards formulation stores both evolved and state variables. The pressure head
-# lives in the state block, so we plot `component = 2` with
+# The mixed formulation of the Richards equation orders its state as
+# $\boldsymbol{y} = (\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}$, where
+# $\boldsymbol{\Theta}$ contains water content and $\boldsymbol{\Psi}$ contains pressure
+# head. We therefore plot `component = 2` with
 # [`plot_solution_1d`](@ref). The output file is written into the docs asset
 # directory prepared by the build.
 
 plot_path = joinpath(asset_dir, "richards_celia_1990_pressure_head.png")
 
-_ = plot_solution_1d(sol;
-                     component = 2,
-                     xlabel = L"$z$ (m)",
-                     ylabel = L"$\psi$ (m)",
-                     ylims = (-0.65, -0.15),
-                     output_path = plot_path)
+_ = plot_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+                     ylims = (-0.65, -0.15), output_path = plot_path)
 
 println("Saved final-time plot to $(plot_path)")
 
@@ -123,12 +117,8 @@ println("Saved final-time plot to $(plot_path)")
 
 animation_path = joinpath(asset_dir, "richards_celia_1990_pressure_head.gif")
 
-_ = animate_solution_1d(sol;
-                        component = 2,
-                        xlabel = L"$z$ (m)",
-                        ylabel = L"$\psi$ (m)",
-                        ylims = (-0.65, -0.15),
-                        output_path = animation_path,
+_ = animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+                        ylims = (-0.65, -0.15), output_path = animation_path,
                         framerate = 20)
 
 println("Saved animation to $(animation_path)")

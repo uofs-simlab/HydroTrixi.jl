@@ -37,22 +37,16 @@ end
 function Base.resize!(boundaries::ParabolicBoundaryContainer1D, equations, dg, cache)
     capacity = 2 * Trixi.nvariables(equations) * Trixi.nboundaries(cache.boundaries)
     resize!(boundaries._flux_values, capacity)
-    boundaries.flux_values = unsafe_wrap(Array,
-                                         pointer(boundaries._flux_values),
+    boundaries.flux_values = unsafe_wrap(Array, pointer(boundaries._flux_values),
                                          (2, Trixi.nvariables(equations),
                                           Trixi.nboundaries(cache.boundaries)))
     return nothing
 end
 
-function Trixi.refine!(u_ode::AbstractVector,
-                       adaptor,
-                       mesh::Trixi.TreeMesh{1},
+function Trixi.refine!(u_ode::AbstractVector, adaptor, mesh::Trixi.TreeMesh{1},
                        equations::Trixi.AbstractEquationsParabolic{1},
-                       dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
-                       cache,
-                       cache_parabolic,
-                       elements_to_refine,
-                       limiter!)
+                       dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis}, cache,
+                       cache_parabolic, elements_to_refine, limiter!)
     Trixi.refine!(u_ode, adaptor, mesh, equations, dg, cache, elements_to_refine,
                   limiter!)
 
@@ -63,15 +57,10 @@ function Trixi.refine!(u_ode::AbstractVector,
     return nothing
 end
 
-function Trixi.coarsen!(u_ode::AbstractVector,
-                        adaptor,
-                        mesh::Trixi.TreeMesh{1},
+function Trixi.coarsen!(u_ode::AbstractVector, adaptor, mesh::Trixi.TreeMesh{1},
                         equations::Trixi.AbstractEquationsParabolic{1},
-                        dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
-                        cache,
-                        cache_parabolic,
-                        elements_to_remove,
-                        limiter!)
+                        dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis}, cache,
+                        cache_parabolic, elements_to_remove, limiter!)
     Trixi.coarsen!(u_ode, adaptor, mesh, equations, dg, cache, elements_to_remove,
                    limiter!)
 
@@ -129,9 +118,24 @@ function Trixi.rhs_parabolic!(du, u, t, mesh::Trixi.TreeMesh{1},
     # interior-side solution and flux to be available at the boundary for use in the 
     # boundary condition
     Trixi.@trixi_timeit Trixi.timer() "prolong2boundaries" begin
-        prolong2boundaries_divergence!(parabolic_boundaries, cache, flux_parabolic,
-                                       mesh,
-                                       equations_parabolic, solver)
+        neighbor_sides = cache.boundaries.neighbor_sides
+        boundary_flux_values = parabolic_boundaries.flux_values
+        last_node = Trixi.nnodes(solver)
+
+        Trixi.@threaded for boundary in Trixi.eachboundary(solver, cache)
+            element = cache.boundaries.neighbor_ids[boundary]
+
+            if neighbor_sides[boundary] == 1
+                for v in Trixi.eachvariable(equations_parabolic)
+                    boundary_flux_values[1, v, boundary] = flux_parabolic[v, last_node,
+                                                                          element]
+                end
+            else
+                for v in Trixi.eachvariable(equations_parabolic)
+                    boundary_flux_values[2, v, boundary] = flux_parabolic[v, 1, element]
+                end
+            end
+        end
     end
 
     Trixi.@trixi_timeit Trixi.timer() "boundary flux" begin
@@ -168,8 +172,7 @@ function calc_boundary_flux_divergence!(cache, t,
     return nothing
 end
 
-function calc_boundary_flux_divergence!(cache, t,
-                                        boundary_conditions::NamedTuple,
+function calc_boundary_flux_divergence!(cache, t, boundary_conditions::NamedTuple,
                                         mesh::Trixi.TreeMesh{1},
                                         equations_parabolic::Trixi.AbstractEquationsParabolic{1},
                                         surface_integral,
@@ -199,14 +202,12 @@ end
 
 function calc_boundary_flux_by_direction_divergence!(surface_flux_values::AbstractArray{<:Any,
                                                                                         3},
-                                                     t,
-                                                     boundary_condition,
+                                                     t, boundary_condition,
                                                      equations_parabolic::Trixi.AbstractEquationsParabolic{1},
                                                      surface_integral,
                                                      dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
-                                                     cache, direction,
-                                                     first_boundary, last_boundary,
-                                                     cache_parabolic)
+                                                     cache, direction, first_boundary,
+                                                     last_boundary, cache_parabolic)
     parabolic_boundaries = cache_parabolic.parabolic_boundaries
     (; u, neighbor_ids, neighbor_sides, node_coordinates, orientations) = cache.boundaries
     parabolic_flux_values = parabolic_boundaries.flux_values
@@ -233,32 +234,6 @@ function calc_boundary_flux_by_direction_divergence!(surface_flux_values::Abstra
 
         for v in Trixi.eachvariable(equations_parabolic)
             surface_flux_values[v, direction, neighbor] = flux[v]
-        end
-    end
-
-    return nothing
-end
-
-function prolong2boundaries_divergence!(parabolic_boundaries, cache, flux_parabolic,
-                                        mesh::Trixi.TreeMesh{1},
-                                        equations::Trixi.AbstractEquationsParabolic{1},
-                                        dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis})
-    neighbor_sides = cache.boundaries.neighbor_sides
-    boundary_flux_values = parabolic_boundaries.flux_values
-
-    Trixi.@threaded for boundary in Trixi.eachboundary(dg, cache)
-        element = cache.boundaries.neighbor_ids[boundary]
-
-        if neighbor_sides[boundary] == 1
-            for v in Trixi.eachvariable(equations)
-                boundary_flux_values[1, v, boundary] = flux_parabolic[v,
-                                                                      Trixi.nnodes(dg),
-                                                                      element]
-            end
-        else
-            for v in Trixi.eachvariable(equations)
-                boundary_flux_values[2, v, boundary] = flux_parabolic[v, 1, element]
-            end
         end
     end
 

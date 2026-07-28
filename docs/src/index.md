@@ -10,10 +10,21 @@ problems. It builds upon the parabolic spatial discretization capabilities in
 methods in the [SciML ecosystem](https://sciml.ai/), with support for one-dimensional
 Richards and diffusion problems.
 
+For the Richards equation, HydroTrixi.jl uses an arbitrary-order local discontinuous
+Galerkin spectral-element discretization with collocated Legendre-Gauss-Lobatto
+quadrature. The mixed formulation evolves water content directly while enforcing its
+constitutive relation with pressure head as an algebraic constraint. The pressure-head
+formulation instead advances pressure head through the nonlinear capacity function. Both
+forms satisfy the same semi-discrete water mass balance, while direct evolution of water
+content enables the mixed formulation to retain that linear balance under time
+integration and conservative mesh transfer. Adaptive Rosenbrock-Wanner methods provide
+temporal adaptivity, and adaptive mesh refinement can resolve sharp wetting fronts.
+
 ## Tutorials
 
 - [Celia *et al.* (1990) infiltration problem](tutorials/celia_1990.md)
-- [Sparse finite-difference Jacobian evaluation](tutorials/richards_jacobian_sparsity.md)
+- [Sparse finite-difference Jacobian evaluation for the mixed
+  formulation](tutorials/richards_jacobian_sparsity.md)
 
 ## Installation
 

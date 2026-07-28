@@ -5,6 +5,7 @@ version = "0.1.0-DEV"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
@@ -21,7 +22,8 @@ HydroTrixiVisualizationExt = ["CairoMakie", "LaTeXStrings"]
 [compat]
 CairoMakie = "0.15"
 LaTeXStrings = "1"
-OrdinaryDiffEq = "6"
+LinearSolve = "3"
+OrdinaryDiffEq = "6.111"
 SciMLBase = "2"
 Trixi = "0.16.24"
 julia = "1.10"

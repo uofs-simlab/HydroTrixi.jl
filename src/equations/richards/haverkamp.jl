@@ -4,19 +4,19 @@
 @doc raw"""
     Haverkamp(; saturated_hydraulic_conductivity, alpha, beta, A, gamma, theta_s, theta_r)
 
-A Haverkamp constitutive model for Richards' equation, written in the form used by Celia
-et al. (1990) and Ireson et al. (2023). For ``\psi < 0``, the effective saturation and
-hydraulic conductivity are
+A Haverkamp constitutive model for the Richards equation, written in the form used by
+Celia et al. (1990) and Ireson et al. (2023). For ``\psi < 0``, the effective saturation
+and hydraulic conductivity are
 ```math
 S_e(\psi) = \frac{\alpha}{\alpha + |\psi|^\beta},
 \qquad
-K(\psi) = K_s\,\frac{A}{A + |\psi|^\gamma},
+\mathcal{K}(\psi) = \mathcal{K}_s\,\frac{A}{A + |\psi|^\gamma},
 ```
 with saturated values recovered for ``\psi \ge 0``. The parameters ``\alpha`` and ``A``
 carry units of ``[L]^\beta`` and ``[L]^\gamma`` respectively, where ``[L]`` is the
 length unit chosen by the caller for ``\psi``. The associated water content is
 ```math
-\theta(\psi) = \theta_r + (\theta_s - \theta_r) S_e(\psi).
+\vartheta(\psi) = \vartheta_r + (\vartheta_s - \vartheta_r) S_e(\psi).
 ```
 
 # References
@@ -43,12 +43,7 @@ struct Haverkamp{RealT}
     theta_r::RealT
 end
 
-function Haverkamp(; saturated_hydraulic_conductivity,
-                   alpha,
-                   beta,
-                   A,
-                   gamma,
-                   theta_s,
+function Haverkamp(; saturated_hydraulic_conductivity, alpha, beta, A, gamma, theta_s,
                    theta_r)
     RealT = promote_type(typeof(saturated_hydraulic_conductivity), typeof(alpha),
                          typeof(beta), typeof(A), typeof(gamma),
@@ -72,16 +67,5 @@ end
 
     return model.saturated_hydraulic_conductivity * model.A /
            (model.A + abs(psi)^model.gamma)
-end
-
-@inline function hydraulic_conductivity_derivative(psi, model::Haverkamp)
-    if psi >= zero(psi)
-        return zero(psi)
-    end
-
-    abs_psi = abs(psi)
-    denominator = model.A + abs_psi^model.gamma
-    return model.saturated_hydraulic_conductivity * model.A * model.gamma *
-           abs_psi^(model.gamma - 1) / denominator^2
 end
 end # @muladd

@@ -2,7 +2,9 @@
     HydroTrixi
 
 **HydroTrixi.jl** is an adaptive discontinuous spectral-element framework for hydrologic
-problems based on the Trixi.jl and SciML ecosystems.
+problems based on the Trixi.jl and SciML ecosystems. Its one-dimensional Richards solver
+supports mixed and pressure-head formulations with local discontinuous Galerkin spatial
+discretization, adaptive implicit time integration, and adaptive mesh refinement.
 """
 module HydroTrixi
 
@@ -11,6 +13,7 @@ using OrdinaryDiffEq
 using SciMLBase
 using Trixi
 using LinearAlgebra
+using LinearSolve
 using SparseArrays
 
 include("auxiliary/auxiliary.jl")
@@ -37,15 +40,15 @@ export source_terms_richards_manufactured_solution
 export BoundaryConditionDirichletPenalty
 export MixedForm
 export PressureHeadForm
+export DefaultJacobian
+export SparseJacobian
 export SemidiscretizationImplicit
+export AbstractTemporalOperator
 export TemporalOperatorConstitutive
 export TemporalOperatorCapacity
+export AbstractPassiveVariables
 export NoPassiveVariables
-export PassiveVariables
 export PassiveVariablesBoundaryFlux1D
-export passive_variable_view
-export passive_variables
-export boundary_flux_integrals
 export pressure_head_from_water_content
 export default_algorithm
 export compute_eoc
@@ -85,7 +88,7 @@ function plot_convergence_1d end
                    time_column = "time", mass_bias_column = "mass_bias", kwargs...)
     plot_mass_bias(sources; labels, kwargs...)
 
-Plot the saved mass bias time history stored in `sol`, in a Trixi analysis file, or in
+Plot the saved mass bias time history stored in `sol`, in a Trixi.jl analysis file, or in
 multiple sources, save it to `output_path`, and return the `CairoMakie.Figure`. By
 default, the mass bias is scaled by an automatically selected power of ten and the
 corresponding exponent is shown above the top-left corner of the axis.

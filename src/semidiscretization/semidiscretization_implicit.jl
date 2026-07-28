@@ -1,61 +1,79 @@
+@doc raw"""
+    AbstractTemporalOperator
+
+Abstract supertype for temporal formulations used by
+[`SemidiscretizationImplicit`](@ref). A temporal operator determines the physical state
+layout, residual construction, mass matrix, initial coefficients, and adaptive mesh
+refinement reconstruction.
+"""
 abstract type AbstractTemporalOperator end
+
+@doc raw"""
+    AbstractPassiveVariables
+
+Abstract supertype for passive variable configurations used for diagnostics by
+[`SemidiscretizationImplicit`](@ref). Passive variables refer to additional scalar
+variables appended to the physical ODE or DAE state that are integrated by the time
+integrator but do not affect the physical residual. For example, a passive variable can
+store the time-integrated numerical flux at a boundary for diagnostic purposes (see
+[`PassiveVariablesBoundaryFlux1D`](@ref)).
+"""
+abstract type AbstractPassiveVariables end
 
 @doc raw"""
     NoPassiveVariables()
 
-Passive-variable configuration for implicit semidiscretizations without appended
+Passive variable configuration for implicit semidiscretizations without appended
 diagnostic variables.
 """
-struct NoPassiveVariables end
-
-@doc raw"""
-    PassiveVariables(nvariables, initial_condition, rhs!)
-
-Append `nvariables` passive scalar variables to a [`SemidiscretizationImplicit`](@ref).
-The passive variables are integrated by the time integrator but do not affect the
-physical residual. The function `initial_condition(semi_base, t)` returns the initial
-passive values, and `rhs!(dq, u_physical, du_physical, semi, t)` fills their time
-derivatives.
-"""
-struct PassiveVariables{InitialCondition, RHS}
-    nvariables::Int
-    initial_condition::InitialCondition
-    rhs!::RHS
-end
-
-function PassiveVariables(nvariables, initial_condition, rhs!)
-    nvariables >= 0 ||
-        throw(ArgumentError("Expected a non-negative number of passive variables."))
-    return PassiveVariables{typeof(initial_condition), typeof(rhs!)}(Int(nvariables),
-                                                                     initial_condition,
-                                                                     rhs!)
-end
+struct NoPassiveVariables <: AbstractPassiveVariables end
 
 @doc raw"""
     PassiveVariablesBoundaryFlux1D()
 
 Append two passive scalar variables that store the time-integrated numerical boundary
-fluxes at the negative and positive boundaries of a one-dimensional scalar problem. The
-stored fluxes use the same sign convention as the parabolic flux in the semidiscrete
-operator.
+fluxes at the negative and positive boundaries of a one-dimensional scalar problem,
+following the solver flux output method (SFOM) proposed by Ireson et al. (2023). For a
+Richards column on ``[0,L]``, measuring positive downwards, the stored values are
+``\int_{t_0}^t \hat{f}_0(\tau)\,\mathrm{d}\tau`` and
+``\int_{t_0}^t \hat{f}_K(\tau)\,\mathrm{d}\tau``, where ``\hat{f}_0`` and ``\hat{f}_K`` are
+the numerical fluxes at the top and bottom ends of the column.
+
+# References
+- Ireson, A. M., Spiteri, R. J., Clark, M. P., Mathias, S. A. (2023).
+  A simple, efficient, mass-conservative approach to solving Richards'
+  equation (openRE, v1.0). *Geoscientific Model Development*, 16, 659-677.
+  [DOI: 10.5194/gmd-16-659-2023](https://doi.org/10.5194/gmd-16-659-2023)
 """
-struct PassiveVariablesBoundaryFlux1D end
+struct PassiveVariablesBoundaryFlux1D <: AbstractPassiveVariables end
 
 @doc raw"""
-    SemidiscretizationImplicit{Semidiscretization, TemporalOperator, PassiveVariables}
+    SemidiscretizationImplicit{Semidiscretization, TemporalOperator,
+                               PassiveVariables}
 
-A semidiscretization wrapper that augments a spatial semidiscretization with a temporal
-operator, so that the semi-discrete problem is not restricted to the explicit form
-``\mathrm{d}\mathbf{u}/\mathrm{d}t = R(\mathbf{u}, t)``. For example,
-[`TemporalOperatorConstitutive`](@ref) enforces a map between state and evolved
-variables, while [`TemporalOperatorCapacity`](@ref) applies a nodal capacity function to
-the spatial residual. Passive scalar variables can be appended to the ODE state for
-diagnostics that are integrated by the time integrator but do not affect the physical
-residual.
+A semidiscretization wrapper that combines a spatial residual with a temporal operator in
+the constant mass-matrix form
+```math
+\boldsymbol{A}\dot{\boldsymbol{y}}(t) =
+\boldsymbol{\mathcal{F}}(\boldsymbol{y}(t),t),
+```
+where `\boldsymbol{A}` is a constant mass matrix and `\boldsymbol{\mathcal{F}}` is the
+residual, which may be modified to account for a capacity function or a constitutive
+relation. The specific forms of `\boldsymbol{A}` and `\boldsymbol{\mathcal{F}}` are
+determined by the `TemporalOperator` type parameter. The `PassiveVariables`
+type parameter is used to specify any additional scalar variables that should be appended
+to the state for diagnostics that are updated by the time integrator but do not affect the
+physical residual.
+
+!!! note
+    The mass matrix `\boldsymbol{A}` is not the mass matrix of the spatial discretization. 
+    It is a constant matrix that is used to define the temporal operator in the 
+    semidiscretization. The spatial mass matrix is part of the residual `\boldsymbol
+    {\mathcal{F}}` and is handled by the underlying spatial semidiscretization.
 """
 struct SemidiscretizationImplicit{Semidiscretization <: Trixi.AbstractSemidiscretization,
                                   TemporalOperator <: AbstractTemporalOperator,
-                                  PassiveVariables} <:
+                                  PassiveVariables <: AbstractPassiveVariables} <:
        Trixi.AbstractSemidiscretization
     semi_base::Semidiscretization
     operator_temporal::TemporalOperator
@@ -64,8 +82,7 @@ end
 
 function SemidiscretizationImplicit(semi_base::Trixi.AbstractSemidiscretization,
                                     operator_temporal::AbstractTemporalOperator)
-    return SemidiscretizationImplicit(semi_base, operator_temporal,
-                                      NoPassiveVariables())
+    return SemidiscretizationImplicit(semi_base, operator_temporal, NoPassiveVariables())
 end
 
 function Base.show(io::IO, semi::SemidiscretizationImplicit)
@@ -83,25 +100,32 @@ end
 
 Temporal operator for a [`SemidiscretizationImplicit`](@ref) that takes the form
 ```math
-\frac{\mathrm{d}\mathbf{u}_\mathrm{evolved}}{\mathrm{d} t} =
-R(\mathbf{u}_\mathrm{state}, t), \qquad
-0 = \mathbf{u}_\mathrm{evolved} - S(\mathbf{u}_\mathrm{state}),
-```
-where ``R`` is the operator associated with the spatial discretization `semi_base`, and
-``S`` is `state_to_evolved`, which maps the state variable(s) to the evolved variable(s).
-The optional `evolved_to_state` inverse is required by AMR to reconstruct the algebraic
-state after transferring the evolved block. In the case of the Richards equation, for
-example, the state variable is the pressure head, and the evolved variable is the water
-content, which are related by the water retention curve (i.e., [`water_content`](@ref)).
-HydroTrixi.jl then uses SciML's DAE solvers to integrate the resulting system of
-equations based on the following mass-matrix form:
-```math
-\begin{bmatrix} I & 0 \\ 0 & 0 \end{bmatrix} \frac{\mathrm{d}}{\mathrm{d} t}
-\begin{bmatrix} \mathbf{u}_\mathrm{evolved} \\ \mathbf{u}_\mathrm{state} \end{bmatrix} =
+\begin{bmatrix} I & 0 \\ 0 & 0 \end{bmatrix}
+\frac{\mathrm{d}}{\mathrm{d}t}
 \begin{bmatrix}
-R(\mathbf{u}_\mathrm{state}, t) \\
-\mathbf{u}_\mathrm{evolved} - S(\mathbf{u}_\mathrm{state})
+\boldsymbol{u}_\mathrm{evolved} \\ \boldsymbol{u}_\mathrm{state}
+\end{bmatrix}
+=
+\begin{bmatrix}
+\boldsymbol{\mathcal{R}}(\boldsymbol{u}_\mathrm{state},t) \\
+\boldsymbol{u}_\mathrm{evolved} -
+\boldsymbol{\vartheta}(\boldsymbol{u}_\mathrm{state})
 \end{bmatrix}.
+```
+Here, ``\boldsymbol{\mathcal{R}}`` is the spatial residual, and
+``\boldsymbol{\vartheta}`` is `state_to_evolved`, the generic constitutive map. For the
+mixed formulation of the Richards equation,
+``\boldsymbol{u}_\mathrm{evolved} = \boldsymbol{\Theta}``,
+``\boldsymbol{u}_\mathrm{state} = \boldsymbol{\Psi}``, giving
+```math
+\boldsymbol{\mathcal{F}}(\boldsymbol{y},t) =
+\begin{bmatrix}
+\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t) \\
+\boldsymbol{\Theta} - \boldsymbol{\vartheta}(\boldsymbol{\Psi})
+\end{bmatrix}.
+```
+The optional `evolved_to_state` inverse is required by adaptive mesh refinement to
+reconstruct the algebraic state after transferring the evolved block.
 """
 struct TemporalOperatorConstitutive{StateToEvolved, EvolvedToState} <:
        AbstractTemporalOperator
@@ -119,13 +143,15 @@ end
 Temporal operator for a [`SemidiscretizationImplicit`](@ref) that stores the state
 variable directly and applies a nodal capacity function to the spatial residual,
 ```math
-\frac{\mathrm{d}\mathbf{u}}{\mathrm{d}t}
-= C(\mathbf{u})^{-1} R(\mathbf{u}, t).
+\dot{\boldsymbol{u}}(t) =
+\boldsymbol{C}(\boldsymbol{u}(t))^{-1}
+\boldsymbol{\mathcal{R}}(\boldsymbol{u}(t),t).
 ```
 For the pressure-head form of the Richards equation, the state variable is ``\psi`` and
-``C(\psi) = \mathrm{d}\theta / \mathrm{d}\psi``. The capacity must be strictly positive
-at all nodal states. The optional AMR transfer maps convert the state to the transferred
-variable before mesh adaptation and reconstruct the state afterwards.
+``C(\psi) = \mathrm{d}\vartheta / \mathrm{d}\psi``. The capacity must be strictly
+positive at all nodal states. The optional adaptive mesh refinement transfer maps convert
+the state to the transferred variable before mesh adaptation and reconstruct the state
+afterwards.
 """
 struct TemporalOperatorCapacity{CapacityFunction, TransferVariables, TransferToState} <:
        AbstractTemporalOperator
@@ -149,23 +175,17 @@ print_temporal_operator_summary(io::IO, ::AbstractTemporalOperator) = nothing
 function print_temporal_operator_summary(io::IO,
                                          operator_temporal::TemporalOperatorConstitutive)
     Trixi.summary_line(io, "state to evolved", operator_temporal.state_to_evolved)
-    return Trixi.summary_line(io, "evolved to state",
-                              operator_temporal.evolved_to_state)
+    return Trixi.summary_line(io, "evolved to state", operator_temporal.evolved_to_state)
 end
 
 function print_temporal_operator_summary(io::IO,
                                          operator_temporal::TemporalOperatorCapacity)
     Trixi.summary_line(io, "capacity function", operator_temporal.capacity_function)
-    Trixi.summary_line(io, "transfer variables",
-                       operator_temporal.transfer_variables)
-    return Trixi.summary_line(io, "transfer to state",
-                              operator_temporal.transfer_to_state)
+    Trixi.summary_line(io, "transfer variables", operator_temporal.transfer_variables)
+    return Trixi.summary_line(io, "transfer to state", operator_temporal.transfer_to_state)
 end
 
 @inline passive_variable_count(::NoPassiveVariables) = 0
-@inline function passive_variable_count(passive_variables::PassiveVariables)
-    return passive_variables.nvariables
-end
 @inline passive_variable_count(::PassiveVariablesBoundaryFlux1D) = 2
 
 print_passive_variables_summary(io::IO, ::NoPassiveVariables) = nothing
@@ -177,7 +197,8 @@ end
 
 # Wrapper to drive dispatch based on the temporal operator type on methods that take
 # mesh, equations, solver, and cache as separate arguments.
-struct CacheImplicit{Cache, TemporalOperator <: AbstractTemporalOperator, PassiveVariables}
+struct CacheImplicit{Cache, TemporalOperator <: AbstractTemporalOperator,
+                     PassiveVariables <: AbstractPassiveVariables}
     cache_base::Cache
     operator_temporal::TemporalOperator
     passive_variables::PassiveVariables
@@ -192,8 +213,7 @@ end
 end
 
 @inline function Base.getproperty(cache::CacheImplicit, field::Symbol)
-    if field === :cache_base || field === :operator_temporal ||
-       field === :passive_variables
+    if field === :cache_base || field === :operator_temporal || field === :passive_variables
         return getfield(cache, field)
     end
     return getproperty(getfield(cache, :cache_base), field)
@@ -229,6 +249,8 @@ function Base.show(io::IO, ::MIME"text/plain", semi::SemidiscretizationImplicit)
     end
 end
 
+# Return the number of passive variables appended to the ODE state of `semi`. The total
+# number of degrees of freedom is the sum of the physical and passive degrees of freedom.
 @inline function passive_variable_count(semi::SemidiscretizationImplicit)
     return passive_variable_count(semi.passive_variables)
 end
@@ -249,37 +271,20 @@ end
     return @view(u_ode[1:(length(u_ode) - n_passive)])
 end
 
-@doc raw"""
-    passive_variable_view(u_ode, semi::SemidiscretizationImplicit)
-
-Return a view of the passive scalar variables appended to the ODE state of `semi`.
-"""
+# Return a view of passive diagnostic variables appended to the ODE state
 @inline function passive_variable_view(u_ode, semi::SemidiscretizationImplicit)
     n_passive = passive_variable_count(semi)
     n_passive == 0 && return @view(u_ode[1:0])
     return @view(u_ode[(length(u_ode) - n_passive + 1):length(u_ode)])
 end
 
-@doc raw"""
-    passive_variables(u_ode, semi::SemidiscretizationImplicit)
-
-Return a copy of the passive scalar variables appended to the ODE state of `semi`.
-"""
+# Return a copy of passive diagnostic variables appended to the ODE state
 function passive_variables(u_ode, semi::SemidiscretizationImplicit)
     return collect(passive_variable_view(u_ode, semi))
 end
 
-@doc raw"""
-    boundary_flux_integrals(u_ode, semi::SemidiscretizationImplicit)
-
-Return the integrated negative- and positive-boundary fluxes stored by
-[`PassiveVariablesBoundaryFlux1D`](@ref) as a named tuple with fields `x_neg` and
-`x_pos`.
-"""
+# Return integrated negative- and positive-boundary fluxes stored as passive variables
 function boundary_flux_integrals(u_ode, semi::SemidiscretizationImplicit)
-    semi.passive_variables isa PassiveVariablesBoundaryFlux1D ||
-        throw(ArgumentError("Boundary flux integrals require " *
-                            "`PassiveVariablesBoundaryFlux1D`."))
     passive_values = passive_variable_view(u_ode, semi)
     return (; x_neg = passive_values[1], x_pos = passive_values[2])
 end
@@ -293,13 +298,11 @@ end
     return u_physical
 end
 
-@inline function evolved_variable_view(u_physical,
-                                       ::TemporalOperatorConstitutive)
+@inline function evolved_variable_view(u_physical, ::TemporalOperatorConstitutive)
     return @view(u_physical[1:(length(u_physical) ÷ 2)])
 end
 
-@inline function state_variable_view(u_physical,
-                                     ::TemporalOperatorConstitutive)
+@inline function state_variable_view(u_physical, ::TemporalOperatorConstitutive)
     return @view(u_physical[(length(u_physical) ÷ 2 + 1):end])
 end
 
@@ -309,8 +312,7 @@ end
 end
 
 @inline function state_variable_view(u_ode, semi::SemidiscretizationImplicit)
-    return state_variable_view(physical_variable_view(u_ode, semi),
-                               semi.operator_temporal)
+    return state_variable_view(physical_variable_view(u_ode, semi), semi.operator_temporal)
 end
 
 # Error analysis compares state variables for both implicit forms
@@ -345,25 +347,22 @@ end
 
 # Default operator hooks correspond to the standard semidiscrete form `∂_t u = R(u, t)`.
 @inline function nvariables_total(::AbstractTemporalOperator,
-                                  semi_base::Trixi.AbstractSemidiscretization)
+                                  semi_base)
     return Trixi.nvariables(semi_base)
 end
 
-@inline check_ode_state(u_ode, ::AbstractTemporalOperator) = nothing
-
-@inline function rhs_implicit!(du_ode, u_ode,
-                               ::AbstractTemporalOperator,
-                               semi_base::Trixi.AbstractSemidiscretization, t)
+@inline function rhs_implicit!(du_ode, u_ode, ::AbstractTemporalOperator,
+                               semi_base, t)
     return Trixi.default_rhs(semi_base)(du_ode, u_ode, semi_base, t)
 end
 
 @inline function mass_matrix(u_ode, ::AbstractTemporalOperator,
-                             semi_base::Trixi.AbstractSemidiscretization)
+                             semi_base)
     return Diagonal(ones(eltype(u_ode), length(u_ode)))
 end
 
 function rhs_implicit!(du_ode, u_ode, operator_temporal::TemporalOperatorCapacity,
-                       semi_base::Trixi.AbstractSemidiscretization, t)
+                       semi_base, t)
     Trixi.default_rhs(semi_base)(du_ode, u_ode, semi_base, t)
     (; equations) = semi_base
     capacity_function = operator_temporal.capacity_function
@@ -376,27 +375,15 @@ function rhs_implicit!(du_ode, u_ode, operator_temporal::TemporalOperatorCapacit
     return nothing
 end
 
+# The constitutive operator stores evolved variables in the first half of the physical
+# block and state variables in the second half
 @inline function nvariables_total(::TemporalOperatorConstitutive,
-                                  semi_base::Trixi.AbstractSemidiscretization)
+                                  semi_base)
     return 2 * Trixi.nvariables(semi_base)
 end
 
-@inline function check_ode_state(u_ode, ::TemporalOperatorConstitutive)
-    iseven(length(u_ode)) ||
-        throw(ArgumentError("Expected an even number of implicit degrees of freedom."))
-    return nothing
-end
-
-function check_ode_state(u_ode, semi::SemidiscretizationImplicit)
-    n_passive = passive_variable_count(semi)
-    length(u_ode) >= n_passive ||
-        throw(ArgumentError("Expected at least $n_passive passive variables."))
-    return check_ode_state(physical_variable_view(u_ode, semi),
-                           semi.operator_temporal)
-end
-
 function rhs_implicit!(du_ode, u_ode, operator_temporal::TemporalOperatorConstitutive,
-                       semi_base::Trixi.AbstractSemidiscretization, t)
+                       semi_base, t)
     evolved_variable = evolved_variable_view(u_ode, operator_temporal)
     state_variable = state_variable_view(u_ode, operator_temporal)
     evolved_variable_rhs = evolved_variable_view(du_ode, operator_temporal)
@@ -417,7 +404,7 @@ function rhs_implicit!(du_ode, u_ode, operator_temporal::TemporalOperatorConstit
 end
 
 function mass_matrix(u_ode, ::TemporalOperatorConstitutive,
-                     semi_base::Trixi.AbstractSemidiscretization)
+                     semi_base)
     half = length(u_ode) ÷ 2
     diagonal_entries = zeros(eltype(u_ode), length(u_ode))
     @inbounds diagonal_entries[1:half] .= one(eltype(u_ode))
@@ -428,66 +415,25 @@ function passive_initial_values(::NoPassiveVariables, semi_base, t, RealT)
     return RealT[]
 end
 
-function passive_initial_values(passive_variables::PassiveVariables, semi_base, t,
-                                RealT)
-    values = passive_variables.initial_condition(semi_base, t)
-    length(values) == passive_variable_count(passive_variables) ||
-        throw(ArgumentError("Passive initial condition returned $(length(values)) " *
-                            "values, expected " *
-                            "$(passive_variable_count(passive_variables))."))
-
-    passive_values = Vector{RealT}(undef, passive_variable_count(passive_variables))
-    @inbounds for i in eachindex(passive_values)
-        passive_values[i] = values[i]
-    end
-
-    return passive_values
-end
-
 function passive_initial_values(::PassiveVariablesBoundaryFlux1D, semi_base, t, RealT)
     return zeros(RealT, 2)
 end
 
-function set_passive_initial_values!(u_ode, semi::SemidiscretizationImplicit, t)
-    passive_values = passive_initial_values(semi.passive_variables, semi.semi_base, t,
-                                            eltype(u_ode))
-    passive_variable_view(u_ode, semi) .= passive_values
-    return nothing
-end
-
 function rhs_passive!(du_passive, u_physical, du_physical, ::NoPassiveVariables,
-                      semi::SemidiscretizationImplicit, t)
+                      semi, t)
     return nothing
 end
 
-function rhs_passive!(du_passive, u_physical, du_physical,
-                      passive_variables::PassiveVariables,
-                      semi::SemidiscretizationImplicit, t)
-    return passive_variables.rhs!(du_passive, u_physical, du_physical, semi, t)
-end
-
-function rhs_passive!(du_passive, u_physical, du_physical,
-                      ::PassiveVariablesBoundaryFlux1D,
-                      semi::SemidiscretizationImplicit, t)
-    flux_neg, flux_pos = boundary_fluxes_1d(semi.semi_base)
-    du_passive[1] = flux_neg
-    du_passive[2] = flux_pos
-    return nothing
-end
-
-function boundary_fluxes_1d(semi_base::Trixi.AbstractSemidiscretization)
-    mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi_base)
-    ndims(mesh) == 1 ||
-        throw(ArgumentError("Boundary flux passive variables require a 1D mesh."))
-    Trixi.nvariables(equations) == 1 ||
-        throw(ArgumentError("Boundary flux passive variables require one variable."))
-
+function rhs_passive!(du_passive, u_physical, du_physical, ::PassiveVariablesBoundaryFlux1D,
+                      semi::SemidiscretizationImplicit{<:Trixi.SemidiscretizationParabolic{<:Trixi.AbstractMesh{1},
+                                                                                           <:Trixi.AbstractEquationsParabolic{1,
+                                                                                                                              1},
+                                                                                           <:Any,
+                                                                                           <:NamedTuple{(:x_neg,
+                                                                                                         :x_pos)}}},
+                      t)
+    cache = semi.semi_base.cache
     n_boundaries_per_direction = cache.boundaries.n_boundaries_per_direction
-    length(n_boundaries_per_direction) == 2 ||
-        throw(ArgumentError("Expected two boundary directions in 1D."))
-    n_boundaries_per_direction[1] == 1 && n_boundaries_per_direction[2] == 1 ||
-        throw(ArgumentError("Boundary flux passive variables require non-periodic " *
-                            "1D boundaries."))
 
     # Boundary fluxes are read from the cache filled by the physical RHS evaluation
     surface_flux_values = cache.elements.surface_flux_values
@@ -498,14 +444,14 @@ function boundary_fluxes_1d(semi_base::Trixi.AbstractSemidiscretization)
     element_neg = cache.boundaries.neighbor_ids[boundary_neg]
     element_pos = cache.boundaries.neighbor_ids[boundary_pos]
 
-    return surface_flux_values[1, 1, element_neg],
-           surface_flux_values[1, 2, element_pos]
+    du_passive[1] = surface_flux_values[1, 1, element_neg]
+    du_passive[2] = surface_flux_values[1, 2, element_pos]
+    return nothing
 end
 
 function mass_matrix(u_ode, semi::SemidiscretizationImplicit)
     u_physical = physical_variable_view(u_ode, semi)
-    physical_mass_matrix = mass_matrix(u_physical, semi.operator_temporal,
-                                       semi.semi_base)
+    physical_mass_matrix = mass_matrix(u_physical, semi.operator_temporal, semi.semi_base)
     n_passive = passive_variable_count(semi)
     n_passive == 0 && return physical_mass_matrix
 
@@ -527,12 +473,12 @@ end
     return nvariables_total(semi.operator_temporal, semi.semi_base)
 end
 
-function implicit_physical_coefficients(t, semi_base::Trixi.AbstractSemidiscretization,
+function implicit_physical_coefficients(t, semi_base,
                                         ::TemporalOperatorCapacity)
     return Trixi.compute_coefficients(t, semi_base)
 end
 
-function implicit_physical_coefficients(t, semi_base::Trixi.AbstractSemidiscretization,
+function implicit_physical_coefficients(t, semi_base,
                                         operator_temporal::TemporalOperatorConstitutive)
     coefficients_state = Trixi.compute_coefficients(t, semi_base)
     coefficients_evolved = similar(coefficients_state)
@@ -547,13 +493,13 @@ function implicit_physical_coefficients(t, semi_base::Trixi.AbstractSemidiscreti
 end
 
 function implicit_physical_coefficients!(u_physical, t,
-                                         semi_base::Trixi.AbstractSemidiscretization,
+                                         semi_base,
                                          ::TemporalOperatorCapacity)
     return Trixi.compute_coefficients!(u_physical, t, semi_base)
 end
 
 function implicit_physical_coefficients!(u_physical, t,
-                                         semi_base::Trixi.AbstractSemidiscretization,
+                                         semi_base,
                                          operator_temporal::TemporalOperatorConstitutive)
     evolved_variable = evolved_variable_view(u_physical, operator_temporal)
     state_variable = state_variable_view(u_physical, operator_temporal)
@@ -576,8 +522,7 @@ function Trixi.compute_coefficients(t, semi::SemidiscretizationImplicit)
     end
 
     # Passive initial values are appended after the physical DAE state
-    coefficients_passive = passive_initial_values(semi.passive_variables, semi.semi_base,
-                                                  t,
+    coefficients_passive = passive_initial_values(semi.passive_variables, semi.semi_base, t,
                                                   eltype(coefficients_physical))
     coefficients_ode = vcat(coefficients_physical, coefficients_passive)
     record_mass_bias_initial_storage!(coefficients_ode, semi)
@@ -585,15 +530,14 @@ function Trixi.compute_coefficients(t, semi::SemidiscretizationImplicit)
 end
 
 function Trixi.compute_coefficients!(u_ode, t, semi::SemidiscretizationImplicit)
-    check_ode_state(u_ode, semi)
-
     u_physical = physical_variable_view(u_ode, semi)
-    implicit_physical_coefficients!(u_physical, t, semi.semi_base,
-                                    semi.operator_temporal)
+    implicit_physical_coefficients!(u_physical, t, semi.semi_base, semi.operator_temporal)
 
     if passive_variable_count(semi) > 0
         # Passive initial values are only written when a tail block exists
-        set_passive_initial_values!(u_ode, semi, t)
+        passive_values = passive_initial_values(semi.passive_variables, semi.semi_base,
+                                                t, eltype(u_ode))
+        passive_variable_view(u_ode, semi) .= passive_values
         record_mass_bias_initial_storage!(u_ode, semi)
     end
     return nothing
@@ -612,35 +556,42 @@ function rhs_implicit!(du_ode, u_ode, semi::SemidiscretizationImplicit, t)
     return nothing
 end
 
-function Trixi.semidiscretize(semi::SemidiscretizationImplicit, tspan;
-                              reset_threads = true,
-                              sparse_jacobian = false)
+@doc raw"""
+    semidiscretize(semi::SemidiscretizationImplicit, tspan;
+                   reset_threads = true, jacobian = DefaultJacobian())
+
+Construct a `SciMLBase.ODEProblem` for the constant mass-matrix system represented by
+`semi`. The `jacobian` strategy controls which Jacobian information HydroTrixi.jl supplies
+to SciML:
+
+- [`DefaultJacobian`](@ref) supplies neither an analytical `jac` function nor a
+  `jac_prototype`.
+- [`SparseJacobian`](@ref) supplies only the known sparse prototype for the residual
+  Jacobian; it does not select how the Jacobian entries are computed.
+
+`SparseJacobian()` has a method for serial, nonperiodic, one-dimensional Richards problems
+in mixed form using a Legendre-Gauss-Lobatto `DGSEM`, local discontinuous Galerkin fluxes,
+and [`NoPassiveVariables`](@ref). Other spatial and state layouts fail through ordinary
+Julia dispatch. MPI execution and periodic meshes are rejected explicitly because their
+runtime state would otherwise produce an incomplete sparsity pattern. The `autodiff`
+setting of the time-integration algorithm controls the Jacobian evaluation method.
+[`default_algorithm`](@ref) uses `AutoFiniteDiff()`, which applies graph-coloured finite
+differences when a sparse prototype is supplied. An `AnalyticalJacobian()` strategy, which
+would supply both `jac` and an appropriate `jac_prototype`, is not currently implemented.
+"""
+function Trixi.semidiscretize(semi::SemidiscretizationImplicit, tspan; reset_threads = true,
+                              jacobian = DefaultJacobian())
     if reset_threads
-        Trixi.Polyester.reset_threads!()
+        Trixi.Polyester.reset_threads!
     end
 
     u0_ode = Trixi.compute_coefficients(first(tspan), semi)
-    check_ode_state(u0_ode, semi)
-
-    jac_prototype = if sparse_jacobian
-        prototype = jacobian_structure(u0_ode, semi)
-        isnothing(prototype) &&
-            throw(ArgumentError("`sparse_jacobian = true` is supported only for " *
-                                "serial, nonperiodic, fixed-mesh, one-dimensional " *
-                                "mixed Richards problems using Gauss-Lobatto DGSEM, " *
-                                "minimum-dissipation LDG, and no passive variables."))
-        prototype
-    else
-        nothing
-    end
 
     mass_matrix_implicit = mass_matrix(u0_ode, semi)
+    jacobian_options_implicit = jacobian_options(jacobian, u0_ode, semi)
     ode_function_type = SciMLBase.ODEFunction{true, SciMLBase.FullSpecialize}
-    ode_function = ode_function_type(rhs_implicit!;
-                                     mass_matrix = mass_matrix_implicit,
-                                     jac_prototype = jac_prototype)
-    return SciMLBase.ODEProblem{true, SciMLBase.FullSpecialize}(ode_function,
-                                                                u0_ode,
-                                                                tspan,
+    ode_function = ode_function_type(rhs_implicit!; mass_matrix = mass_matrix_implicit,
+                                     jacobian_options_implicit...)
+    return SciMLBase.ODEProblem{true, SciMLBase.FullSpecialize}(ode_function, u0_ode, tspan,
                                                                 semi)
 end
