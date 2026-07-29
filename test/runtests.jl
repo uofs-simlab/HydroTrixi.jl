@@ -17,6 +17,11 @@ end
                         l2=[4.688250908054879e-5], linf=[0.00035212174570349586])
 end
 
+@trixi_testset "elixir_diffusion_1d_implicit.jl" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_diffusion_1d_implicit.jl"),
+                        l2=[4.688250908054879e-5], linf=[0.00035212174570349586])
+end
+
 @trixi_testset "elixir_diffusion_1d_mixed_dirichlet_neumann.jl" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR,
                                  "elixir_diffusion_1d_mixed_dirichlet_neumann.jl"),
