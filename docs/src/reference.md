@@ -11,6 +11,8 @@ EditURL = "https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/docs/src/refer
 HydroTrixi
 examples_dir
 default_algorithm
+DefaultJacobian
+SparseJacobian
 compute_eoc
 ```
 
