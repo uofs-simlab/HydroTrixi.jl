@@ -50,26 +50,34 @@ struct PassiveVariablesBoundaryFlux1D <: AbstractPassiveVariables end
 @doc raw"""
     SemidiscretizationImplicit{Semidiscretization, TemporalOperator,
                                PassiveVariables}
+    SemidiscretizationImplicit(semi_base, operator_temporal,
+                               passive_variables = NoPassiveVariables())
 
-A semidiscretization wrapper that combines a spatial residual with a temporal operator in
-the constant mass-matrix form
+A semidiscretization wrapper for the constant mass-matrix system
 ```math
-\boldsymbol{A}\dot{\boldsymbol{y}}(t) =
-\boldsymbol{\mathcal{F}}(\boldsymbol{y}(t),t),
+\boldsymbol{A}\dot{\boldsymbol{y}}(t)
+= \boldsymbol{\mathcal{F}}(\boldsymbol{y}(t),t).
 ```
-where `\boldsymbol{A}` is a constant mass matrix and `\boldsymbol{\mathcal{F}}` is the
-residual, which may be modified to account for a capacity function or a constitutive
-relation. The specific forms of `\boldsymbol{A}` and `\boldsymbol{\mathcal{F}}` are
-determined by the `TemporalOperator` type parameter. The `PassiveVariables`
-type parameter is used to specify any additional scalar variables that should be appended
-to the state for diagnostics that are updated by the time integrator but do not affect the
-physical residual.
+The temporal operator maps the spatial operator
+``\boldsymbol{\mathcal{R}}(\boldsymbol{u}_{\mathrm{state}},t)`` into a physical residual
+``\boldsymbol{\mathcal{F}}_{\mathrm{physical}}``. Here,
+``\boldsymbol{u}_{\mathrm{state}}`` denotes the state variables supplied to the spatial
+operator, and ``\boldsymbol{u}_{\mathrm{evolved}}`` denotes the variables advanced by the
+differential part of the temporal formulation. The standard and capacity operators use
+one stored vector for both roles. The constitutive operator stores the distinct blocks as
+``\boldsymbol{y}_{\mathrm{physical}} =
+(\boldsymbol{u}_{\mathrm{evolved}},\boldsymbol{u}_{\mathrm{state}})^\mathrm{T}``.
+
+Passive variables ``\boldsymbol{q}`` are appended after the physical state, giving
+``\boldsymbol{y} =
+(\boldsymbol{y}_{\mathrm{physical}},\boldsymbol{q})^\mathrm{T}``. They are integrated for
+diagnostics, but do not affect the physical residual. The complete augmented residual is
+``\boldsymbol{\mathcal{F}}``.
 
 !!! note
-    The mass matrix `\boldsymbol{A}` is not the mass matrix of the spatial discretization. 
-    It is a constant matrix that is used to define the temporal operator in the 
-    semidiscretization. The spatial mass matrix is part of the residual `\boldsymbol
-    {\mathcal{F}}` and is handled by the underlying spatial semidiscretization.
+    The constant temporal mass matrix ``\boldsymbol{A}`` is distinct from the spatial
+    discretization mass matrix, which is handled by `semi_base` inside
+    ``\boldsymbol{\mathcal{R}}``.
 """
 struct SemidiscretizationImplicit{Semidiscretization <: Trixi.AbstractSemidiscretization,
                                   TemporalOperator <: AbstractTemporalOperator,
@@ -96,6 +104,24 @@ function Base.show(io::IO, semi::SemidiscretizationImplicit)
 end
 
 @doc raw"""
+    TemporalOperatorStandard()
+
+Temporal operator for the standard one-block semidiscrete form
+```math
+\dot{\boldsymbol{u}}_{\mathrm{state}}(t)
+= \boldsymbol{\mathcal{R}}(\boldsymbol{u}_{\mathrm{state}}(t),t).
+```
+The state and evolved variables are roles played by the same stored vector:
+``\boldsymbol{u}_{\mathrm{evolved}} = \boldsymbol{u}_{\mathrm{state}}``. Before passive
+variables are appended, the physical state is
+``\boldsymbol{y}_{\mathrm{physical}} = \boldsymbol{u}_{\mathrm{state}}``, the physical
+residual is
+``\boldsymbol{\mathcal{F}}_{\mathrm{physical}} = \boldsymbol{\mathcal{R}}``, and the mass
+matrix is the identity.
+"""
+struct TemporalOperatorStandard <: AbstractTemporalOperator end
+
+@doc raw"""
     TemporalOperatorConstitutive(state_to_evolved; evolved_to_state = nothing)
 
 Temporal operator for a [`SemidiscretizationImplicit`](@ref) that takes the form
@@ -112,20 +138,23 @@ Temporal operator for a [`SemidiscretizationImplicit`](@ref) that takes the form
 \boldsymbol{\vartheta}(\boldsymbol{u}_\mathrm{state})
 \end{bmatrix}.
 ```
-Here, ``\boldsymbol{\mathcal{R}}`` is the spatial residual, and
+Here, ``\boldsymbol{\mathcal{R}}`` is the spatial operator, and
 ``\boldsymbol{\vartheta}`` is `state_to_evolved`, the generic constitutive map. For the
 mixed formulation of the Richards equation,
 ``\boldsymbol{u}_\mathrm{evolved} = \boldsymbol{\Theta}``,
 ``\boldsymbol{u}_\mathrm{state} = \boldsymbol{\Psi}``, giving
 ```math
-\boldsymbol{\mathcal{F}}(\boldsymbol{y},t) =
+\boldsymbol{\mathcal{F}}_{\mathrm{physical}}
+(\boldsymbol{y}_{\mathrm{physical}},t) =
 \begin{bmatrix}
 \boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t) \\
 \boldsymbol{\Theta} - \boldsymbol{\vartheta}(\boldsymbol{\Psi})
 \end{bmatrix}.
 ```
-The optional `evolved_to_state` inverse is required by adaptive mesh refinement to
-reconstruct the algebraic state after transferring the evolved block.
+Thus, the physical state contains distinct blocks ordered as evolved variables followed by
+state variables. Passive variables, when present, are appended after both blocks. The
+optional `evolved_to_state` inverse is required by adaptive mesh refinement to reconstruct
+the algebraic state after transferring the evolved block.
 """
 struct TemporalOperatorConstitutive{StateToEvolved, EvolvedToState} <:
        AbstractTemporalOperator
@@ -141,7 +170,7 @@ end
     TemporalOperatorCapacity(capacity_function; transfer_variables, transfer_to_state)
 
 Temporal operator for a [`SemidiscretizationImplicit`](@ref) that stores the state
-variable directly and applies a nodal capacity function to the spatial residual,
+variable directly and applies a nodal capacity function to the spatial operator,
 ```math
 \dot{\boldsymbol{u}}(t) =
 \boldsymbol{C}(\boldsymbol{u}(t))^{-1}
@@ -149,9 +178,12 @@ variable directly and applies a nodal capacity function to the spatial residual,
 ```
 For the pressure-head form of the Richards equation, the state variable is ``\psi`` and
 ``C(\psi) = \mathrm{d}\vartheta / \mathrm{d}\psi``. The capacity must be strictly
-positive at all nodal states. The optional adaptive mesh refinement transfer maps convert
-the state to the transferred variable before mesh adaptation and reconstruct the state
-afterwards.
+positive at all nodal states. The state and evolved variables are roles played by the same
+stored vector, so
+``\boldsymbol{y}_{\mathrm{physical}} = \boldsymbol{u}_{\mathrm{state}}``. Passive
+variables, when present, are appended after this vector. The optional adaptive mesh
+refinement transfer maps convert the state to the transferred variable before mesh
+adaptation and reconstruct the state afterwards.
 """
 struct TemporalOperatorCapacity{CapacityFunction, TransferVariables, TransferToState} <:
        AbstractTemporalOperator
@@ -289,12 +321,17 @@ function boundary_flux_integrals(u_ode, semi::SemidiscretizationImplicit)
     return (; x_neg = passive_values[1], x_pos = passive_values[2])
 end
 
-# Temporal operators split only the physical DAE state
-@inline function evolved_variable_view(u_physical, ::TemporalOperatorCapacity)
+# Standard and capacity operators use one stored vector for both variable roles
+@inline function evolved_variable_view(u_physical,
+                                       ::Union{TemporalOperatorStandard,
+                                               TemporalOperatorCapacity})
     return u_physical
 end
 
-@inline function state_variable_view(u_physical, ::TemporalOperatorCapacity)
+# Standard and capacity operators supply the stored vector to the spatial operator
+@inline function state_variable_view(u_physical,
+                                     ::Union{TemporalOperatorStandard,
+                                             TemporalOperatorCapacity})
     return u_physical
 end
 
@@ -323,10 +360,12 @@ function Trixi.calc_error_norms(func, u_ode, t, analyzer,
                                   cache_analysis)
 end
 
-# Analysis callbacks operate on the physical state without passive variables
+# Standard and capacity analysis uses the shared state and evolved vector
 @inline function Trixi.wrap_array(u_ode::AbstractVector, mesh::Trixi.AbstractMesh,
                                   equations, dg::Trixi.DGSEM,
-                                  cache::CacheImplicit{<:Any, <:TemporalOperatorCapacity})
+                                  cache::CacheImplicit{<:Any,
+                                                       <:Union{TemporalOperatorStandard,
+                                                               TemporalOperatorCapacity}})
     u_physical = physical_variable_view(u_ode, cache)
     return invoke(Trixi.wrap_array,
                   Tuple{AbstractVector, Trixi.AbstractMesh, Any, Trixi.DGSEM, Any},
@@ -473,8 +512,10 @@ end
     return nvariables_total(semi.operator_temporal, semi.semi_base)
 end
 
+# Standard and capacity operators initialize their shared state and evolved vector
 function implicit_physical_coefficients(t, semi_base,
-                                        ::TemporalOperatorCapacity)
+                                        ::Union{TemporalOperatorStandard,
+                                                TemporalOperatorCapacity})
     return Trixi.compute_coefficients(t, semi_base)
 end
 
@@ -492,9 +533,10 @@ function implicit_physical_coefficients(t, semi_base,
     return vcat(coefficients_evolved, coefficients_state)
 end
 
-function implicit_physical_coefficients!(u_physical, t,
-                                         semi_base,
-                                         ::TemporalOperatorCapacity)
+# Standard and capacity operators write initial data directly to their shared vector
+function implicit_physical_coefficients!(u_physical, t, semi_base,
+                                         ::Union{TemporalOperatorStandard,
+                                                 TemporalOperatorCapacity})
     return Trixi.compute_coefficients!(u_physical, t, semi_base)
 end
 
@@ -525,7 +567,7 @@ function Trixi.compute_coefficients(t, semi::SemidiscretizationImplicit)
     coefficients_passive = passive_initial_values(semi.passive_variables, semi.semi_base, t,
                                                   eltype(coefficients_physical))
     coefficients_ode = vcat(coefficients_physical, coefficients_passive)
-    record_mass_bias_initial_storage!(coefficients_ode, semi)
+    record_mass_bias_initial_storage!(coefficients_ode, semi, semi.operator_temporal)
     return coefficients_ode
 end
 
@@ -538,7 +580,7 @@ function Trixi.compute_coefficients!(u_ode, t, semi::SemidiscretizationImplicit)
         passive_values = passive_initial_values(semi.passive_variables, semi.semi_base,
                                                 t, eltype(u_ode))
         passive_variable_view(u_ode, semi) .= passive_values
-        record_mass_bias_initial_storage!(u_ode, semi)
+        record_mass_bias_initial_storage!(u_ode, semi, semi.operator_temporal)
     end
     return nothing
 end
@@ -561,23 +603,39 @@ end
                    reset_threads = true, jacobian = DefaultJacobian())
 
 Construct a `SciMLBase.ODEProblem` for the constant mass-matrix system represented by
-`semi`. The `jacobian` strategy controls which Jacobian information HydroTrixi.jl supplies
-to SciML:
+`semi`. Let ``\boldsymbol{u}_{\mathrm{state}}`` denote the variables supplied to the
+spatial operator ``\boldsymbol{\mathcal{R}}``, let
+``\boldsymbol{y}_{\mathrm{physical}}`` denote the temporal operator's state before passive
+variables are appended, and let
+``\boldsymbol{y} =
+(\boldsymbol{y}_{\mathrm{physical}},\boldsymbol{q})^\mathrm{T}`` denote the augmented ODE
+or DAE state. The rows and columns of the ODE function follow this ordering. The `jacobian`
+strategy controls which Jacobian information HydroTrixi.jl supplies to SciML:
 
 - [`DefaultJacobian`](@ref) supplies neither an analytical `jac` function nor a
   `jac_prototype`.
-- [`SparseJacobian`](@ref) supplies only the known sparse prototype for the residual
-  Jacobian; it does not select how the Jacobian entries are computed.
+- [`SparseJacobian`](@ref) composes
+  `spatial-operator sparsity -> physical-residual sparsity -> augmented-residual sparsity`
+  and supplies a numerical sparse zero prototype for
+  ``\partial\boldsymbol{\mathcal{F}}/\partial\boldsymbol{y}``. It does not select how the
+  Jacobian entries are computed.
 
-`SparseJacobian()` has a method for serial, nonperiodic, one-dimensional Richards problems
-in mixed form using a Legendre-Gauss-Lobatto `DGSEM`, local discontinuous Galerkin fluxes,
-and [`NoPassiveVariables`](@ref). Other spatial and state layouts fail through ordinary
-Julia dispatch. MPI execution and periodic meshes are rejected explicitly because their
-runtime state would otherwise produce an incomplete sparsity pattern. The `autodiff`
+The numerical prototype has `eltype(u0_ode)` and size `length(u0_ode)` by
+`length(u0_ode)`. It includes passive residual rows, when requested, and zero passive
+columns. It excludes entries that arise only from the temporal mass matrix
+``\boldsymbol{A}``; OrdinaryDiffEq adds those entries when preparing the Rosenbrock matrix
+``\boldsymbol{A} - \gamma\Delta t\,\boldsymbol{J}``.
+
+`SparseJacobian()` supports serial, nonperiodic, scalar, one-dimensional `TreeMesh`
+problems using a Lobatto-Legendre `DGSEM` and `ParabolicFormulationLocalDG` with any penalty
+parameter. [`TemporalOperatorStandard`](@ref), [`TemporalOperatorCapacity`](@ref),
+[`TemporalOperatorConstitutive`](@ref), [`NoPassiveVariables`](@ref), and
+[`PassiveVariablesBoundaryFlux1D`](@ref) are supported. Other signatures fail through
+ordinary Julia dispatch. MPI execution and periodic meshes are rejected explicitly because
+their runtime state would otherwise produce an incomplete sparsity pattern. The `autodiff`
 setting of the time-integration algorithm controls the Jacobian evaluation method.
 [`default_algorithm`](@ref) uses `AutoFiniteDiff()`, which applies graph-coloured finite
-differences when a sparse prototype is supplied. An `AnalyticalJacobian()` strategy, which
-would supply both `jac` and an appropriate `jac_prototype`, is not currently implemented.
+differences when a sparse prototype is supplied.
 """
 function Trixi.semidiscretize(semi::SemidiscretizationImplicit, tspan; reset_threads = true,
                               jacobian = DefaultJacobian())

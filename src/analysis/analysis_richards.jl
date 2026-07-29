@@ -133,8 +133,18 @@ initialized and is used by the analysis callback.
 """
 function mass_bias end
 
+# Leave standard passive diagnostics independent of Richards storage analysis
 function record_mass_bias_initial_storage!(u_ode::AbstractVector,
-                                           semi::SemidiscretizationImplicit)
+                                           semi::SemidiscretizationImplicit,
+                                           ::TemporalOperatorStandard)
+    return nothing
+end
+
+# Record the initial Richards storage for its capacity and constitutive forms
+function record_mass_bias_initial_storage!(u_ode::AbstractVector,
+                                           semi::SemidiscretizationImplicit,
+                                           ::Union{TemporalOperatorCapacity,
+                                                   TemporalOperatorConstitutive})
     MASS_BIAS_INITIAL_WATER_CONTENT[semi] = water_content_integral(u_ode, semi,
                                                                    semi.operator_temporal)
     return nothing

@@ -39,6 +39,7 @@ PressureHeadForm
 SemidiscretizationImplicit
 semidiscretize
 AbstractTemporalOperator
+TemporalOperatorStandard
 TemporalOperatorConstitutive
 TemporalOperatorCapacity
 HydroTrixi.AbstractPassiveVariables

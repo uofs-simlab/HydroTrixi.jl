@@ -23,8 +23,7 @@ temporal adaptivity, and adaptive mesh refinement can resolve sharp wetting fron
 ## Tutorials
 
 - [Celia *et al.* (1990) infiltration problem](tutorials/celia_1990.md)
-- [Sparse finite-difference Jacobian evaluation for the mixed
-  formulation](tutorials/richards_jacobian_sparsity.md)
+- [Sparse Jacobian evaluation](tutorials/richards_jacobian_sparsity.md)
 
 ## Installation
 

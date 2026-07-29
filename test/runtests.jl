@@ -36,7 +36,7 @@ end
 
 @trixi_testset "elixir_richards_manufactured_solution.jl sparse Jacobian" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_manufactured_solution.jl"),
-                        sparse_jacobian=true, form=MixedForm(), final_time=120.0,
+                        jacobian=SparseJacobian(), form=MixedForm(), final_time=120.0,
                         initial_refinement_level=4, polydeg=3, reltol=1.0e-9,
                         abstol=1.0e-11, saveat=Float64[], l2=[6.174720620257904e-5],
                         linf=[0.0005052944044678376])
@@ -50,11 +50,12 @@ end
                         linf=[0.0005052944065825626])
 end
 
-@testset "sparse Jacobian unsupported form" begin
+@testset "sparse Jacobian pressure-head form" begin
     trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_manufactured_solution.jl");
                   form = PressureHeadForm(), run_simulation = false)
 
-    @test_throws ArgumentError Trixi.semidiscretize(semi, tspan; sparse_jacobian = true)
+    ode_sparse = Trixi.semidiscretize(semi, tspan; jacobian = SparseJacobian())
+    @test size(ode_sparse.f.jac_prototype) == (length(ode_sparse.u0), length(ode_sparse.u0))
 end
 
 @testset "elixir_richards_celia_1990_amr.jl mass bias" begin

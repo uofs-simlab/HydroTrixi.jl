@@ -166,10 +166,17 @@ function (amr_callback::AMRCallbackImplicit)(integrator; kwargs...)
     if has_changed
         update_mass_matrix!(integrator.f, u_ode, semi)
         if has_jac_prototype
-            # Remake the ODE problem with the sparsity pattern of the adapted mesh
-            residual_pattern = jacobian_structure(integrator.u, integrator.p)
-            ode_function = SciMLBase.remake(integrator.f; sparsity = copy(residual_pattern),
-                                            jac_prototype = copy(residual_pattern))
+            # Rebuild the augmented residual prototype for the adapted mesh
+            residual_prototype = residual_jacobian_prototype(integrator.u, integrator.p)
+            expected_size = (length(integrator.u), length(integrator.u))
+            if size(residual_prototype) != expected_size ||
+               !all(iszero, nonzeros(residual_prototype))
+                throw(ArgumentError("Adapted residual Jacobian prototype is inconsistent " *
+                                    "with the ODE state."))
+            end
+            ode_function = SciMLBase.remake(integrator.f;
+                                            sparsity = copy(residual_prototype),
+                                            jac_prototype = copy(residual_prototype))
             ode_problem = SciMLBase.remake(integrator.sol.prob;
                                            f = ode_function, u0 = copy(integrator.u))
 
@@ -307,9 +314,10 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
     return has_changed
 end
 
-# Copy the evolved block used directly by the default AMR transfer
+# Transfer evolved variables directly for standard and constitutive operators
 function transferred_variables_for_amr(u_ode, semi::SemidiscretizationImplicit,
-                                       ::AbstractTemporalOperator)
+                                       ::Union{TemporalOperatorStandard,
+                                               TemporalOperatorConstitutive})
     return collect(evolved_variable_view(u_ode, semi))
 end
 
@@ -343,6 +351,15 @@ function resize_after_amr!(u_ode, transferred_ode, passive_ode,
         state_variable[i] = transfer_to_state(transferred_ode[i], equations)
     end
 
+    passive_variable_view(u_ode, semi) .= passive_ode
+    return nothing
+end
+
+# Rebuild the standard state while preserving passive diagnostic values
+function resize_after_amr!(u_ode, transferred_ode, passive_ode,
+                           semi::SemidiscretizationImplicit, ::TemporalOperatorStandard)
+    resize!(u_ode, length(transferred_ode) + length(passive_ode))
+    physical_variable_view(u_ode, semi) .= transferred_ode
     passive_variable_view(u_ode, semi) .= passive_ode
     return nothing
 end

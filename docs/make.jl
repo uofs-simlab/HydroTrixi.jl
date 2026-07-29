@@ -62,7 +62,7 @@ makedocs(; modules = [HydroTrixi], repo = Remotes.GitHub("uofs-simlab", "HydroTr
          pages = ["Home" => "index.md",
              "Tutorials" => ["Overview" => "tutorials.md",
                  "Celia *et al.* (1990) infiltration problem" => "tutorials/celia_1990.md",
-                 "Sparse Jacobian evaluation for the mixed formulation" => "tutorials/richards_jacobian_sparsity.md"
+                 "Sparse Jacobian evaluation" => "tutorials/richards_jacobian_sparsity.md"
              ], "Reference" => "reference.md",
              "License" => "license.md"], plugins = [links, fallbacks])
 

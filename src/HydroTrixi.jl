@@ -44,6 +44,7 @@ export DefaultJacobian
 export SparseJacobian
 export SemidiscretizationImplicit
 export AbstractTemporalOperator
+export TemporalOperatorStandard
 export TemporalOperatorConstitutive
 export TemporalOperatorCapacity
 export AbstractPassiveVariables
