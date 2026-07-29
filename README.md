@@ -12,7 +12,7 @@
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes, following [Ireson et al. (2023)](#references)
 - Tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases
 
-The mixed formulation advances water content as the conserved variable while evaluating the nonlinear diffusion operator in terms of pressure head. Its fully discrete water mass balance is independent of spatial resolution and time step size, including under spatial and temporal adaptivity. The pressure-head formulation satisfies the same semi-discrete balance, but it does not generally retain that balance after time discretization because water content is a nonlinear function of its evolved state.
+The mixed formulation advances water content as the conserved variable while evaluating the nonlinear diffusion operator in terms of pressure head, and guarantees a fully discrete water mass balance under spatial as well as temporal adaptivity.
 
 ## Installation
 
