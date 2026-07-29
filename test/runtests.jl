@@ -1,6 +1,6 @@
 using Test
 using HydroTrixi
-using SciMLBase: solve
+using SciMLBase: DiscreteCallback, solve, successful_retcode
 using Trixi: trixi_include
 import Trixi
 using TrixiTest
@@ -50,14 +50,6 @@ end
                         linf=[0.0005052944065825626])
 end
 
-@testset "sparse Jacobian pressure-head form" begin
-    trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_manufactured_solution.jl");
-                  form = PressureHeadForm(), run_simulation = false)
-
-    ode_sparse = Trixi.semidiscretize(semi, tspan; jacobian = SparseJacobian())
-    @test size(ode_sparse.f.jac_prototype) == (length(ode_sparse.u0), length(ode_sparse.u0))
-end
-
 @testset "elixir_richards_celia_1990_amr.jl mass bias" begin
     Trixi.trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_celia_1990_amr.jl");
                         final_time = 1.0, run_simulation = false, saveat = Float64[],
@@ -69,20 +61,53 @@ end
     @test abs(HydroTrixi.mass_bias(sol.u[end], semi)) < 1.0e-12
 end
 
-@testset "elixir_richards_celia_1990_amr.jl pressure-head form" begin
-    Trixi.trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_celia_1990_amr.jl");
-                        final_time = 1.0, form = PressureHeadForm(), run_simulation = false,
-                        saveat = Float64[], amr_interval = 30, max_level = 6,
-                        reltol = 1.0e-7, abstol = 1.0e-11)
+@testset "elixir_richards_celia_1990_amr.jl Jacobian" begin
+    # Scheduled AMR callback to keep simulation topologies consistent between runs
+    function solve_scheduled_amr(ode, semi, mesh, jacobian, amr_callback,
+                                 adaptation_times; dt, adaptive, reltol, abstol, saveat)
+        topology_history = Tuple{Float64, Vector{Int}}[]
+        scheduled_times = Set(adaptation_times)
+        condition = (u, t, integrator) -> t in scheduled_times
+        affect! = function (integrator)
+            amr_callback.affect!(integrator)
+            push!(topology_history,
+                  (integrator.t, copy(Trixi.leaf_cells(mesh.tree))))
+            return nothing
+        end
+        callback = DiscreteCallback(condition, affect!;
+                                    save_positions = (false, false))
 
-    @test semi.operator_temporal isa HydroTrixi.TemporalOperatorCapacity
+        solution = solve(ode, default_algorithm(semi, jacobian);
+                         dt = dt, adaptive = adaptive, reltol = reltol, abstol = abstol,
+                         saveat = saveat, Trixi.ode_default_options()...,
+                         callback = callback,
+                         tstops = adaptation_times)
+        return (; solution, topology_history)
+    end
 
-    pressure_head_solution = solve(ode, default_algorithm(semi); dt = dt,
-                                   adaptive = adaptive, reltol = reltol, abstol = abstol,
-                                   save_everystep = false, save_start = false,
-                                   save_end = true, maxiters = typemax(Int),
-                                   callback = callbacks)
-    @test pressure_head_solution.t[end] ≈ 1.0
+    elixir = joinpath(EXAMPLES_DIR, "elixir_richards_celia_1990_amr.jl")
+    adaptation_times = collect(30.0:30.0:330.0)
+
+    # Test dense and sparse Jacobian runs for both mixed and pressure-head forms
+    for form in (MixedForm(), PressureHeadForm())
+        @testset "$(nameof(typeof(form)))" begin
+            dense, sparse = map((DefaultJacobian(), SparseJacobian())) do jacobian_strategy
+                Trixi.trixi_include(@__MODULE__, elixir;
+                                    form = form, jacobian = jacobian_strategy,
+                                    run_simulation = false)
+                solve_scheduled_amr(ode, semi, mesh, jacobian_strategy, amr_callback,
+                                    adaptation_times; dt, adaptive, reltol, abstol, saveat)
+            end
+
+            @test successful_retcode(dense.solution)
+            @test successful_retcode(sparse.solution)
+            @test length(dense.topology_history) == length(adaptation_times)
+            @test length(sparse.topology_history) == length(adaptation_times)
+            @test dense.topology_history == sparse.topology_history
+            @test maximum(abs,
+                          last(dense.solution.u) .- last(sparse.solution.u)) < 1.0e-9
+        end
+    end
 end
 
 @testset "elixir_richards_closed_column.jl mass conservation" begin

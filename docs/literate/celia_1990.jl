@@ -52,9 +52,10 @@ mesh = TreeMesh(problem.domain..., initial_refinement_level = 5, n_cells_max = 3
 # We use a polynomial degree of $N = 3$ together with the mixed implicit Richards
 # semidiscretization [`SemidiscretizationImplicit`](@ref). The spatial discretization is a
 # local discontinuous Galerkin (LDG) spectral-element method with collocated
-# Legendre-Gauss-Lobatto quadrature. The mixed formulation evolves nodal water content
-# directly while enforcing its constitutive relation with pressure head algebraically.
-
+# Legendre-Gauss-Lobatto quadrature. The mixed formulation evaluates the spatial operator
+# in terms of the pressure head while evolving the water content, with the constitutive
+# relation between the two variables enforced as an algebraic constraint to obtain a system
+# of differential-algebraic equations (DAEs).
 solver = DGSEM(polydeg = 3)
 
 semi = SemidiscretizationImplicit(mesh, problem, solver;
