@@ -1,58 +1,57 @@
 # Select the Jacobian information supplied to SciML
+@doc raw"""
+    AbstractJacobianStrategy
+
+Abstract supertype for strategies that control the Jacobian information supplied by
+[`semidiscretize`](@ref) for a [`SemidiscretizationImplicit`](@ref). The Jacobian strategy
+is specified by the `jacobian` keyword argument to [`semidiscretize`](@ref) and defines
+whether a sparse Jacobian prototype is supplied (the default `SparseJacobian()` option) or
+whether a dense Jacobian is used (`DenseJacobian()`). This is independent of the
+differentiation backend, which controls how the Jacobian entries are computed and is
+specified by the time integration algorithm's `autodiff` keyword argument.
+"""
 abstract type AbstractJacobianStrategy end
 
 @doc raw"""
-    DefaultJacobian()
+    DenseJacobian()
 
-Use the default SciML Jacobian handling. HydroTrixi.jl supplies neither an analytical `jac`
-function nor a `jac_prototype`.
+When [`semidiscretize`](@ref) is called with `jacobian = DenseJacobian()`, HydroTrixi.jl
+selects dense Jacobian storage and does not supply an analytical `jac` function.
+
+The residual Jacobian entries are computed using the backend passed to the
+time integration algorithm's `autodiff` keyword, for example,
+`OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoForwardDiff()` or
+`OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoFiniteDiff()`.
 """
-struct DefaultJacobian <: AbstractJacobianStrategy end
+struct DenseJacobian <: AbstractJacobianStrategy end
 
 @doc raw"""
     SparseJacobian()
 
-Supply a numerical sparse zero matrix as `jac_prototype`, but no analytical `jac`
-function. Let ``\boldsymbol{u}_{\mathrm{state}} \in \mathbb{R}^m`` denote the state
-variables supplied to the spatial operator
-``\boldsymbol{\mathcal{R}}(\boldsymbol{u}_{\mathrm{state}},t)``. The prototype is composed
-as
-
-```text
-spatial-operator sparsity -> physical-residual sparsity
-                            -> augmented-residual sparsity
-                            -> numerical residual prototype.
-```
-
-The first pattern represents
-``\operatorname{pattern}(\partial\boldsymbol{\mathcal{R}}/
-\partial\boldsymbol{u}_{\mathrm{state}})``. The temporal operator lifts it to the
-Jacobian sparsity of the physical residual with respect to the physical state. Passive
-variables ``\boldsymbol{q}``, when present, are appended last to form the augmented state
-``\boldsymbol{y} =
-(\boldsymbol{y}_{\mathrm{physical}},\boldsymbol{q})^\mathrm{T}`` and augmented residual
-``\boldsymbol{\mathcal{F}}``. The resulting `SparseMatrixCSC` has size
-`length(u_ode)` by `length(u_ode)`, has `eltype(u_ode)`, stores zeros at every structural
-coordinate of
-``\operatorname{pattern}(\partial\boldsymbol{\mathcal{F}}/
-\partial\boldsymbol{y})``, and contains zero passive columns.
+When [`semidiscretize`](@ref) is called with `jacobian = SparseJacobian()`, HydroTrixi.jl
+supplies a sparse zero matrix as `jac_prototype`, but no analytical `jac` function. The
+resulting `SparseMatrixCSC` is a prototype that encodes the sparsity pattern of the full
+residual Jacobian. It has size `length(u_ode)` by `length(u_ode)`, has `eltype(u_ode)`, and
+stores zeros at every coordinate in the pattern. When passive variables are present, their
+residual rows are included, and their columns are zero.
 
 Entries arising only from the constant temporal mass matrix ``\boldsymbol{A}`` are
-excluded. OrdinaryDiffEq combines the residual information with ``\boldsymbol{A}`` when
-constructing the Rosenbrock matrix
-``\boldsymbol{A} - \gamma\Delta t\,\boldsymbol{J}``. The algorithm's `autodiff` setting
-determines how the residual Jacobian entries are computed.
+excluded, since OrdinaryDiffEq.jl combines the residual information with ``\boldsymbol{A}``
+when constructing the Rosenbrock matrix
+``\boldsymbol{A} - \gamma\Delta t\,\boldsymbol{J}``.
 
-The supported spatial scope is serial, nonperiodic, scalar, one-dimensional `TreeMesh`
-problems using a Lobatto-Legendre `DGSEM` and `ParabolicFormulationLocalDG` with any penalty
-parameter. Standard, capacity, and constitutive temporal operators and both implemented
-passive-variable configurations are supported. Other signatures fail through ordinary
-Julia dispatch.
+The residual Jacobian entries are computed using the backend passed to the
+time integration algorithm's `autodiff` keyword, for example,
+`OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoForwardDiff()` or
+`OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoFiniteDiff()`.
+
+This is the default Jacobian strategy for `SemidiscretizationImplicit`. Jacobian storage,
+the time integration algorithm, and the differentiation backend are configured separately.
 """
 struct SparseJacobian <: AbstractJacobianStrategy end
 
 # Map Jacobian strategies to SciML ODEFunction keyword arguments
-function jacobian_options(::DefaultJacobian, u0_ode, semi)
+function jacobian_options(::DenseJacobian, u0_ode, semi)
     return (;)
 end
 
@@ -66,22 +65,24 @@ function residual_jacobian_prototype(u_ode, semi::SemidiscretizationImplicit)
     semi_base = semi.semi_base
     mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi_base)
     u_state = state_variable_view(u_ode, semi)
-    spatial_sparsity = spatial_operator_jacobian_sparsity(u_state, mesh, equations, solver,
-                                                          semi_base.solver_parabolic, cache)
-    physical_sparsity = physical_residual_jacobian_sparsity(spatial_sparsity,
-                                                            semi.operator_temporal)
+    spatial_pattern = spatial_operator_jacobian_sparsity_pattern(u_state, mesh, equations,
+                                                                 solver,
+                                                                 semi_base.solver_parabolic,
+                                                                 cache)
+    physical_pattern = physical_residual_jacobian_sparsity_pattern(spatial_pattern,
+                                                                   semi.operator_temporal)
 
-    return residual_jacobian_prototype(u_ode, spatial_sparsity, physical_sparsity, solver,
+    return residual_jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver,
                                        cache, semi.passive_variables)
 end
 
-# Build the spatial-operator Jacobian sparsity for supported one-dimensional LDG schemes
-function spatial_operator_jacobian_sparsity(u_state, mesh::Trixi.TreeMesh{1},
-                                            equations::Trixi.AbstractEquationsParabolic{1,
-                                                                                        1},
-                                            solver::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
-                                            solver_parabolic::Trixi.ParabolicFormulationLocalDG,
-                                            cache)
+# Build the spatial operator Jacobian pattern for supported one-dimensional LDG schemes
+function spatial_operator_jacobian_sparsity_pattern(u_state, mesh::Trixi.TreeMesh{1},
+                                                    equations::Trixi.AbstractEquationsParabolic{1,
+                                                                                                1},
+                                                    solver::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
+                                                    solver_parabolic::Trixi.ParabolicFormulationLocalDG,
+                                                    cache)
     # Reject MPI execution because its sparse Jacobian structure is unsupported
     if Trixi.mpi_isparallel()
         throw(ArgumentError("Sparse Jacobian structure is unsupported for MPI execution."))
@@ -89,7 +90,8 @@ function spatial_operator_jacobian_sparsity(u_state, mesh::Trixi.TreeMesh{1},
 
     # Reject periodic meshes because their sparse Jacobian structure is unsupported
     if Trixi.isperiodic(mesh)
-        throw(ArgumentError("Sparse Jacobian structure is unsupported for periodic meshes."))
+        throw(ArgumentError("Sparse Jacobian structure is unsupported for " *
+                            "periodic meshes."))
     end
 
     n_nodes = Trixi.nnodes(solver)
@@ -135,55 +137,55 @@ function spatial_operator_jacobian_sparsity(u_state, mesh::Trixi.TreeMesh{1},
         end
     end
 
-    spatial_sparsity = sparse(row_indices, column_indices, trues(length(row_indices)),
-                              n_state_dofs, n_state_dofs, |)
-    if nnz(spatial_sparsity) != expected_nonzeros
-        throw(ArgumentError("Spatial-operator Jacobian sparsity contains duplicate " *
-                            "or inconsistent entries."))
+    spatial_pattern = sparse(row_indices, column_indices, trues(length(row_indices)),
+                             n_state_dofs, n_state_dofs, |)
+    if nnz(spatial_pattern) != expected_nonzeros
+        throw(ArgumentError("Spatial Jacobian pattern contains duplicate or " *
+                            "inconsistent entries."))
     end
 
-    return spatial_sparsity
+    return spatial_pattern
 end
 
 # Retain the spatial pattern for the standard physical residual
-function physical_residual_jacobian_sparsity(spatial_sparsity,
-                                             ::TemporalOperatorStandard)
-    return spatial_sparsity
+function physical_residual_jacobian_sparsity_pattern(spatial_pattern,
+                                                     ::TemporalOperatorStandard)
+    return spatial_pattern
 end
 
-# Add the nodal capacity derivative to the physical-residual sparsity
-function physical_residual_jacobian_sparsity(spatial_sparsity,
-                                             ::TemporalOperatorCapacity)
-    n_state_dofs = size(spatial_sparsity, 1)
-    identity_sparsity = sparse(1:n_state_dofs, 1:n_state_dofs, trues(n_state_dofs),
-                               n_state_dofs, n_state_dofs)
-    return spatial_sparsity .| identity_sparsity
+# Add the nodal capacity derivative to the physical-residual pattern
+function physical_residual_jacobian_sparsity_pattern(spatial_pattern,
+                                                     ::TemporalOperatorCapacity)
+    n_state_dofs = size(spatial_pattern, 1)
+    identity_pattern = sparse(1:n_state_dofs, 1:n_state_dofs, trues(n_state_dofs),
+                              n_state_dofs, n_state_dofs)
+    return spatial_pattern .| identity_pattern
 end
 
 # Embed the spatial pattern in the constitutive evolved-state block layout
-function physical_residual_jacobian_sparsity(spatial_sparsity,
-                                             ::TemporalOperatorConstitutive)
-    n_state_dofs = size(spatial_sparsity, 1)
-    zero_sparsity = spzeros(Bool, n_state_dofs, n_state_dofs)
-    identity_sparsity = sparse(1:n_state_dofs, 1:n_state_dofs, trues(n_state_dofs),
-                               n_state_dofs, n_state_dofs)
-    return [zero_sparsity spatial_sparsity; identity_sparsity identity_sparsity]
+function physical_residual_jacobian_sparsity_pattern(spatial_pattern,
+                                                     ::TemporalOperatorConstitutive)
+    n_state_dofs = size(spatial_pattern, 1)
+    zero_pattern = spzeros(Bool, n_state_dofs, n_state_dofs)
+    identity_pattern = sparse(1:n_state_dofs, 1:n_state_dofs, trues(n_state_dofs),
+                              n_state_dofs, n_state_dofs)
+    return [zero_pattern spatial_pattern; identity_pattern identity_pattern]
 end
 
-# Preserve the physical-residual pattern when no passive equations are appended
-function residual_jacobian_prototype(u_ode, spatial_sparsity, physical_sparsity, solver,
+# Convert the physical-residual pattern to the numerical prototype
+function residual_jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver,
                                      cache, ::NoPassiveVariables)
-    jac_prototype = SparseMatrixCSC{eltype(u_ode), Int}(physical_sparsity)
+    jac_prototype = SparseMatrixCSC{eltype(u_ode), Int}(physical_pattern)
     fill!(nonzeros(jac_prototype), zero(eltype(jac_prototype)))
     return jac_prototype
 end
 
 # Append boundary-flux rows that depend on the adjacent state elements
-function residual_jacobian_prototype(u_ode, spatial_sparsity, physical_sparsity, solver,
+function residual_jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver,
                                      cache, ::PassiveVariablesBoundaryFlux1D)
     n_nodes = Trixi.nnodes(solver)
-    n_state_dofs = size(spatial_sparsity, 1)
-    n_physical_dofs = size(physical_sparsity, 1)
+    n_state_dofs = size(spatial_pattern, 1)
+    n_physical_dofs = size(physical_pattern, 1)
     state_offset = n_physical_dofs - n_state_dofs
     state_indices = LinearIndices((n_nodes, n_state_dofs ÷ n_nodes))
 
@@ -193,16 +195,16 @@ function residual_jacobian_prototype(u_ode, spatial_sparsity, physical_sparsity,
     element_neg = cache.boundaries.neighbor_ids[firsts[1]]
     element_pos = cache.boundaries.neighbor_ids[firsts[2]]
 
-    boundary_sparsity = spzeros(Bool, 2, n_physical_dofs)
+    boundary_pattern = spzeros(Bool, 2, n_physical_dofs)
     for state_node in Trixi.eachnode(solver)
-        boundary_sparsity[1, state_offset + state_indices[state_node, element_neg]] = true
-        boundary_sparsity[2, state_offset + state_indices[state_node, element_pos]] = true
+        boundary_pattern[1, state_offset + state_indices[state_node, element_neg]] = true
+        boundary_pattern[2, state_offset + state_indices[state_node, element_pos]] = true
     end
 
     passive_columns = spzeros(Bool, n_physical_dofs + 2, 2)
-    augmented_sparsity = [physical_sparsity; boundary_sparsity]
-    augmented_sparsity = [augmented_sparsity passive_columns]
-    jac_prototype = SparseMatrixCSC{eltype(u_ode), Int}(augmented_sparsity)
+    augmented_pattern = [physical_pattern; boundary_pattern]
+    augmented_pattern = [augmented_pattern passive_columns]
+    jac_prototype = SparseMatrixCSC{eltype(u_ode), Int}(augmented_pattern)
     fill!(nonzeros(jac_prototype), zero(eltype(jac_prototype)))
     return jac_prototype
 end

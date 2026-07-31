@@ -1,5 +1,6 @@
 using Test
 using HydroTrixi
+import OrdinaryDiffEq
 using SciMLBase: DiscreteCallback, solve, successful_retcode
 using Trixi: trixi_include
 import Trixi
@@ -39,9 +40,13 @@ end
                         l2=[6.174720620257904e-5], linf=[0.0005052944044678376])
 end
 
-@trixi_testset "elixir_richards_manufactured_solution.jl sparse Jacobian" begin
+@testset "elixir_richards_manufactured_solution.jl finite-diff Jacobian" begin
+    # Retain support for graph-coloured finite-difference Jacobians
+    autodiff = OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoFiniteDiff()
+    finite_diff_algorithm = OrdinaryDiffEq.Rodas5P(; autodiff)
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_richards_manufactured_solution.jl"),
-                        jacobian=SparseJacobian(), form=MixedForm(), final_time=120.0,
+                        algorithm=finite_diff_algorithm, jacobian=SparseJacobian(),
+                        form=MixedForm(), final_time=120.0,
                         initial_refinement_level=4, polydeg=3, reltol=1.0e-9,
                         abstol=1.0e-11, saveat=Float64[], l2=[6.174720620257904e-5],
                         linf=[0.0005052944044678376])
@@ -68,8 +73,8 @@ end
 
 @testset "elixir_richards_celia_1990_amr.jl Jacobian" begin
     # Scheduled AMR callback to keep simulation topologies consistent between runs
-    function solve_scheduled_amr(ode, semi, mesh, jacobian, amr_callback,
-                                 adaptation_times; dt, adaptive, reltol, abstol, saveat)
+    function solve_scheduled_amr(ode, semi, mesh, amr_callback, adaptation_times;
+                                 dt, adaptive, reltol, abstol, saveat)
         topology_history = Tuple{Float64, Vector{Int}}[]
         scheduled_times = Set(adaptation_times)
         condition = (u, t, integrator) -> t in scheduled_times
@@ -82,7 +87,7 @@ end
         callback = DiscreteCallback(condition, affect!;
                                     save_positions = (false, false))
 
-        solution = solve(ode, default_algorithm(semi, jacobian);
+        solution = solve(ode, default_algorithm(semi);
                          dt = dt, adaptive = adaptive, reltol = reltol, abstol = abstol,
                          saveat = saveat, Trixi.ode_default_options()...,
                          callback = callback,
@@ -96,12 +101,12 @@ end
     # Test dense and sparse Jacobian runs for both mixed and pressure-head forms
     for form in (MixedForm(), PressureHeadForm())
         @testset "$(nameof(typeof(form)))" begin
-            dense, sparse = map((DefaultJacobian(), SparseJacobian())) do jacobian_strategy
+            dense, sparse = map((DenseJacobian(), SparseJacobian())) do jacobian_strategy
                 Trixi.trixi_include(@__MODULE__, elixir;
                                     form = form, jacobian = jacobian_strategy,
                                     run_simulation = false)
-                solve_scheduled_amr(ode, semi, mesh, jacobian_strategy, amr_callback,
-                                    adaptation_times; dt, adaptive, reltol, abstol, saveat)
+                solve_scheduled_amr(ode, semi, mesh, amr_callback, adaptation_times;
+                                    dt, adaptive, reltol, abstol, saveat)
             end
 
             @test successful_retcode(dense.solution)

@@ -53,6 +53,6 @@ reltol = 1.0e-9
 abstol = 1.0e-11
 saveat = Float64[]
 
-sol = solve(ode, default_algorithm(semi, jacobian); dt = dt, adaptive = adaptive,
+sol = solve(ode, default_algorithm(semi); dt = dt, adaptive = adaptive,
             reltol = reltol, abstol = abstol, saveat = saveat,
             ode_default_options()..., callback = callbacks, maxiters = typemax(Int))

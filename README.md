@@ -7,7 +7,7 @@
 
 - Implicit temporal operator formulations using algebraic constitutive constraints or capacity functions to support mixed and pressure-head formulations, respectively
 - Flexible parabolic boundary conditions allowing penalty-type numerical fluxes that depend on the inner and outer solution and flux values
-- Adaptivity in time for stiff systems using high-order embedded Rosenbrock-Wanner methods with sparse Jacobian evaluation
+- High-order adaptive implicit time integration with sparse Jacobian evaluation using graph-coloured finite differences or forward-mode automatic differentiation
 - Adaptivity in space with mass-conservative solution transfer
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes, following [Ireson et al. (2023)](#references)
 - Tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases

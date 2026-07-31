@@ -10,6 +10,7 @@ module HydroTrixi
 
 using MuladdMacro
 using OrdinaryDiffEq
+using PreallocationTools: GeneralLazyBufferCache
 using SciMLBase
 using Trixi
 using LinearAlgebra
@@ -40,7 +41,8 @@ export source_terms_richards_manufactured_solution
 export BoundaryConditionDirichletPenalty
 export MixedForm
 export PressureHeadForm
-export DefaultJacobian
+export AbstractJacobianStrategy
+export DenseJacobian
 export SparseJacobian
 export SemidiscretizationImplicit
 export AbstractTemporalOperator

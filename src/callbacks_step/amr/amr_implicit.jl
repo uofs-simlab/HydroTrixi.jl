@@ -57,6 +57,11 @@ function refresh_linear_solver_cache!(cache::OrdinaryDiffEqRosenbrock.Rosenbrock
     linsolve = cache.linsolve
     linear_problem = SciMLBase.LinearProblem(cache.W, vec(cache.linsolve_tmp),
                                              linsolve.p; u0 = vec(cache.tmp))
+
+    # Retain all structural Jacobian entries during refactorization
+    assumptions = LinearSolve.OperatorAssumptions(true;
+                                                  nonstructural_zeros =
+                                                  LinearSolve.NonstructuralZeros.None)
     cache.linsolve = SciMLBase.init(linear_problem, linsolve.alg;
                                     alias = SciMLBase.LinearAliasSpecifier(alias_A = true,
                                                                            alias_b = true),
@@ -64,9 +69,8 @@ function refresh_linear_solver_cache!(cache::OrdinaryDiffEqRosenbrock.Rosenbrock
                                     abstol = linsolve.abstol, reltol = linsolve.reltol,
                                     maxiters = linsolve.maxiters,
                                     verbose = linsolve.verbose,
-                                    assumptions = linsolve.assumptions,
+                                    assumptions = assumptions,
                                     sensealg = linsolve.sensealg)
-
     return nothing
 end
 
@@ -164,6 +168,7 @@ function (amr_callback::AMRCallbackImplicit)(integrator; kwargs...)
     # If the mesh has changed, update the mass matrix and rebuild the ODE problem
     has_changed = amr_callback(u_ode, semi, integrator.t, integrator.iter; kwargs...)
     if has_changed
+        invalidate_rhs_implicit_cache!(integrator.f)
         update_mass_matrix!(integrator.f, u_ode, semi)
         if has_jac_prototype
             # Rebuild the augmented residual prototype for the adapted mesh

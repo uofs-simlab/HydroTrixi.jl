@@ -23,7 +23,7 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # ODE solvers, callbacks etc.
 
 tspan = problem.tspan
-jacobian = DefaultJacobian()
+jacobian = SparseJacobian()
 ode = semidiscretize(semi, tspan; jacobian = jacobian)
 
 summary_callback = SummaryCallback()
@@ -65,7 +65,7 @@ saveat = Float64[]
 run_simulation = true
 
 if run_simulation
-    sol = solve(ode, default_algorithm(semi, jacobian); dt = dt, adaptive = adaptive,
+    sol = solve(ode, default_algorithm(semi); dt = dt, adaptive = adaptive,
                 reltol = reltol, abstol = abstol, saveat = saveat,
                 ode_default_options()..., callback = callbacks)
 end

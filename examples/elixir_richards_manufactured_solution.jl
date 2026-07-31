@@ -10,14 +10,13 @@ problem = HydrologicProblemRichardsManufacturedSolution(tspan = (0.0, final_time
 
 initial_refinement_level = 4
 polydeg = 3
-n_cells_max = 30_000
 solver_parabolic = ParabolicFormulationLocalDG()
 form = MixedForm()
 
 coordinates_min, coordinates_max = problem.domain
 mesh = TreeMesh(coordinates_min, coordinates_max,
                 initial_refinement_level = initial_refinement_level,
-                n_cells_max = n_cells_max, periodicity = false)
+                periodicity = false)
 solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
 
 semi = SemidiscretizationImplicit(mesh, problem, solver;
@@ -27,8 +26,9 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # ODE solvers, callbacks etc.
 
 tspan = problem.tspan
-jacobian = DefaultJacobian()
+jacobian = SparseJacobian()
 ode = semidiscretize(semi, tspan; jacobian = jacobian)
+algorithm = default_algorithm(semi)
 
 summary_callback = SummaryCallback()
 
@@ -50,7 +50,7 @@ saveat = Float64[]
 run_simulation = true
 
 if run_simulation
-    sol = solve(ode, default_algorithm(semi, jacobian); dt = dt, adaptive = adaptive,
+    sol = solve(ode, algorithm; dt = dt, adaptive = adaptive,
                 reltol = reltol, abstol = abstol, saveat = saveat,
                 ode_default_options()..., callback = callbacks, maxiters = typemax(Int))
 end
