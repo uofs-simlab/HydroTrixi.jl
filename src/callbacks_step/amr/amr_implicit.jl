@@ -185,21 +185,19 @@ function (amr_callback::AMRCallbackImplicit)(integrator; kwargs...)
             ode_problem = SciMLBase.remake(integrator.sol.prob;
                                            f = ode_function, u0 = copy(integrator.u))
 
-            # Reuse OrdinaryDiffEq's preparation for the adapted sparsity pattern
+            # Reuse OrdinaryDiffEq.jl preparation for the adapted sparsity pattern
             unprepared_algorithm = SciMLBase.remake(integrator.alg;
                                                     autodiff = integrator.alg.autodiff.dense_ad)
-            algorithm = OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.prepare_alg(unprepared_algorithm,
-                                                                                 integrator.u,
-                                                                                 integrator.p,
-                                                                                 ode_problem)
+            algorithm = DiffEqBase.prepare_alg(unprepared_algorithm, integrator.u,
+                                               integrator.p, ode_problem)
             @assert typeof(algorithm)===typeof(integrator.alg) ("Sparse Jacobian AMR "*
                                                                 "changed the ODE "*
                                                                 "algorithm type")
 
             # Synchronize the solution metadata with the rebuilt problem
             ode_function = ode_problem.f
-            interpolation = OrdinaryDiffEq.OrdinaryDiffEqCore.InterpolationData(integrator.sol.interp,
-                                                                                ode_function)
+            interpolation = OrdinaryDiffEqCore.InterpolationData(integrator.sol.interp,
+                                                                 ode_function)
             solution = integrator.sol
             solution = SciMLBase.@set solution.prob = ode_problem
             solution = SciMLBase.@set solution.alg = algorithm

@@ -169,7 +169,8 @@ This method is useful for adaptive meshes because the supplied `callback` is act
 frames are generated, so mesh adaptation and other step callbacks remain synchronized with
 the plotted state. `saveat` gives the animation frame times and must be non-empty,
 sorted, and contained in `ode.tspan`. `alg`, `dt`, `adaptive`, and additional SciML
-integrator options control the integrator used for frame generation.
+integrator options control the integrator used for frame generation. Pass `alg` explicitly
+when `ode.p` is not a [`SemidiscretizationImplicit`](@ref).
 """
 function HydroTrixi.animate_solution_1d(ode::SciMLBase.ODEProblem; callback,
                                         output_path = joinpath(pwd(), "solution_1d.mp4"),

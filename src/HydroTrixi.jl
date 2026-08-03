@@ -8,8 +8,11 @@ discretization, adaptive implicit time integration, and adaptive mesh refinement
 """
 module HydroTrixi
 
+import DiffEqBase
 using MuladdMacro
-using OrdinaryDiffEq
+import OrdinaryDiffEqCore
+import OrdinaryDiffEqNonlinearSolve
+import OrdinaryDiffEqRosenbrock
 using PreallocationTools: GeneralLazyBufferCache
 using SciMLBase
 using Trixi

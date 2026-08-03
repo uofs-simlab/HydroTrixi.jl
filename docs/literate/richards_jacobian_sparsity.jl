@@ -42,7 +42,7 @@
 #
 # We now construct and visualize this pattern for a small mixed Richards problem with $K=4$
 # elements and polynomial degree $N=3$, following
-# `examples/elixir_richards_manufactured_solution.jl`:
+# `examples/elixirs/elixir_richards_manufactured_solution.jl`:
 
 using CairoMakie
 using HydroTrixi
@@ -58,9 +58,8 @@ nothing #hide
 asset_dir = docs_generated_dir("richards_jacobian_sparsity")
 
 problem = HydrologicProblemRichardsManufacturedSolution(tspan = (0.0, 1.0))
-mesh = TreeMesh(problem.domain...; initial_refinement_level = 2, n_cells_max = 100,
-                periodicity = false)
-solver = DGSEM(polydeg = 3, surface_flux = flux_central)
+mesh = TreeMesh(problem.domain...; initial_refinement_level = 2, periodicity = false)
+solver = DGSEM(polydeg = 3)
 semi = SemidiscretizationImplicit(mesh, problem, solver;
                                   solver_parabolic = ParabolicFormulationLocalDG(),
                                   form = MixedForm(),

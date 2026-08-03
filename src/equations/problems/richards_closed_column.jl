@@ -1,3 +1,6 @@
+@muladd begin
+#! format: noindent
+
 @doc raw"""
     HydrologicProblemRichardsClosedColumn(; soil_model, domain, tspan, base_head, amplitude)
 
@@ -57,3 +60,4 @@ function HydrologicProblemRichardsClosedColumn(; soil_model = default_soil_model
                              boundary_conditions = boundary_conditions, domain = domain,
                              tspan = tspan)
 end
+end # @muladd

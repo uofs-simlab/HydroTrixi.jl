@@ -5,29 +5,20 @@ using Trixi
 ###############################################################################
 # semidiscretization of the Richards equation manufactured solution
 
-final_time = 120.0
-problem = HydrologicProblemRichardsManufacturedSolution(tspan = (0.0, final_time))
+problem = HydrologicProblemRichardsManufacturedSolution(tspan = (0.0, 120.0))
 
-initial_refinement_level = 4
-polydeg = 3
-solver_parabolic = ParabolicFormulationLocalDG()
-form = MixedForm()
-
-coordinates_min, coordinates_max = problem.domain
-mesh = TreeMesh(coordinates_min, coordinates_max,
-                initial_refinement_level = initial_refinement_level,
-                periodicity = false)
-solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
+# Spatial discretization
+mesh = TreeMesh(problem.domain..., initial_refinement_level = 4, periodicity = false)
+solver = DGSEM(polydeg = 3)
 
 semi = SemidiscretizationImplicit(mesh, problem, solver;
-                                  solver_parabolic = solver_parabolic, form = form)
+                                  solver_parabolic = ParabolicFormulationLocalDG(),
+                                  form = MixedForm())
 
 ###############################################################################
 # ODE solvers, callbacks etc.
 
-tspan = problem.tspan
-jacobian = SparseJacobian()
-ode = semidiscretize(semi, tspan; jacobian = jacobian)
+ode = semidiscretize(semi, problem.tspan; jacobian = SparseJacobian())
 algorithm = default_algorithm(semi)
 
 summary_callback = SummaryCallback()
@@ -42,15 +33,10 @@ callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
 ###############################################################################
 # run the simulation
 
-dt = 1.0e-2
-adaptive = true
-reltol = 1.0e-9
-abstol = 1.0e-11
-saveat = Float64[]
 run_simulation = true
 
 if run_simulation
-    sol = solve(ode, algorithm; dt = dt, adaptive = adaptive,
-                reltol = reltol, abstol = abstol, saveat = saveat,
+    sol = solve(ode, algorithm; dt = 1.0e-2, adaptive = true,
+                reltol = 1.0e-9, abstol = 1.0e-11, saveat = Float64[],
                 ode_default_options()..., callback = callbacks, maxiters = typemax(Int))
 end

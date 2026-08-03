@@ -8,25 +8,20 @@ using Trixi
 diffusivity = 0.5
 equations = Trixi.LinearDiffusionEquation1D(diffusivity)
 
-initial_refinement_level = 3
-polydeg = 3
-n_cells_max = 30_000
-solver_parabolic = ParabolicFormulationLocalDG()
-
-mesh = TreeMesh((0.0,), (1.0,), initial_refinement_level = initial_refinement_level,
-                n_cells_max = n_cells_max, periodicity = false)
-solver = DGSEM(polydeg = polydeg, surface_flux = flux_central)
+# Spatial discretization
+mesh = TreeMesh((0.0,), (1.0,), initial_refinement_level = 3, periodicity = false)
+solver = DGSEM(polydeg = 3)
 
 exact_solution(x, t) = exp(-diffusivity * pi^2 * t) * sinpi(x[1])
 initial_condition(x, t, equations) = SVector(exact_solution(x, t))
 zero_dirichlet(x, t, equations) = SVector(0.0)
 
+# Boundary condition options
 use_boundary_penalty = false
-penalty_prefactor = 1.0
 
 if use_boundary_penalty
-    h = 1.0 / (2.0^initial_refinement_level)
-    penalty = penalty_prefactor * diffusivity * (polydeg + 1)^2 / h
+    penalty = diffusivity * (Trixi.polydeg(solver) + 1)^2 *
+              length(Trixi.leaf_cells(mesh.tree))
     boundary_conditions = (;
                            x_neg = BoundaryConditionDirichletPenalty(zero_dirichlet;
                                                                      penalty = penalty),
@@ -37,15 +32,18 @@ else
                            x_pos = BoundaryConditionDirichlet(zero_dirichlet))
 end
 
-semi = SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
-                                   boundary_conditions = boundary_conditions,
-                                   solver_parabolic = solver_parabolic)
+# Construct an identity-mass-matrix representation for explicit and implicit solvers
+semi_base = SemidiscretizationParabolic(mesh, equations, initial_condition, solver;
+                                        boundary_conditions = boundary_conditions,
+                                        solver_parabolic = ParabolicFormulationLocalDG())
+semi = SemidiscretizationImplicit(semi_base, TemporalOperatorStandard())
 
 ###############################################################################
 # ODE solvers, callbacks etc.
 
 tspan = (0.0, 0.25)
-ode = semidiscretize(semi, tspan)
+ode = semidiscretize(semi, tspan; jacobian = DenseJacobian())
+algorithm = default_algorithm(semi)
 
 summary_callback = SummaryCallback()
 
@@ -59,9 +57,7 @@ callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
 ###############################################################################
 # run the simulation
 
-dt_factor = 0.01
-dt = dt_factor * (1.0 / (2.0^initial_refinement_level))^2
-saveat = Float64[]
-
-sol = solve(ode, default_algorithm(semi); dt = dt, adaptive = false, saveat = saveat,
-            ode_default_options()..., callback = callbacks, maxiters = typemax(Int))
+sol = solve(ode, algorithm;
+            dt = 0.01 / length(Trixi.leaf_cells(mesh.tree))^2, adaptive = false,
+            reltol = 1.0e-9, abstol = 1.0e-11, saveat = Float64[], ode_default_options()...,
+            callback = callbacks, maxiters = typemax(Int))

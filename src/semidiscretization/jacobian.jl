@@ -19,9 +19,8 @@ When [`semidiscretize`](@ref) is called with `jacobian = DenseJacobian()`, Hydro
 selects dense Jacobian storage and does not supply an analytical `jac` function.
 
 The residual Jacobian entries are computed using the backend passed to the
-time integration algorithm's `autodiff` keyword, for example,
-`OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoForwardDiff()` or
-`OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoFiniteDiff()`.
+time integration algorithm's `autodiff` keyword, for example, `ADTypes.AutoForwardDiff()`
+or `ADTypes.AutoFiniteDiff()`.
 """
 struct DenseJacobian <: AbstractJacobianStrategy end
 
@@ -41,9 +40,8 @@ when constructing the Rosenbrock matrix
 ``\boldsymbol{A} - \gamma\Delta t\,\boldsymbol{J}``.
 
 The residual Jacobian entries are computed using the backend passed to the
-time integration algorithm's `autodiff` keyword, for example,
-`OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoForwardDiff()` or
-`OrdinaryDiffEq.OrdinaryDiffEqDifferentiation.AutoFiniteDiff()`.
+time integration algorithm's `autodiff` keyword, for example, `ADTypes.AutoForwardDiff()`
+or `ADTypes.AutoFiniteDiff()`.
 
 This is the default Jacobian strategy for `SemidiscretizationImplicit`. Jacobian storage,
 the time integration algorithm, and the differentiation backend are configured separately.

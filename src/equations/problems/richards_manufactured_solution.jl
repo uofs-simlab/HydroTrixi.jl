@@ -1,3 +1,6 @@
+@muladd begin
+#! format: noindent
+
 @doc raw"""
     richards_manufactured_solution(x, t, equations)
 
@@ -104,3 +107,4 @@ function HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
                              source_terms = source_terms_richards_manufactured_solution,
                              domain = ((0.0,), (0.2,)), tspan = tspan)
 end
+end # @muladd

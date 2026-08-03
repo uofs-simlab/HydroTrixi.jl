@@ -1,3 +1,6 @@
+@muladd begin
+#! format: noindent
+
 @doc raw"""
     HydrologicProblemCelia1990(; tspan = (0.0, 360.0))
 
@@ -51,3 +54,4 @@ function HydrologicProblemCelia1990(; tspan = (0.0, 360.0))
                              boundary_conditions = boundary_conditions,
                              domain = ((0.0,), (0.4,)), tspan = tspan)
 end
+end # @muladd

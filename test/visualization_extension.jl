@@ -2,7 +2,8 @@ using CairoMakie
 using LaTeXStrings
 
 @testset "visualization extension smoke test" begin
-    trixi_include(joinpath(EXAMPLES_DIR, "elixir_diffusion_1d_mixed_dirichlet_neumann.jl"))
+    trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                           "elixir_diffusion_1d_mixed_dirichlet_neumann.jl"))
 
     mktempdir() do tmpdir
         output_path = joinpath(tmpdir, "diffusion_solution.png")
