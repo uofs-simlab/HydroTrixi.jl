@@ -1,0 +1,48 @@
+Date: 2026-08-04 21:57:29
+Repository revision: 7979e43a7db865900e423586c4ea3ee01d539550
+Working tree dirty: true
+
+System information
+Julia Version 1.10.11
+Commit a2b11907d7b (2026-03-09 14:59 UTC)
+Build Info:
+  Official https://julialang.org/ release
+Platform Info:
+  OS: macOS (arm64-apple-darwin22.4.0)
+  CPU: 8 × Apple M1
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-15.0.7 (ORCJIT, apple-m1)
+Threads: 1 default, 0 interactive, 1 GC (on 4 virtual cores)
+
+Package versions
+  BenchmarkTools.jl = 1.8.0
+  HydroTrixi.jl = 0.1.0-DEV
+  Trixi.jl = 0.16.27
+
+Fixed-mesh Celia benchmark
+  tspan = (0.0, 360.0)
+  dt = 0.01, adaptive = false, AMR = false
+  samples = 5, timing boundary = setup + solve + diagnostics
+Results
+  Pressure head
+    median time = 5.3953 s
+    time range = 5.1685-6.0858 s
+    memory estimate = 134.04 MiB
+    median GC time = 0.069724 s
+    steps = 36001, rejected = 0, RHS calls = 648018
+    elements = 32, spatial DOFs per field = 128
+    ODE/DAE unknowns = 130
+    absolute mass bias = 9.9732e-9
+    autodiff = ADTypes.AutoSparse{ADTypes.AutoForwardDiff{nothing, ForwardDiff.Tag{DiffEqBase.OrdinaryDiffEqTag, Float64}}, ADTypes.KnownJacobianSparsityDetector{SparseArrays.SparseMatrixCSC{Float64, Int64}}, SparseMatrixColorings.GreedyColoringAlgorithm{:direct, 1, Tuple{SparseMatrixColorings.NaturalOrder}}}
+  Mixed
+    median time = 5.3474 s
+    time range = 5.2098-7.0156 s
+    memory estimate = 173.38 MiB
+    median GC time = 0.071957 s
+    steps = 36001, rejected = 0, RHS calls = 684019
+    elements = 32, spatial DOFs per field = 128
+    ODE/DAE unknowns = 258
+    absolute mass bias = 2.5119e-15
+    autodiff = ADTypes.AutoSparse{ADTypes.AutoForwardDiff{nothing, ForwardDiff.Tag{DiffEqBase.OrdinaryDiffEqTag, Float64}}, ADTypes.KnownJacobianSparsityDetector{SparseArrays.SparseMatrixCSC{Float64, Int64}}, SparseMatrixColorings.GreedyColoringAlgorithm{:direct, 1, Tuple{SparseMatrixColorings.NaturalOrder}}}
+  pressure head to mixed median runtime ratio = 1.0089

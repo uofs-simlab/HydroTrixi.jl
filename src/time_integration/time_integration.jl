@@ -15,7 +15,6 @@ time integration algorithm configures the differentiation backend and linear sol
   Mathematics*, 63, Article 27.
   [DOI: 10.1007/s10543-023-00967-x](https://doi.org/10.1007/s10543-023-00967-x)
 """
-# Select the default implicit Rosenbrock algorithm
 function default_algorithm(::SemidiscretizationImplicit)
     return OrdinaryDiffEqRosenbrock.Rodas5P()
 end

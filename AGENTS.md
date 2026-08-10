@@ -13,6 +13,9 @@
 - Unless at the very end, run the example elixirs, not the full test suite.
 - Use `julia --project=run` for plotting examples and scripts with plotting dependencies.
 
+## Dependencies
+- Adding dependencies is acceptable only after obtaining explicit approval from the user.
+
 ## Validation
 - Add explicit validation only when invalid input could otherwise run successfully and
   silently produce incorrect results. Let unsupported signatures and inputs that will
