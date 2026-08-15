@@ -16,9 +16,9 @@ tspan = (0.0, 0.25)
 base_initial_refinement_level = 2
 iterations = 5
 
-schemes = ((; name = "LDG", use_boundary_penalty = false,
+schemes = ((; name = "LDG", penalty_factor = 0,
             labels = (L"\mathrm{LDG}\ L^2", L"\mathrm{LDG}\ L^\infty"), color = 1),
-           (; name = "LDG + boundary penalty", use_boundary_penalty = true,
+           (; name = "LDG + boundary penalty", penalty_factor = 1,
             labels = (L"\mathrm{LDG + boundary\ penalty}\ L^2",
                       L"\mathrm{LDG + boundary\ penalty}\ L^\infty"),
             color = 2))
@@ -29,7 +29,7 @@ function run_scheme(scheme)
                                  tspan = tspan,
                                  initial_refinement_level = base_initial_refinement_level,
                                  solver_parabolic = ParabolicFormulationLocalDG(),
-                                 use_boundary_penalty = scheme.use_boundary_penalty)
+                                 penalty_factor = scheme.penalty_factor)
 
     levels = collect(base_initial_refinement_level:
                      (base_initial_refinement_level + iterations - 1))

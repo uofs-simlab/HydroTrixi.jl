@@ -16,21 +16,10 @@ exact_solution(x, t) = exp(-diffusivity * pi^2 * t) * sinpi(x[1])
 initial_condition(x, t, equations) = SVector(exact_solution(x, t))
 zero_dirichlet(x, t, equations) = SVector(0.0)
 
-# Boundary condition options
-use_boundary_penalty = false
-
-if use_boundary_penalty
-    penalty = diffusivity * (Trixi.polydeg(solver) + 1)^2 *
-              length(Trixi.leaf_cells(mesh.tree))
-    boundary_conditions = (;
-                           x_neg = BoundaryConditionDirichletPenalty(zero_dirichlet;
-                                                                     penalty = penalty),
-                           x_pos = BoundaryConditionDirichletPenalty(zero_dirichlet;
-                                                                     penalty = penalty))
-else
-    boundary_conditions = (; x_neg = BoundaryConditionDirichlet(zero_dirichlet),
-                           x_pos = BoundaryConditionDirichlet(zero_dirichlet))
-end
+# Set this factor to zero to recover the unpenalized divergence flux
+penalty_factor = 0
+boundary_condition = BoundaryConditionDirichletPenalty(zero_dirichlet; penalty_factor)
+boundary_conditions = (; x_neg = boundary_condition, x_pos = boundary_condition)
 
 # Construct an identity-mass-matrix representation for explicit and implicit solvers
 semi_base = SemidiscretizationParabolic(mesh, equations, initial_condition, solver;

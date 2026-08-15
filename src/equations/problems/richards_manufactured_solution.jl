@@ -48,7 +48,8 @@ s = C(\psi)\frac{\partial \psi}{\partial t}
 \qquad C(\psi) = \vartheta'(\psi).
 ```
 """
-@inline function source_terms_richards_manufactured_solution(u, gradients, x, t, equations)
+@inline function source_terms_richards_manufactured_solution(u, gradients, x, t,
+                                                             equations)
     soil_model = equations.soil_model
 
     psi, psi_t, psi_z, psi_zz = richards_manufactured_profile(x, t)
@@ -65,20 +66,24 @@ s = C(\psi)\frac{\partial \psi}{\partial t}
                                   abs_psi^(soil_model.gamma - 1) /
                                   conductivity_denominator^2
     end
-    flux_derivative = conductivity_derivative * psi_z * (psi_z - 1) + conductivity * psi_zz
+    flux_derivative = conductivity_derivative * psi_z * (psi_z - 1) +
+                      conductivity * psi_zz
     storage_derivative = water_capacity(psi, equations) * psi_t
     return Trixi.SVector(storage_derivative - flux_derivative)
 end
 
 @doc raw"""
     HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
-                                                    soil_model = default_soil_model())
+                                                    soil_model = default_soil_model(),
+                                                    penalty_factor = 1)
 
 Return a one-dimensional manufactured-solution problem for the Richards equation. The
 pressure head is given by [`richards_manufactured_solution`](@ref), the boundary
-conditions are Dirichlet values from that profile, and the source term is
-[`source_terms_richards_manufactured_solution`](@ref). The default setup uses the same
-Haverkamp parameters as [`HydrologicProblemCelia1990`](@ref).
+conditions impose values from that profile using the penalty formulation, and the source
+term is [`source_terms_richards_manufactured_solution`](@ref). The default setup uses the
+same Haverkamp parameters as [`HydrologicProblemCelia1990`](@ref). The dimensionless
+`penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty; setting it to zero
+recovers the unpenalized divergence flux.
 
 The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds on
 ``t \in [0, 120]`` by default. It is intended for regression and convergence checks of
@@ -93,11 +98,13 @@ mixed and pressure-head forms of the Richards equation.
   [arXiv:2105.05224](https://arxiv.org/abs/2105.05224)
 """
 function HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
-                                                       soil_model = default_soil_model())
+                                                       soil_model = default_soil_model(),
+                                                       penalty_factor = 1)
     equations = RichardsEquation1D(soil_model = soil_model)
     state_to_evolved = water_content
     evolved_to_state = pressure_head_from_water_content
-    boundary_condition = Trixi.BoundaryConditionDirichlet(richards_manufactured_solution)
+    boundary_condition = BoundaryConditionDirichletPenalty(richards_manufactured_solution;
+                                                           penalty_factor)
     boundary_conditions = (; x_neg = boundary_condition, x_pos = boundary_condition)
 
     return HydrologicProblem(equations = equations, state_to_evolved = state_to_evolved,

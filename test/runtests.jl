@@ -40,7 +40,19 @@ end
 @trixi_testset "elixir_richards_manufactured_solution.jl mixed form" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        l2=[6.174720620257904e-5], linf=[0.0005052944044678376])
+                        l2=[4.069653407124442e-5], linf=[0.00038090503987497915])
+end
+
+@testset "elixir_richards_manufactured_solution.jl zero penalty factor" begin
+    problem = HydrologicProblemRichardsManufacturedSolution(penalty_factor = 0)
+    Trixi.trixi_include(@__MODULE__,
+                        joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_manufactured_solution.jl");
+                        problem = problem)
+    errors = analysis_callback(sol)
+    @test successful_retcode(sol)
+    @test errors.l2≈[6.174720616304118e-5] rtol=1.0e-10
+    @test errors.linf≈[0.0005052944044706131] rtol=1.0e-10
 end
 
 @testset "elixir_richards_manufactured_solution.jl finite-diff Jacobian" begin
@@ -49,15 +61,15 @@ end
     finite_diff_algorithm = OrdinaryDiffEqRosenbrock.Rodas5P(; autodiff)
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        algorithm=finite_diff_algorithm, l2=[6.174720620257904e-5],
-                        linf=[0.0005052944044678376])
+                        algorithm=finite_diff_algorithm, l2=[4.069653417595809e-5],
+                        linf=[0.0003809050382624912])
 end
 
 @trixi_testset "elixir_richards_manufactured_solution.jl pressure-head form" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        form=PressureHeadForm(), l2=[6.174720554384852e-5],
-                        linf=[0.0005052944065825626])
+                        form=PressureHeadForm(), l2=[4.0696533074626404e-5],
+                        linf=[0.0003809050068226405])
 end
 
 @testset "elixir_richards_celia_1990.jl AMR mass bias" begin

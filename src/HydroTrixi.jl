@@ -35,7 +35,7 @@ export RichardsEquation1D
 export Haverkamp
 export VanGenuchten
 export water_content, water_content_timederivative, mass_bias, mass_bias_history
-export water_capacity, pressure_head
+export water_capacity, hydraulic_conductivity, pressure_head
 export HydrologicProblemCelia1990
 export HydrologicProblemRichardsManufacturedSolution
 export HydrologicProblemRichardsClosedColumn

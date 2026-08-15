@@ -2,7 +2,7 @@
 #! format: noindent
 
 @doc raw"""
-    HydrologicProblemCelia1990(; tspan = (0.0, 360.0))
+    HydrologicProblemCelia1990(; tspan = (0.0, 360.0), penalty_factor = 1)
 
 Return the one-dimensional Richards-equation infiltration problem introduced by Celia,
 Bouloutas, and Zarba (1990) as a `HydrologicProblem` for HydroTrixi.jl semidiscretizations.
@@ -22,6 +22,10 @@ metres, positive downward on ``z \in [0, 0.4]``, and time in seconds on
 boundary value of ``-0.207`` m at the soil surface (`x_neg`) and ``-0.615`` m at the
 bottom of the column (`x_pos`).
 
+The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref). The dimensionless
+`penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty; setting it to
+zero recovers the unpenalized divergence flux.
+
 The returned problem setup contains the fields `equations`, `state_to_evolved`,
 `evolved_to_state`, `initial_condition`, `boundary_conditions`, `domain`, and `tspan`.
 
@@ -35,7 +39,7 @@ The returned problem setup contains the fields `equations`, `state_to_evolved`,
   equation (openRE, v1.0). *Geoscientific Model Development*, 16, 659-677.
   [DOI: 10.5194/gmd-16-659-2023](https://doi.org/10.5194/gmd-16-659-2023)
 """
-function HydrologicProblemCelia1990(; tspan = (0.0, 360.0))
+function HydrologicProblemCelia1990(; tspan = (0.0, 360.0), penalty_factor = 1)
     soil_model = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
                            alpha = 0.01936848004, beta = 3.96, A = 3.890790677e-4,
                            gamma = 4.74, theta_s = 0.287, theta_r = 0.075)
@@ -45,8 +49,11 @@ function HydrologicProblemCelia1990(; tspan = (0.0, 360.0))
     initial_condition(x, t, equations) = Trixi.SVector(-0.615)
     top_boundary_value(x, t, equations) = Trixi.SVector(-0.207)
     bottom_boundary_value(x, t, equations) = Trixi.SVector(-0.615)
-    boundary_conditions = (; x_neg = Trixi.BoundaryConditionDirichlet(top_boundary_value),
-                           x_pos = Trixi.BoundaryConditionDirichlet(bottom_boundary_value),)
+    boundary_conditions = (;
+                           x_neg = BoundaryConditionDirichletPenalty(top_boundary_value;
+                                                                     penalty_factor),
+                           x_pos = BoundaryConditionDirichletPenalty(bottom_boundary_value;
+                                                                     penalty_factor))
 
     return HydrologicProblem(equations = equations, state_to_evolved = state_to_evolved,
                              evolved_to_state = evolved_to_state,

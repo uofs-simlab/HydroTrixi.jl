@@ -27,9 +27,11 @@ where ``C(\psi) = \vartheta'(\psi)``, and the mixed formulation
 The temporal formulation and constitutive constraint are supplied by
 [`SemidiscretizationImplicit`](@ref). The hydraulic conductivity is supplied through
 `soil_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the model type
-parameter `SoilModel`. If `soil_model` is omitted, it defaults to a [`Haverkamp`](@ref)
-model parameterized with the Celia et al. (1990) reference values reported in Ireson et
-al. (2023), Eq. (25), in SI units (lengths in metres and time in seconds).
+parameter `SoilModel`. [`BoundaryConditionDirichletPenalty`](@ref) uses the default penalty
+``\mathcal{K}(\psi_D)(N+1)^2/h``, where ``\psi_D`` is the prescribed boundary pressure
+head. If `soil_model` is omitted, it defaults to a [`Haverkamp`](@ref) model parameterized
+with the Celia et al. (1990) reference values reported in Ireson et al. (2023), Eq. (25),
+in SI units (lengths in metres and time in seconds).
 """
 struct RichardsEquation1D{SoilModel} <:
        Trixi.AbstractEquationsParabolic{1, 1, Trixi.GradientVariablesConservative}
@@ -68,8 +70,17 @@ end
 @inline Trixi.cons2entropy(u, ::RichardsEquation1D) = u
 @inline Trixi.have_constant_diffusivity(::RichardsEquation1D) = Trixi.False()
 
+@doc raw"""
+    hydraulic_conductivity(u, equations::RichardsEquation1D)
+
+Return the hydraulic conductivity associated with the pressure head stored in `u`.
+"""
+@inline function hydraulic_conductivity(u, equations::RichardsEquation1D)
+    return hydraulic_conductivity(pressure_head(u), equations.soil_model)
+end
+
 @inline function Trixi.max_diffusivity(u, equations::RichardsEquation1D)
-    return hydraulic_conductivity(u, equations.soil_model)
+    return hydraulic_conductivity(u, equations)
 end
 
 @doc raw"""
@@ -151,6 +162,10 @@ end
     dpsi_dz = first(gradients)[1]
     K_s = hydraulic_conductivity(psi, equations.soil_model)
     return K_s * (dpsi_dz - one(dpsi_dz))
+end
+
+@inline function boundary_penalty_coefficient(u_boundary, equations::RichardsEquation1D)
+    return hydraulic_conductivity(u_boundary, equations)
 end
 
 @inline function (boundary_condition::Trixi.BoundaryConditionDirichlet)(flux_inner,

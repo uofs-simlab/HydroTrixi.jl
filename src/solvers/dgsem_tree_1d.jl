@@ -200,6 +200,13 @@ function calc_boundary_flux_divergence!(cache, t, boundary_conditions::NamedTupl
     return nothing
 end
 
+@inline function boundary_flux_divergence(boundary_condition, flux_inner, u_inner,
+                                          orientation, direction, x, t,
+                                          equations_parabolic, penalty_scale)
+    return boundary_condition(flux_inner, u_inner, orientation, direction, x, t,
+                              Trixi.Divergence(), equations_parabolic)
+end
+
 function calc_boundary_flux_by_direction_divergence!(surface_flux_values::AbstractArray{<:Any,
                                                                                         3},
                                                      t, boundary_condition,
@@ -211,6 +218,8 @@ function calc_boundary_flux_by_direction_divergence!(surface_flux_values::Abstra
     parabolic_boundaries = cache_parabolic.parabolic_boundaries
     (; u, neighbor_ids, neighbor_sides, node_coordinates, orientations) = cache.boundaries
     parabolic_flux_values = parabolic_boundaries.flux_values
+    # A degree-N DGSEM uses N + 1 Lobatto-Legendre nodes.
+    polynomial_factor = Trixi.nnodes(dg)^2
 
     Trixi.@threaded for boundary in first_boundary:last_boundary
         neighbor = neighbor_ids[boundary]
@@ -228,9 +237,12 @@ function calc_boundary_flux_by_direction_divergence!(surface_flux_values::Abstra
         end
 
         x = Trixi.get_node_coords(node_coordinates, equations_parabolic, dg, boundary)
-        flux = boundary_condition(flux_inner, u_inner, orientations[boundary],
-                                  direction,
-                                  x, t, Trixi.Divergence(), equations_parabolic)
+        # The inverse Jacobian of an affine 1D tree cell is 2 / h.
+        inverse_cell_size = cache.elements.inverse_jacobian[neighbor] / 2
+        penalty_scale = polynomial_factor * inverse_cell_size
+        flux = boundary_flux_divergence(boundary_condition, flux_inner, u_inner,
+                                        orientations[boundary], direction, x, t,
+                                        equations_parabolic, penalty_scale)
 
         for v in Trixi.eachvariable(equations_parabolic)
             surface_flux_values[v, direction, neighbor] = flux[v]
