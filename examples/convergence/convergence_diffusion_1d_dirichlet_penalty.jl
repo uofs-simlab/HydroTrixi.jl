@@ -16,8 +16,12 @@ tspan = (0.0, 0.25)
 base_initial_refinement_level = 2
 iterations = 5
 
-schemes = ((; name = "LDG", use_boundary_penalty = false, color = 1),
-           (; name = "LDG + boundary penalty", use_boundary_penalty = true, color = 2))
+schemes = ((; name = "LDG", use_boundary_penalty = false,
+            labels = (L"\mathrm{LDG}\ L^2", L"\mathrm{LDG}\ L^\infty"), color = 1),
+           (; name = "LDG + boundary penalty", use_boundary_penalty = true,
+            labels = (L"\mathrm{LDG + boundary\ penalty}\ L^2",
+                      L"\mathrm{LDG + boundary\ penalty}\ L^\infty"),
+            color = 2))
 
 function run_scheme(scheme)
     _, errors = convergence_test(@__MODULE__, elixir, iterations;
@@ -56,36 +60,14 @@ for scheme in schemes
 end
 
 # Plot both boundary treatments on one axis
-HydroTrixi.set_serif_tex_theme!()
-plot_font = HydroTrixi.DEFAULT_PLOT_FONT
-reference_data = results[first(schemes).name]
-figure = Figure(size = HydroTrixi.DEFAULT_CONVERGENCE_FIGSIZE, fontsize = 15)
-axis = Axis(figure[1, 1]; xlabel = LaTeXString("Degrees of freedom"),
-            ylabel = LaTeXString("Error"), xlabelfont = plot_font,
-            ylabelfont = plot_font, xticklabelfont = plot_font,
-            yticklabelfont = plot_font, xscale = log10, yscale = log10,
-            xticks = HydroTrixi.doubling_dof_ticks(reference_data.ndofs;
-                                                   base = minimum(reference_data.ndofs)))
-axis.xminorgridvisible = false
-axis.xminorticksvisible = false
-
-colors = Makie.wong_colors()
-for scheme in schemes
+series = map(schemes) do scheme
     data = results[scheme.name]
-    scatterlines!(axis, data.ndofs, data.l2_errors; label = "$(scheme.name) L²",
-                  color = colors[scheme.color], linestyle = :solid, linewidth = 1.8)
-    scatterlines!(axis, data.ndofs, data.linf_errors; label = "$(scheme.name) L∞",
-                  color = colors[scheme.color], linestyle = :dash, linewidth = 1.8)
+    (; x = data.ndofs, errors = (data.l2_errors, data.linf_errors),
+     labels = scheme.labels, color = scheme.color)
 end
-
-y_ref = minimum(min(results[scheme.name].l2_errors[end - 1],
-                    results[scheme.name].linf_errors[end - 1]) for scheme in schemes)
-HydroTrixi.plot_bottom_triangle!(axis, reference_data.ndofs[end - 1],
-                                 reference_data.ndofs[end], y_ref, polydeg + 1;
-                                 trianglefontsize = 15, font = plot_font)
-axislegend(axis; position = (:right, :top), labelsize = 12, font = plot_font)
 
 plots_dir = mkpath(joinpath(dirname(dirname(@__DIR__)), "plots"))
 output_path = joinpath(plots_dir, "diffusion_1d_dirichlet_penalty_convergence.pdf")
-save(output_path, figure; px_per_unit = 1)
+plot_convergence_1d(series; output_path, triangle_order = polydeg + 1,
+                    trianglefontsize = 15, legendfontsize = 12)
 println("Saved convergence plot to: $(output_path)")

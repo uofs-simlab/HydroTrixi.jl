@@ -13,10 +13,13 @@ elixir = joinpath(dirname(@__DIR__), "elixirs",
 time_steps = 4.0 ./ 2.0 .^ collect(0:3)
 plot_ylims = (1.0e-12, 1.0e-3)
 
-schemes = ((; name = "pressure_head", form = PressureHeadForm(), label = "Pressure head",
+schemes = ((; name = "pressure_head", form = PressureHeadForm(),
+            labels = (L"\mathrm{Pressure\ head}\ L^2",
+                      L"\mathrm{Pressure\ head}\ L^\infty"),
             color = 2, marker = :rect, markersize = 11.0),
-           (; name = "mixed", form = MixedForm(), label = "Mixed", color = 1,
-            marker = :circle, markersize = 7.0))
+           (; name = "mixed", form = MixedForm(),
+            labels = (L"\mathrm{Mixed}\ L^2", L"\mathrm{Mixed}\ L^\infty"),
+            color = 1, marker = :circle, markersize = 7.0))
 
 function solve_time_step(scheme, time_step)
     redirect_stdout(devnull) do
@@ -84,35 +87,19 @@ end
 println("Saved Richards convergence table to: $(analysis_path)")
 
 # Plot both formulations on one axis
-HydroTrixi.set_serif_tex_theme!()
-plot_font = HydroTrixi.DEFAULT_PLOT_FONT
 time_step_ticks = Float64.(sort(unique(time_steps)))
 time_step_labels = [@sprintf("%.4g", tick) for tick in time_step_ticks]
-figure = Figure(size = HydroTrixi.DEFAULT_CONVERGENCE_FIGSIZE, fontsize = 15)
-axis = Axis(figure[1, 1]; xlabel = L"$\Delta t$ (s)",
-            ylabel = LaTeXString("Pressure head error"), xlabelfont = plot_font,
-            ylabelfont = plot_font, xticklabelfont = plot_font,
-            yticklabelfont = plot_font, xscale = log10, yscale = log10,
-            xticks = (time_step_ticks, time_step_labels))
-axis.xminorgridvisible = false
-axis.xminorticksvisible = false
-isnothing(plot_ylims) || ylims!(axis, plot_ylims)
-
-colors = Makie.wong_colors()
-for scheme in schemes
+series = map(schemes) do scheme
     data = results[scheme.name]
     order = sortperm(data.time_steps)
-    scatterlines!(axis, data.time_steps[order], data.l2_errors[order];
-                  label = "$(scheme.label) L²", color = colors[scheme.color],
-                  linestyle = :solid, linewidth = 1.8, marker = scheme.marker,
-                  markersize = scheme.markersize)
-    scatterlines!(axis, data.time_steps[order], data.linf_errors[order];
-                  label = "$(scheme.label) L∞", color = colors[scheme.color],
-                  linestyle = :dash, linewidth = 1.8, marker = scheme.marker,
-                  markersize = scheme.markersize)
+    (; x = data.time_steps[order],
+     errors = (data.l2_errors[order], data.linf_errors[order]), labels = scheme.labels,
+     color = scheme.color, marker = scheme.marker, markersize = scheme.markersize)
 end
-axislegend(axis; position = (:right, :bottom), labelsize = 14, font = plot_font)
 
 output_path = joinpath(plots_dir, "$(result_prefix).pdf")
-save(output_path, figure; px_per_unit = 1)
+plot_convergence_1d(series; output_path, xlabel = L"$\Delta t$ (s)",
+                    ylabel = LaTeXString("Pressure head error"),
+                    xticks = (time_step_ticks, time_step_labels), ylims = plot_ylims,
+                    legend_position = (:right, :bottom))
 println("Saved Richards convergence plot to: $(output_path)")

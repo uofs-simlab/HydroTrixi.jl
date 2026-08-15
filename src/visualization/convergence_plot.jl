@@ -20,41 +20,54 @@ function HydroTrixi.doubling_dof_ticks(values::AbstractVector{<:Real}; base::Int
     return ticks, labels
 end
 
-function HydroTrixi.plot_bottom_triangle!(ax, x_left, x_right, y_ref, order;
-                                          triangle_shift = 1.5, trianglefontsize = 12,
+function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error, order;
+                                          gap_factor = 1.5, trianglefontsize = 12,
                                           font = HydroTrixi.DEFAULT_PLOT_FONT,)
-    if x_right <= x_left
-        throw(ArgumentError("`x_right` must be greater than `x_left`."))
+    if fine_x <= coarse_x
+        throw(ArgumentError("`fine_x` must be greater than `coarse_x`."))
     end
-    ratio = x_right / x_left
-    y_top = y_ref / triangle_shift
-    y_bottom = y_top / ratio^order
+    refinement_ratio = fine_x / coarse_x
+    upper_error = reference_error / gap_factor
+    lower_error = upper_error / refinement_ratio^order
 
     # Draw a right triangle with right angle at the bottom-left corner.
-    lines!(ax, [x_left, x_right, x_left, x_left], [y_bottom, y_bottom, y_top, y_bottom];
-           color = :black,)
+    lines!(ax, [coarse_x, fine_x, coarse_x, coarse_x],
+           [lower_error, lower_error, upper_error, lower_error]; color = :black,)
 
-    xm = 10^((2 * log10(x_left) + log10(x_right)) / 3)
-    ym = 10^((2 * log10(y_bottom) + log10(y_top)) / 3)
-    text!(ax, xm, ym; text = string(order, ":1"), align = (:center, :center),
+    label_x = 10^((2 * log10(coarse_x) + log10(fine_x)) / 3)
+    label_error = 10^((2 * log10(lower_error) + log10(upper_error)) / 3)
+    text!(ax, label_x, label_error; text = string(order, ":1"),
+          align = (:center, :center),
           color = :black, fontsize = trianglefontsize, font = font,)
 
     return nothing
 end
 
-function HydroTrixi.plot_convergence_1d(ndofs::AbstractVector{<:Real},
-                                        l2_errors::AbstractVector{<:Real},
-                                        linf_errors::AbstractVector{<:Real};
+function convergence_triangle_from_data(series_groups, order)
+    # Automatic placement assumes every curve uses the same refinement levels.
+    reference_x = first(series_groups).x
+    if !all(group -> group.x == reference_x, series_groups)
+        throw(ArgumentError("Automatic reference triangles require shared x values."))
+    end
+
+    # Span the last refinement interval and place the triangle below the lowest error at
+    # the coarser of those two levels.
+    reference_error = minimum(errors[end - 1] for group in series_groups
+                              for errors in group.errors)
+    return (; coarse_x = reference_x[end - 1], fine_x = reference_x[end],
+            reference_error, order)
+end
+
+function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVector};
                                         output_path = joinpath(pwd(), "convergence_1d.pdf"),
-                                        labels = [L"$L^2$", L"$L^\infty$"],
-                                        styles = [:solid, :dash], colors = [1, 2],
                                         xlabel = LaTeXString("Degrees of freedom"),
                                         ylabel = LaTeXString("Error"),
                                         font = HydroTrixi.DEFAULT_PLOT_FONT,
                                         size = HydroTrixi.DEFAULT_CONVERGENCE_FIGSIZE,
                                         fontsize = 15, legendfontsize = 14,
                                         trianglefontsize = nothing, linewidth = 1.8,
-                                        markersize = 7.0, show_nodes = true,
+                                        marker = :circle, markersize = 7.0,
+                                        show_nodes = true, show_legend = true,
                                         xlabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
                                         ylabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
                                         xticklabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
@@ -62,48 +75,53 @@ function HydroTrixi.plot_convergence_1d(ndofs::AbstractVector{<:Real},
                                         legendfont = HydroTrixi.DEFAULT_PLOT_FONT,
                                         legend_position = (:right, :top), xlims = nothing,
                                         ylims = nothing, xscale = log10, yscale = log10,
-                                        dof_tick_base = 10, triangle_order = nothing,
-                                        triangle_shift = 1.5,)
+                                        xticks = :doubling, triangle_order = nothing,
+                                        triangle_gap_factor = 1.5,)
     HydroTrixi.set_serif_tex_theme!(font = font)
     trianglefontsize = isnothing(trianglefontsize) ? fontsize : trianglefontsize
 
-    xticks = HydroTrixi.doubling_dof_ticks(ndofs; base = dof_tick_base)
+    if xticks === :doubling
+        # Cover the complete DOF range when groups contain different refinement levels.
+        x_values = reduce(vcat, (collect(group.x) for group in series_groups))
+        xticks = HydroTrixi.doubling_dof_ticks(x_values;
+                                               base = Int(minimum(x_values)))
+    end
 
     fig = Figure(size = size, fontsize = fontsize)
-    ax = Axis(fig[1, 1]; xlabel = xlabel, ylabel = ylabel, xlabelfont = xlabelfont,
-              ylabelfont = ylabelfont, xticklabelfont = xticklabelfont,
-              yticklabelfont = yticklabelfont, xscale = xscale, yscale = yscale,
-              xticks = xticks,)
+    ax = solution_axis(fig; xlabel = xlabel, ylabel = ylabel, xlabelfont = xlabelfont,
+                       ylabelfont = ylabelfont, xticklabelfont = xticklabelfont,
+                       yticklabelfont = yticklabelfont, xscale = xscale,
+                       yscale = yscale, xticks = xticks, xlims = xlims, ylims = ylims)
 
     ax.xminorgridvisible = false
     ax.xminorticksvisible = false
 
-    apply_axis_limits!(ax; xlims = xlims, ylims = ylims)
-
-    for (errors, label, style, color) in ((l2_errors, labels[1], styles[1], colors[1]),
-                                          (linf_errors, labels[2], styles[2], colors[2]))
-        plot_series!(ax, ndofs, errors; label = label, linestyle = style,
-                     linewidth = linewidth, markersize = markersize,
-                     color = Makie.wong_colors()[color], show_nodes = show_nodes)
+    colors = Makie.wong_colors()
+    linestyles = (:solid, :dash, :dot, :dashdot)
+    # Share a colour within each formulation and distinguish its error metrics by style
+    for (group_index, group) in pairs(series_groups)
+        color = get(group, :color, group_index)
+        color = color isa Integer ? colors[mod1(color, length(colors))] : color
+        for (series_index, errors) in pairs(group.errors)
+            linestyle = linestyles[mod1(series_index, length(linestyles))]
+            plot_series!(ax, group.x, errors; label = group.labels[series_index],
+                         linestyle, linewidth,
+                         marker = get(group, :marker, marker),
+                         markersize = get(group, :markersize, markersize), color,
+                         show_nodes)
+        end
     end
 
-    l2_eoc = HydroTrixi.compute_eoc(l2_errors)
-    order = if isnothing(triangle_order)
-        finite_orders = filter(isfinite, l2_eoc)
-        isempty(finite_orders) ? 1 : round(Int, finite_orders[end])
-    else
-        triangle_order
+    if !isnothing(triangle_order)
+        triangle = convergence_triangle_from_data(series_groups, triangle_order)
+        HydroTrixi.plot_bottom_triangle!(ax, triangle.coarse_x, triangle.fine_x,
+                                         triangle.reference_error, triangle.order;
+                                         gap_factor = triangle_gap_factor,
+                                         trianglefontsize = trianglefontsize, font = font)
     end
 
-    x_ref_left = ndofs[end - 1]
-    x_ref_right = ndofs[end]
-    y_ref = min(l2_errors[end - 1], linf_errors[end - 1])
-    HydroTrixi.plot_bottom_triangle!(ax, x_ref_left, x_ref_right, y_ref, order;
-                                     triangle_shift = triangle_shift,
-                                     trianglefontsize = trianglefontsize, font = font,)
-
-    axislegend(ax; position = legend_position, font = legendfont,
-               labelsize = legendfontsize,)
+    add_legend!(ax; position = legend_position, font = legendfont,
+                labelsize = legendfontsize, show_legend = show_legend)
 
     outdir = dirname(output_path)
     outdir == "" || mkpath(outdir)

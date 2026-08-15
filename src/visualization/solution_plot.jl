@@ -70,10 +70,10 @@ function solution_axis(fig; xlabel, ylabel, xlabelfont = HydroTrixi.DEFAULT_PLOT
 end
 
 function plot_series!(ax, x, y; label = nothing, linestyle = :solid, linewidth = 2.0,
-                      markersize = 7.0, color, show_nodes = false)
+                      marker = :circle, markersize = 7.0, color, show_nodes = false)
     if show_nodes
         scatterlines!(ax, x, y; label = label, linestyle = linestyle, linewidth = linewidth,
-                      markersize = markersize, color = color)
+                      marker = marker, markersize = markersize, color = color)
     else
         lines!(ax, x, y; label = label, linestyle = linestyle, linewidth = linewidth,
                color = color)

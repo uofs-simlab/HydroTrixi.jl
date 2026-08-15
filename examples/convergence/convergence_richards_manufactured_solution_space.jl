@@ -13,10 +13,13 @@ elixir = joinpath(dirname(@__DIR__), "elixirs",
 base_initial_refinement_level = 4
 polydeg = 3
 
-schemes = ((; name = "pressure_head", form = PressureHeadForm(), label = "Pressure head",
+schemes = ((; name = "pressure_head", form = PressureHeadForm(),
+            labels = (L"\mathrm{Pressure\ head}\ L^2",
+                      L"\mathrm{Pressure\ head}\ L^\infty"),
             color = 2, marker = :rect, markersize = 11.0),
-           (; name = "mixed", form = MixedForm(), label = "Mixed", color = 1,
-            marker = :circle, markersize = 7.0))
+           (; name = "mixed", form = MixedForm(),
+            labels = (L"\mathrm{Mixed}\ L^2", L"\mathrm{Mixed}\ L^\infty"),
+            color = 1, marker = :circle, markersize = 7.0))
 
 function solve_level(scheme, level)
     Trixi.trixi_include(@__MODULE__, elixir; tspan = (0.0, 120.0),
@@ -78,37 +81,16 @@ end
 println("Saved Richards convergence table to: $(analysis_path)")
 
 # Plot both formulations on one axis
-HydroTrixi.set_serif_tex_theme!()
-plot_font = HydroTrixi.DEFAULT_PLOT_FONT
-all_ndofs = reduce(vcat, (results[scheme.name].ndofs for scheme in schemes))
-figure = Figure(size = HydroTrixi.DEFAULT_CONVERGENCE_FIGSIZE, fontsize = 15)
-axis = Axis(figure[1, 1]; xlabel = LaTeXString("Degrees of freedom"),
-            ylabel = LaTeXString("Pressure head error"), xlabelfont = plot_font,
-            ylabelfont = plot_font, xticklabelfont = plot_font,
-            yticklabelfont = plot_font, xscale = log10, yscale = log10,
-            xticks = HydroTrixi.doubling_dof_ticks(all_ndofs; base = minimum(all_ndofs)))
-axis.xminorgridvisible = false
-axis.xminorticksvisible = false
-
-colors = Makie.wong_colors()
-for scheme in schemes
+series = map(schemes) do scheme
     data = results[scheme.name]
-    scatterlines!(axis, data.ndofs, data.l2_errors; label = "$(scheme.label) L²",
-                  color = colors[scheme.color], linestyle = :solid, linewidth = 1.8,
-                  marker = scheme.marker, markersize = scheme.markersize)
-    scatterlines!(axis, data.ndofs, data.linf_errors; label = "$(scheme.label) L∞",
-                  color = colors[scheme.color], linestyle = :dash, linewidth = 1.8,
-                  marker = scheme.marker, markersize = scheme.markersize)
+    (; x = data.ndofs, errors = (data.l2_errors, data.linf_errors),
+     labels = scheme.labels, color = scheme.color, marker = scheme.marker,
+     markersize = scheme.markersize)
 end
 
-reference_data = results[first(schemes).name]
-y_ref = minimum(min(results[scheme.name].l2_errors[end - 1],
-                    results[scheme.name].linf_errors[end - 1]) for scheme in schemes)
-HydroTrixi.plot_bottom_triangle!(axis, reference_data.ndofs[end - 1],
-                                 reference_data.ndofs[end], y_ref, polydeg + 1;
-                                 trianglefontsize = 15, font = plot_font)
-axislegend(axis; position = (:left, :bottom), labelsize = 14, font = plot_font)
-
 output_path = joinpath(plots_dir, "$(result_prefix).pdf")
-save(output_path, figure; px_per_unit = 1)
+plot_convergence_1d(series; output_path,
+                    ylabel = LaTeXString("Pressure head error"),
+                    triangle_order = polydeg + 1, trianglefontsize = 15,
+                    legend_position = (:left, :bottom))
 println("Saved Richards convergence plot to: $(output_path)")

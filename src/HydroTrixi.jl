@@ -78,10 +78,18 @@ This method is provided by `HydroTrixiVisualizationExt` and becomes available wh
 function plot_solution_1d end
 
 @doc raw"""
-    plot_convergence_1d(ndofs, l2_errors, linf_errors; kwargs...)
+    plot_convergence_1d(series; kwargs...)
 
-Plot one-dimensional convergence data against the number of degrees of freedom, save the
-figure to `output_path`, and return the `CairoMakie.Figure`.
+Plot one-dimensional convergence data, save the figure to `output_path`, and return the
+`CairoMakie.Figure`.
+
+Each group in `series` must provide a shared `x` vector, an `errors` collection containing
+one or more error vectors, and matching `labels`. It may also provide shared `color`,
+`marker`, and `markersize` values. Integer colors select entries from Makie's Wong palette.
+Pass `triangle_order` to infer a reference triangle for groups with shared `x` values. By
+default, `triangle_gap_factor = 1.5` places the triangle below the nearest curve by that
+factor. The x ticks are inferred for doubling degrees of freedom; pass `xticks = nothing` or
+explicit ticks for other x axes.
 
 This method is provided by `HydroTrixiVisualizationExt` and becomes available when
 `CairoMakie` and `LaTeXStrings` are loaded.
