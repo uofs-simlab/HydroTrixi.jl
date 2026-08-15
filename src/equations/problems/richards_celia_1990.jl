@@ -24,7 +24,7 @@ bottom of the column (`x_pos`).
 
 The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref). The dimensionless
 `penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty; setting it to
-zero recovers the unpenalized divergence flux.
+zero omits the additional divergence-flux penalty.
 
 The returned problem setup contains the fields `equations`, `state_to_evolved`,
 `evolved_to_state`, `initial_condition`, `boundary_conditions`, `domain`, and `tspan`.

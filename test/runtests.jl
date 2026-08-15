@@ -40,7 +40,7 @@ end
 @trixi_testset "elixir_richards_manufactured_solution.jl mixed form" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        l2=[4.069653414321775e-5], linf=[0.00038090503701609935])
+                        l2=[4.069609236532572e-5], linf=[0.00038090502378751445])
 end
 
 @testset "elixir_richards_manufactured_solution.jl zero penalty factor" begin
@@ -61,15 +61,15 @@ end
     finite_diff_algorithm = OrdinaryDiffEqRosenbrock.Rodas5P(; autodiff)
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        algorithm=finite_diff_algorithm, l2=[4.0696534175400336e-5],
-                        linf=[0.0003809050355951804])
+                        algorithm=finite_diff_algorithm, l2=[4.0696092445803154e-5],
+                        linf=[0.00038090502896870326])
 end
 
 @trixi_testset "elixir_richards_manufactured_solution.jl pressure-head form" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        form=PressureHeadForm(), l2=[4.0696533074626404e-5],
-                        linf=[0.0003809050068226405])
+                        form=PressureHeadForm(), l2=[4.069609136528145e-5],
+                        linf=[0.000380904999743803])
 end
 
 @testset "state-variable norm" begin

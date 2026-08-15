@@ -10,25 +10,26 @@ u^* = u_b
 ```
 on the gradient pass and the numerical flux
 ```math
-f^* = f_{\mathrm{inner}} - n_b C_\tau\,\kappa(u_b)\frac{(N+1)^2}{h}(u_{\mathrm{inner}} - u_b)
+f^* = f_{\mathrm{inner}} - n_b C_\tau\,\kappa(u_b)\frac{N(N+1)}{h}(u_{\mathrm{inner}} - u_b)
 ```
 on the divergence pass, where ``n_b \in \{-1, 1\}`` is
 the outward unit normal. The solver supplies the polynomial degree ``N`` and boundary-cell
-size ``h``. The (possibly nonlinear) diffusion coefficient ``\kappa(u_b)`` is obtained from
-`boundary_penalty_coefficient(u_b, equations)`. This returns the constant diffusivity for
-linear diffusion and the hydraulic conductivity ``\mathcal{K}(\psi_D)`` for the Richards
-equation. The specified `boundary_value_function` is called as
-`boundary_value_function(x, t, equations)`. The dimensionless `penalty_factor` is
-``C_\tau``; its default value is one, while zero recovers the unpenalized divergence flux.
+size ``h``. Since the endpoint weight of the collocated Legendre-Gauss-Lobatto rule on
+``[-1, 1]`` is ``2/(N(N+1))`` and the inverse Jacobian of the affine map from the reference 
+cell to the physical boundary cell is ``2/h``, jumps in the numerical trace get lifted with 
+a scaling of ``N(N+1)/h`` when converted into a gradient on the reference element, and 
+further scaled by the diffusion coefficient to obtain a flux on the divergence pass, where 
+``\kappa(u_b)`` is the diffusion coefficient evaluated at the boundary value using 
+`boundary_penalty_coefficient(u_b, equations)`. The dimensionless `penalty_factor` is
+``C_\tau``; its default value is one. Setting it to zero omits this additional
+divergence-flux penalty while retaining the prescribed trace on the gradient pass.
 
 # References
-- Arnold, D. N. (1982). An interior penalty finite element method with
-  discontinuous elements. *SIAM Journal on Numerical Analysis*, 19(4), 742-760.
-  [DOI: 10.1137/0719052](https://doi.org/10.1137/0719052)
-- Arnold, D. N., Brezzi, F., Cockburn, B., Marini, L. D. (2002). Unified
-  analysis of discontinuous Galerkin methods for elliptic problems.
-  *SIAM Journal on Numerical Analysis*, 39(5), 1749-1779.
-  [DOI: 10.1137/S0036142901384162](https://doi.org/10.1137/S0036142901384162)
+- Manzanero, J., Rueda-Ramírez, A. M., Rubio, G., Ferrer, E. (2018). The Bassi Rebay 1
+  scheme is a special case of the symmetric interior penalty formulation for discontinuous
+  Galerkin discretisations with Gauss-Lobatto points. *Journal of Computational Physics*,
+  363, 1-10.
+  [DOI: 10.1016/j.jcp.2018.02.035](https://doi.org/10.1016/j.jcp.2018.02.035)
 """
 struct BoundaryConditionDirichletPenalty{BoundaryValueFunction, PenaltyFactor}
     boundary_value_function::BoundaryValueFunction

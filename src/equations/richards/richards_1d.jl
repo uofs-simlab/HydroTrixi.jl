@@ -28,7 +28,7 @@ The temporal formulation and constitutive constraint are supplied by
 [`SemidiscretizationImplicit`](@ref). The hydraulic conductivity is supplied through
 `soil_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the model type
 parameter `SoilModel`. [`BoundaryConditionDirichletPenalty`](@ref) uses the default penalty
-``\mathcal{K}(\psi_D)(N+1)^2/h``, where ``\psi_D`` is the prescribed boundary pressure
+``\mathcal{K}(\psi_D)N(N+1)/h``, where ``\psi_D`` is the prescribed boundary pressure
 head. If `soil_model` is omitted, it defaults to a [`Haverkamp`](@ref) model parameterized
 with the Celia et al. (1990) reference values reported in Ireson et al. (2023), Eq. (25),
 in SI units (lengths in metres and time in seconds).

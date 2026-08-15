@@ -83,7 +83,7 @@ conditions impose values from that profile using the penalty formulation, and th
 term is [`source_terms_richards_manufactured_solution`](@ref). The default setup uses the
 same Haverkamp parameters as [`HydrologicProblemCelia1990`](@ref). The dimensionless
 `penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty; setting it to zero
-recovers the unpenalized divergence flux.
+omits the additional divergence-flux penalty.
 
 The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds on
 ``t \in [0, 120]`` by default. It is intended for regression and convergence checks of

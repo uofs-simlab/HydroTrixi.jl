@@ -16,7 +16,7 @@ exact_solution(x, t) = exp(-diffusivity * pi^2 * t) * sinpi(x[1])
 initial_condition(x, t, equations) = SVector(exact_solution(x, t))
 zero_dirichlet(x, t, equations) = SVector(0.0)
 
-# Set this factor to zero to recover the unpenalized divergence flux
+# Set this factor to zero to omit the additional divergence-flux penalty
 penalty_factor = 0
 boundary_condition = BoundaryConditionDirichletPenalty(zero_dirichlet; penalty_factor)
 boundary_conditions = (; x_neg = boundary_condition, x_pos = boundary_condition)
