@@ -64,19 +64,27 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # ### 4. Solve and keep a time history
 #
 # The Richards problem is stiff, so [`default_algorithm`](@ref) selects the eight-stage,
-# fifth-order `Rodas5P` Rosenbrock-Wanner method, with an embedded fourth-order
-# approximation for adaptive time stepping. The implicit defaults use a sparse residual
-# Jacobian evaluated by graph-coloured ForwardDiff.jl. The initial step size is
-# $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify
+# fifth-order `Rodas5P` Rosenbrock-Wanner method, which includes an embedded fourth-order
+# approximation for adaptive time stepping. The default options use a sparse residual
+# Jacobian evaluated by graph-coloured forward-mode automatic differentiation. The initial 
+# step size is $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify
 # `saveat = 0.0:6.0:360.0` to save a solution every six seconds, which will be used to
 # create an animation in the next tutorial section. The `adaptive = true` keyword below
 # controls time adaptivity only; run `examples/elixirs/elixir_richards_celia_1990.jl` with
 # `amr = true` for mesh adaptivity based on water content.
+#
+# The mixed state contains both water content and pressure head, while the pressure-head
+# form contains only pressure head. To give scalar `abstol` and `reltol` the same
+# pressure-head error estimator in both forms, [`state_variable_norm`](@ref) excludes
+# the evolved water content block and any passive diagnostic variables from the adaptive
+# error norm.
 
 ode = semidiscretize(semi, problem.tspan)
+internalnorm = state_variable_norm(semi)
 
 sol = solve(ode, default_algorithm(semi); dt = 1.0e-2, adaptive = true,
-            saveat = 0.0:6.0:360.0, save_everystep = false, maxiters = typemax(Int))
+            internalnorm = internalnorm, saveat = 0.0:6.0:360.0,
+            save_everystep = false, maxiters = typemax(Int))
 
 println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) saved states.")
 

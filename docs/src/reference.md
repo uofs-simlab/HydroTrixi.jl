@@ -11,6 +11,7 @@ EditURL = "https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/docs/src/refer
 HydroTrixi
 examples_dir
 default_algorithm
+state_variable_norm
 AbstractJacobianStrategy
 DenseJacobian
 SparseJacobian

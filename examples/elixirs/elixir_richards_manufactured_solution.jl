@@ -20,6 +20,7 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 
 ode = semidiscretize(semi, problem.tspan; jacobian = SparseJacobian())
 algorithm = default_algorithm(semi)
+internalnorm = state_variable_norm(semi)
 
 summary_callback = SummaryCallback()
 
@@ -38,5 +39,6 @@ run_simulation = true
 if run_simulation
     sol = solve(ode, algorithm; dt = 1.0e-2, adaptive = true,
                 reltol = 1.0e-9, abstol = 1.0e-11, saveat = Float64[],
-                ode_default_options()..., callback = callbacks, maxiters = typemax(Int))
+                ode_default_options()..., internalnorm = internalnorm,
+                callback = callbacks, maxiters = typemax(Int))
 end
