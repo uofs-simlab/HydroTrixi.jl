@@ -27,6 +27,7 @@ water_content_timederivative
 mass_bias
 mass_bias_history
 water_capacity
+hydraulic_conductivity
 pressure_head
 pressure_head_from_water_content
 Haverkamp

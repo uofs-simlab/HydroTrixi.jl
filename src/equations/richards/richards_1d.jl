@@ -50,8 +50,10 @@ end
 
 Return the pressure head ``\psi`` stored in state `u`.
 
-For scalar states, `u` is returned directly. For vector-like states, the first component
-is interpreted as pressure head.
+For scalar states, `u` is returned directly. For vector-like states, the first component is
+interpreted as pressure head. For example, the mixed formulation stores pressure head in the
+first component and water content in the second component, so `pressure_head(u)` returns the
+first component.
 """
 @inline pressure_head(psi::Number) = psi
 @inline pressure_head(u) = u[1]
