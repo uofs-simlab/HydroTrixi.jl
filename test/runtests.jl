@@ -1,5 +1,6 @@
 using Test
 using HydroTrixi
+import LinearSolve
 import OrdinaryDiffEqRosenbrock
 using SciMLBase: DiscreteCallback, solve, successful_retcode
 using Trixi: trixi_include
@@ -13,18 +14,56 @@ macro test_trixi_include(args...)
 end
 
 @trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl" begin
+    import LinearSolve
+    import OrdinaryDiffEqRosenbrock
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_diffusion_1d_dirichlet_dirichlet.jl"),
                         l2=[4.688250908054879e-5], linf=[0.00035212174570349586])
+    @test sol.alg.autodiff isa OrdinaryDiffEqRosenbrock.AutoForwardDiff
+    @test sol.alg.linsolve isa LinearSolve.LUFactorization
+    @test sol.alg.max_jac_age == 1
 end
 
 @trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl implicit" begin
+    import LinearSolve
+    import OrdinaryDiffEqRosenbrock
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_diffusion_1d_dirichlet_dirichlet.jl"),
-                        algorithm=default_algorithm(semi), jacobian=SparseJacobian(),
+                        algorithm=default_algorithm(ode), jacobian=SparseJacobian(),
                         dt=1.0e-2, adaptive=true,
                         reltol=1.0e-9, abstol=1.0e-11,
                         l2=[4.688250908054879e-5], linf=[0.00035212174570349586])
+    @test sol.alg.autodiff isa OrdinaryDiffEqRosenbrock.AutoSparse
+    @test sol.alg.autodiff.dense_ad isa OrdinaryDiffEqRosenbrock.AutoForwardDiff
+    @test sol.alg.linsolve isa LinearSolve.KLUFactorization
+    @test sol.alg.max_jac_age == 1
+end
+
+@testset "default algorithm" begin
+    Trixi.trixi_include(@__MODULE__,
+                        joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_manufactured_solution.jl");
+                        run_simulation = false)
+    algorithm = default_algorithm(ode)
+    @test algorithm.autodiff isa OrdinaryDiffEqRosenbrock.AutoForwardDiff
+    @test algorithm.linsolve isa LinearSolve.KLUFactorization
+    @test algorithm.max_jac_age == 1
+
+    dense_ode = Trixi.semidiscretize(semi, problem.tspan;
+                                     jacobian = DenseJacobian())
+    dense_algorithm = default_algorithm(dense_ode)
+    @test dense_algorithm.linsolve isa LinearSolve.LUFactorization
+    @test dense_algorithm.max_jac_age == 1
+
+    finite_diff = OrdinaryDiffEqRosenbrock.AutoFiniteDiff()
+    dense_linsolve = LinearSolve.LUFactorization()
+    overridden = default_algorithm(ode; autodiff = finite_diff,
+                                   linsolve = dense_linsolve,
+                                   jac_reuse_gamma_tol = 0.05)
+    @test overridden.autodiff isa OrdinaryDiffEqRosenbrock.AutoFiniteDiff
+    @test overridden.linsolve isa LinearSolve.LUFactorization
+    @test overridden.max_jac_age == 1
+    @test overridden.jac_reuse_gamma_tol == 0.05
 end
 
 @trixi_testset "elixir_diffusion_1d_mixed_dirichlet_neumann.jl" begin
@@ -58,7 +97,7 @@ end
 @testset "elixir_richards_manufactured_solution.jl finite-diff Jacobian" begin
     # Retain support for graph-coloured finite-difference Jacobians
     autodiff = OrdinaryDiffEqRosenbrock.AutoFiniteDiff()
-    finite_diff_algorithm = OrdinaryDiffEqRosenbrock.Rodas5P(; autodiff)
+    finite_diff_algorithm = default_algorithm(ode; autodiff)
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
                         algorithm=finite_diff_algorithm, l2=[4.0696092445803154e-5],
@@ -110,7 +149,7 @@ end
                                  "elixir_richards_celia_1990.jl");
                         tspan = (0.0, 1.0), amr = true, run_simulation = false)
 
-    sol = solve(ode, default_algorithm(semi); dt = 1.0e-2, adaptive = true,
+    sol = solve(ode, default_algorithm(ode); dt = 1.0e-2, adaptive = true,
                 reltol = 1.0e-7, abstol = 1.0e-11, save_everystep = false,
                 save_start = false,
                 save_end = true, maxiters = typemax(Int), callback = callbacks)
@@ -119,7 +158,8 @@ end
 
 @testset "elixir_richards_celia_1990.jl AMR Jacobian" begin
     # Scheduled AMR callback to keep simulation topologies consistent between runs
-    function solve_scheduled_amr(ode, semi, mesh, amr_callback, adaptation_times)
+    function solve_scheduled_amr(ode, semi, mesh, amr_callback, adaptation_times;
+                                 algorithm = default_algorithm(ode))
         topology_history = Tuple{Float64, Vector{Int}}[]
         scheduled_times = Set(adaptation_times)
         condition = (u, t, integrator) -> t in scheduled_times
@@ -132,7 +172,7 @@ end
         callback = DiscreteCallback(condition, affect!;
                                     save_positions = (false, false))
 
-        solution = solve(ode, default_algorithm(semi);
+        solution = solve(ode, algorithm;
                          dt = 1.0e-2, adaptive = true, reltol = 1.0e-7,
                          abstol = 1.0e-11, saveat = Float64[],
                          Trixi.ode_default_options()...,
@@ -156,6 +196,10 @@ end
 
             @test successful_retcode(dense.solution)
             @test successful_retcode(sparse.solution)
+            @test dense.solution.alg.linsolve isa LinearSolve.LUFactorization
+            @test sparse.solution.alg.linsolve isa LinearSolve.KLUFactorization
+            @test dense.solution.alg.max_jac_age == 1
+            @test sparse.solution.alg.max_jac_age == 1
             @test length(dense.topology_history) == length(adaptation_times)
             @test length(sparse.topology_history) == length(adaptation_times)
             @test dense.topology_history == sparse.topology_history

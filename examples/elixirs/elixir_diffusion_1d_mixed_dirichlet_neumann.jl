@@ -56,6 +56,6 @@ callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
 ###############################################################################
 # run the simulation
 
-sol = solve(ode, default_algorithm(semi);
+sol = solve(ode, default_algorithm(ode);
             dt = 0.0032 / length(Trixi.leaf_cells(mesh.tree))^2, adaptive = false,
             saveat = Float64[], ode_default_options()..., callback = callbacks)

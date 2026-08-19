@@ -1,13 +1,17 @@
 @doc raw"""
-    default_algorithm(semi::SemidiscretizationImplicit)
+    default_algorithm(ode::SciMLBase.ODEProblem; kwargs...)
 
-Return a recommended OrdinaryDiffEq.jl time integration algorithm for the implicit
-semidiscretization `semi`, suitable for passing to `SciMLBase.solve`.
+Return a recommended OrdinaryDiffEq.jl time integration algorithm for `ode`, suitable for
+passing to `SciMLBase.solve`.
 
-The recommended algorithm is `Rodas5P()`, an eight-stage, fifth-order Rosenbrock-Wanner
-method with graph-coloured forward-mode automatic differentiation when
-[`semidiscretize`](@ref) supplies the default [`SparseJacobian`](@ref) prototype. The Jacobian strategy passed to [`semidiscretize`](@ref) configures Jacobian storage. The
-time integration algorithm configures the differentiation backend and linear solver.
+The recommended algorithm for `SemidiscretizationImplicit` is `Rodas5P`, an eight-stage,
+fifth-order Rosenbrock-Wanner method, and it recomputes the Jacobian after at most one time
+step. When `ode` has the sparse Jacobian prototype supplied by [`semidiscretize`](@ref) with
+[`SparseJacobian`](@ref), the algorithm uses sparse forward-mode automatic differentiation
+and a KLU linear solver. Otherwise, it uses dense forward-mode automatic differentiation
+and a dense LU linear solver.
+
+Keyword arguments override these defaults or are forwarded to the `Rodas5P` constructor.
 
 # References
 - Steinebach, G. (2023). Construction of Rosenbrock-Wanner method Rodas5P and numerical
@@ -15,8 +19,25 @@ time integration algorithm configures the differentiation backend and linear sol
   Mathematics*, 63, Article 27.
   [DOI: 10.1007/s10543-023-00967-x](https://doi.org/10.1007/s10543-023-00967-x)
 """
-function default_algorithm(::SemidiscretizationImplicit)
-    return OrdinaryDiffEqRosenbrock.Rodas5P()
+function default_algorithm(ode::SciMLBase.ODEProblem{U, T, I, P};
+                           chunk_size = Val{0}(),
+                           autodiff = OrdinaryDiffEqRosenbrock.AutoForwardDiff(),
+                           standardtag = Val{true}(),
+                           diff_type = Val{:forward}(),
+                           linsolve = ode.f.jac_prototype isa SparseMatrixCSC ?
+                                      LinearSolve.KLUFactorization() :
+                                      LinearSolve.LUFactorization(),
+                           precs = OrdinaryDiffEqCore.DEFAULT_PRECS,
+                           step_limiter! = OrdinaryDiffEqCore.trivial_limiter!,
+                           stage_limiter! = OrdinaryDiffEqCore.trivial_limiter!,
+                           concrete_jac = nothing,
+                           max_jac_age = 1,
+                           jac_reuse_gamma_tol = 0.03,
+                           kwargs...) where {U, T, I, P <: SemidiscretizationImplicit}
+    return OrdinaryDiffEqRosenbrock.Rodas5P(; chunk_size, autodiff, standardtag,
+                                            concrete_jac, diff_type, linsolve, precs,
+                                            step_limiter!, stage_limiter!, max_jac_age,
+                                            jac_reuse_gamma_tol, kwargs...)
 end
 
 @doc raw"""
@@ -27,7 +48,7 @@ freedom in `semi`. The returned callable can be passed as the `internalnorm` key
 the SciML `solve` function as follows:
 ```julia
 error_norm = state_variable_norm(semi)
-sol = solve(ode, default_algorithm(semi); internalnorm = error_norm, kwargs...)
+sol = solve(ode, default_algorithm(ode); internalnorm = error_norm, kwargs...)
 ```
 
 For [`TemporalOperatorStandard`](@ref) and [`TemporalOperatorCapacity`](@ref), the norm

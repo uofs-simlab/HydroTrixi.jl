@@ -66,7 +66,7 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # The Richards problem is stiff, so [`default_algorithm`](@ref) selects the eight-stage,
 # fifth-order `Rodas5P` Rosenbrock-Wanner method, which includes an embedded fourth-order
 # approximation for adaptive time stepping. The default options use a sparse residual
-# Jacobian evaluated by graph-coloured forward-mode automatic differentiation. The initial 
+# Jacobian evaluated by graph-coloured forward-mode automatic differentiation. The initial
 # step size is $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify
 # `saveat = 0.0:6.0:360.0` to save a solution every six seconds, which will be used to
 # create an animation in the next tutorial section. The `adaptive = true` keyword below
@@ -82,7 +82,7 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 ode = semidiscretize(semi, problem.tspan)
 internalnorm = state_variable_norm(semi)
 
-sol = solve(ode, default_algorithm(semi); dt = 1.0e-2, adaptive = true,
+sol = solve(ode, default_algorithm(ode); dt = 1.0e-2, adaptive = true,
             internalnorm = internalnorm, saveat = 0.0:6.0:360.0,
             save_everystep = false, maxiters = typemax(Int))
 

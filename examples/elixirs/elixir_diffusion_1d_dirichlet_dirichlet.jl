@@ -32,7 +32,7 @@ semi = SemidiscretizationImplicit(semi_base, TemporalOperatorStandard())
 
 tspan = (0.0, 0.25)
 ode = semidiscretize(semi, tspan; jacobian = DenseJacobian())
-algorithm = default_algorithm(semi)
+algorithm = default_algorithm(ode)
 
 summary_callback = SummaryCallback()
 

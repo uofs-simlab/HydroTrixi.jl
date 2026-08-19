@@ -175,7 +175,7 @@ when `ode.p` is not a [`SemidiscretizationImplicit`](@ref).
 function HydroTrixi.animate_solution_1d(ode::SciMLBase.ODEProblem; callback,
                                         output_path = joinpath(pwd(), "solution_1d.mp4"),
                                         component = 1,
-                                        alg = HydroTrixi.default_algorithm(ode.p),
+                                        alg = HydroTrixi.default_algorithm(ode),
                                         dt = nothing, adaptive = true,
                                         saveat = range(first(ode.tspan), last(ode.tspan);
                                                        length = 121),

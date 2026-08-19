@@ -31,7 +31,7 @@ function run_case(form, case_final_time, time_step)
     ode = semidiscretize(semidiscretization, problem.tspan;
                          jacobian = SparseJacobian())
 
-    solution = solve(ode, default_algorithm(semidiscretization);
+    solution = solve(ode, default_algorithm(ode);
                      dt = time_step, adaptive = false, saveat = Float64[],
                      ode_default_options()..., maxiters = typemax(Int))
 
