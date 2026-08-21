@@ -36,7 +36,6 @@ tmp/
 
 # Track only the top-level README for now
 *.md
-!AGENTS.md
 !README.md
 !docs/src/index.md
 !docs/src/license.md

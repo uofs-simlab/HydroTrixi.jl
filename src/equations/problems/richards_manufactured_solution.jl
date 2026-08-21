@@ -1,17 +1,7 @@
 @muladd begin
 #! format: noindent
 
-@doc raw"""
-    richards_manufactured_solution(x, t, equations)
-
-Return the manufactured pressure head profile used by
-[`HydrologicProblemRichardsManufacturedSolution`](@ref). In SI units, the pressure head
-is
-```math
-\psi(z, t) =
-0.204 \tanh\left(\frac{1}{2}\left(100z + \frac{t}{12} - 15\right)\right) - 0.411.
-```
-"""
+# Manufactured pressure head used by `HydrologicProblemRichardsManufacturedSolution`
 function richards_manufactured_solution(x, t, equations)
     psi, _, _, _ = richards_manufactured_profile(x, t)
     return Trixi.SVector(psi)
@@ -35,19 +25,7 @@ end
     return psi, psi_t, psi_z, psi_zz
 end
 
-@doc raw"""
-    source_terms_richards_manufactured_solution(u, gradients, x, t, equations)
-
-Return the storage source term that makes
-[`richards_manufactured_solution`](@ref) solve the one-dimensional Richards equation
-with Haverkamp constitutive laws,
-```math
-s = C(\psi)\frac{\partial \psi}{\partial t}
-- \frac{\partial}{\partial z}
-\left(\mathcal{K}(\psi)\left(\frac{\partial \psi}{\partial z} - 1\right)\right),
-\qquad C(\psi) = \vartheta'(\psi).
-```
-"""
+# Source term corresponding to the manufactured pressure head
 @inline function source_terms_richards_manufactured_solution(u, gradients, x, t,
                                                              equations)
     soil_model = equations.soil_model
@@ -78,12 +56,24 @@ end
                                                     penalty_factor = 1)
 
 Return a one-dimensional manufactured-solution problem for the Richards equation. The
-pressure head is given by [`richards_manufactured_solution`](@ref), the boundary
-conditions impose values from that profile using the penalty formulation, and the source
-term is [`source_terms_richards_manufactured_solution`](@ref). The default setup uses the
-same Haverkamp parameters as [`HydrologicProblemCelia1990`](@ref). The dimensionless
-`penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty; setting it to zero
-omits the additional divergence-flux penalty.
+manufactured pressure head is
+```math
+\psi(z, t) =
+0.204 \tanh\left(\frac{1}{2}\left(100z + \frac{t}{12} - 15\right)\right) - 0.411.
+```
+The boundary conditions impose this profile using the penalty formulation. The storage
+source term
+```math
+s = C(\psi)\frac{\partial \psi}{\partial t}
+- \frac{\partial}{\partial z}
+\left(\mathcal{K}(\psi)\left(\frac{\partial \psi}{\partial z} - 1\right)\right),
+\qquad C(\psi) = \vartheta'(\psi),
+```
+makes the profile solve the one-dimensional Richards equation with the Haverkamp
+constitutive laws. The default setup uses the same Haverkamp parameters as
+[`HydrologicProblemCelia1990`](@ref). The dimensionless `penalty_factor` is the coefficient
+``C_\tau`` in the boundary penalty; setting it to zero omits the additional divergence-flux
+penalty.
 
 The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds on
 ``t \in [0, 120]`` by default. It is intended for regression and convergence checks of

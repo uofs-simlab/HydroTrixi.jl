@@ -10,48 +10,76 @@ EditURL = "https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/docs/src/refer
 ```@docs
 HydroTrixi
 examples_dir
-default_algorithm
-default_stepsize_controller
-solve_implicit
-state_variable_norm
-AbstractJacobianStrategy
-DenseJacobian
-SparseJacobian
-compute_eoc
 ```
 
-## Equations and problem setup
+## Problem setup and boundary conditions
 
 ```@docs
 HydrologicProblem
+HydrologicProblemCelia1990
+HydrologicProblemRichardsManufacturedSolution
+HydrologicProblemRichardsClosedColumn
+BoundaryConditionDirichletPenalty
+```
+
+## Equations and constitutive models
+
+```@docs
 RichardsEquation1D
+Haverkamp
+VanGenuchten
 water_content
 water_content_timederivative
-mass_bias
-mass_bias_history
 water_capacity
 hydraulic_conductivity
 pressure_head
 pressure_head_from_water_content
-Haverkamp
-VanGenuchten
-HydrologicProblemCelia1990
-HydrologicProblemRichardsManufacturedSolution
-richards_manufactured_solution
-source_terms_richards_manufactured_solution
-HydrologicProblemRichardsClosedColumn
-BoundaryConditionDirichletPenalty
-MixedForm
-PressureHeadForm
+```
+
+## Semi-discrete formulations and temporal operators
+
+```@docs
 SemidiscretizationImplicit
 semidiscretize
+MixedForm
+PressureHeadForm
 AbstractTemporalOperator
 TemporalOperatorStandard
 TemporalOperatorConstitutive
 TemporalOperatorCapacity
-HydroTrixi.AbstractPassiveVariables
+```
+
+### Passive diagnostic variables
+
+```@docs
+AbstractPassiveVariables
 NoPassiveVariables
 PassiveVariablesBoundaryFlux1D
+```
+
+### Jacobian strategies
+
+```@docs
+AbstractJacobianStrategy
+DenseJacobian
+SparseJacobian
+```
+
+## Time integration
+
+```@docs
+default_algorithm
+default_stepsize_controller
+solve_implicit
+state_variable_norm
+```
+
+## Analysis
+
+```@docs
+mass_bias
+mass_bias_history
+compute_eoc
 ```
 
 ## Visualization

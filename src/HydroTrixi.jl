@@ -39,8 +39,6 @@ export water_capacity, hydraulic_conductivity, pressure_head
 export HydrologicProblemCelia1990
 export HydrologicProblemRichardsManufacturedSolution
 export HydrologicProblemRichardsClosedColumn
-export richards_manufactured_solution
-export source_terms_richards_manufactured_solution
 export BoundaryConditionDirichletPenalty
 export MixedForm
 export PressureHeadForm
