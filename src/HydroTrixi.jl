@@ -57,6 +57,8 @@ export NoPassiveVariables
 export PassiveVariablesBoundaryFlux1D
 export pressure_head_from_water_content
 export default_algorithm
+export default_stepsize_controller
+export solve_implicit
 export state_variable_norm
 export compute_eoc
 export examples_dir

@@ -82,9 +82,9 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 ode = semidiscretize(semi, problem.tspan)
 internalnorm = state_variable_norm(semi)
 
-sol = solve(ode, default_algorithm(ode); dt = 1.0e-2, adaptive = true,
-            internalnorm = internalnorm, saveat = 0.0:6.0:360.0,
-            save_everystep = false, maxiters = typemax(Int))
+sol = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
+                     internalnorm = internalnorm, saveat = 0.0:6.0:360.0,
+                     save_everystep = false, maxiters = typemax(Int))
 
 println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) saved states.")
 

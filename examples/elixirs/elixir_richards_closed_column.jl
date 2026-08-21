@@ -39,11 +39,11 @@ alive_callback = AliveCallback(analysis_interval = analysis_interval)
 amr = false
 
 if amr
-    amr_indicator = IndicatorLoehner(semi, variable = water_content)
+    amr_indicator = IndicatorLoehner(semi; f_wave = 0.5, variable = water_content)
     amr_controller = ControllerThreeLevel(semi, amr_indicator; base_level = 1,
-                                          med_level = 3, med_threshold = 1.0e-3,
+                                          med_level = -1, med_threshold = 2.5e-3,
                                           max_level = 7, max_threshold = 1.0e-2)
-    amr_callback = AMRCallback(semi, amr_controller; interval = 10,
+    amr_callback = AMRCallback(semi, amr_controller; interval = 20,
                                adapt_initial_condition = true,
                                adapt_initial_condition_only_refine = true)
     callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback,
@@ -58,8 +58,8 @@ end
 run_simulation = true
 
 if run_simulation
-    sol = solve(ode, default_algorithm(ode); dt = 1.0e-2, adaptive = true,
-                saveat = Float64[], ode_default_options()...,
-                internalnorm = internalnorm, callback = callbacks,
-                maxiters = typemax(Int))
+    sol = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
+                         saveat = Float64[], ode_default_options()...,
+                         internalnorm = internalnorm, callback = callbacks,
+                         maxiters = typemax(Int))
 end

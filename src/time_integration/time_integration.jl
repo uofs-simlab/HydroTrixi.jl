@@ -8,20 +8,32 @@ The recommended algorithm for `SemidiscretizationImplicit` is `Rodas5P`, an eigh
 fifth-order Rosenbrock-Wanner method, and it recomputes the Jacobian after at most one time
 step. When `ode` has the sparse Jacobian prototype supplied by [`semidiscretize`](@ref) with
 [`SparseJacobian`](@ref), the algorithm uses sparse forward-mode automatic differentiation
-and a KLU linear solver. Otherwise, it uses dense forward-mode automatic differentiation
-and a dense LU linear solver.
+with a fixed chunk size of one and a KLU linear solver. The fixed chunk size keeps the
+sparse differentiation cache type unchanged when AMR changes the number of colors.
+Otherwise, the algorithm uses dense forward-mode automatic differentiation with automatic
+chunk-size selection and a dense LU linear solver.
 
 Keyword arguments override these defaults or are forwarded to the `Rodas5P` constructor.
 
 # References
+- Davis, T. A., and Palamadai Natarajan, E. (2010). Algorithm 907: KLU, a direct sparse
+  solver for circuit simulation problems. *ACM Transactions on Mathematical Software*,
+  37(3), Article 36.
+  [DOI: 10.1145/1824801.1824814](https://doi.org/10.1145/1824801.1824814)
+- Revels, J., Lubin, M., and Papamarkou, T. (2016). Forward-mode automatic differentiation
+  in Julia. *arXiv:1607.07892*.
+  [DOI: 10.48550/arXiv.1607.07892](https://doi.org/10.48550/arXiv.1607.07892)
 - Steinebach, G. (2023). Construction of Rosenbrock-Wanner method Rodas5P and numerical
   benchmarks within the Julia Differential Equations package. *BIT Numerical
   Mathematics*, 63, Article 27.
   [DOI: 10.1007/s10543-023-00967-x](https://doi.org/10.1007/s10543-023-00967-x)
 """
 function default_algorithm(ode::SciMLBase.ODEProblem{U, T, I, P};
-                           chunk_size = Val{0}(),
-                           autodiff = OrdinaryDiffEqRosenbrock.AutoForwardDiff(),
+                           autodiff = if ode.f.jac_prototype isa SparseMatrixCSC
+                               OrdinaryDiffEqRosenbrock.AutoForwardDiff(; chunksize = 1)
+                           else
+                               OrdinaryDiffEqRosenbrock.AutoForwardDiff()
+                           end,
                            standardtag = Val{true}(),
                            diff_type = Val{:forward}(),
                            linsolve = ode.f.jac_prototype isa SparseMatrixCSC ?
@@ -34,8 +46,8 @@ function default_algorithm(ode::SciMLBase.ODEProblem{U, T, I, P};
                            max_jac_age = 1,
                            jac_reuse_gamma_tol = 0.03,
                            kwargs...) where {U, T, I, P <: SemidiscretizationImplicit}
-    return OrdinaryDiffEqRosenbrock.Rodas5P(; chunk_size, autodiff, standardtag,
-                                            concrete_jac, diff_type, linsolve, precs,
+    return OrdinaryDiffEqRosenbrock.Rodas5P(; autodiff, standardtag, concrete_jac,
+                                            diff_type, linsolve, precs,
                                             step_limiter!, stage_limiter!, max_jac_age,
                                             jac_reuse_gamma_tol, kwargs...)
 end
@@ -64,4 +76,94 @@ function state_variable_norm(semi::SemidiscretizationImplicit)
         state_variables = state_variable_view(u, semi)
         return Trixi.ode_norm(state_variables, t)
     end
+end
+
+"""
+    default_stepsize_controller(algorithm, ode)
+
+Return HydroTrixi.jl's default adaptive step-size controller for `algorithm` and `ode`.
+
+For `Rodas5P`, return the PI controller used by [`solve_implicit`](@ref). For other
+algorithms, return `nothing` so that OrdinaryDiffEq.jl selects the algorithm's default
+controller.
+"""
+default_stepsize_controller(algorithm, ode) = nothing
+
+function default_stepsize_controller(algorithm::OrdinaryDiffEqRosenbrock.Rodas5P,
+                                     ode)
+    controller_type = typeof(float(first(ode.tspan)))
+    return OrdinaryDiffEqCore.NewPIController(controller_type, algorithm;
+                                              # Current- and previous-error exponents
+                                              beta1 = 0.14,
+                                              beta2 = 0.08,
+                                              # Minimum shrink and maximum growth factors
+                                              qmin = 0.2,
+                                              qmax = 10.0,
+                                              # Allow larger growth after the first step
+                                              qmax_first_step = 1.0e4,
+                                              # Safety factor
+                                              gamma = 0.9,
+                                              # OrdinaryDiffEq's deadband, which holds the
+                                              # time step fixed when the controller gives
+                                              # a time-step divisor between 1.0 and 1.2
+                                              qsteady_min = 1.0,
+                                              qsteady_max = 1.2,
+                                              # Previous-error initialization and floor
+                                              qoldinit = 1.0e-4)
+end
+
+@doc raw"""
+    solve_implicit(ode, algorithm=default_algorithm(ode);
+                   dt, adaptive=true, abstol=1.0e-11, reltol=1.0e-7,
+                   kwargs...)
+
+Solve `ode` with HydroTrixi.jl's implicit time integration defaults. The initial time step
+`dt` is required. The absolute and relative tolerances default to `1.0e-11` and `1.0e-7`,
+respectively.
+
+The adaptive defaults use a PI controller configured for the fifth-order
+[`default_algorithm`](@ref), with coefficients ``\beta_1=0.14`` and ``\beta_2=0.08``,
+safety factor `0.9`, maximum growth factor `10`, maximum shrink factor `0.2`, and initial
+and minimum stored previous error `1.0e-4`. The maximum growth factor is `1.0e4` for the
+first step-size proposal and `10` thereafter. OrdinaryDiffEq's default steady-step
+deadband holds the time step fixed when the controller proposes a time-step divisor
+between `1.0` and `1.2`, suppressing decreases of up to one sixth. These choices implement
+the PI step-size rule used in the HydroTrixi.jl Richards-equation paper. The minimum and
+maximum time steps are zero and the length of `ode.tspan`, respectively. The defaults also
+use [`state_variable_norm`](@ref), disable saving every accepted step, and allow
+`typemax(Int)` iterations.
+
+The `dtmin`, `dtmax`, `force_dtmin`, and `failfactor` values reproduce the solve defaults
+in `OrdinaryDiffEqCore` v3.33.1: see the
+[solve defaults](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/solve.jl#L55-L89).
+Keyword arguments override the HydroTrixi.jl defaults or are forwarded to
+`SciMLBase.solve`.
+
+The paper-defined controller is used only with `Rodas5P`. For any other integration
+algorithm, OrdinaryDiffEq.jl selects its default controller unless `controller` is passed
+explicitly.
+"""
+function solve_implicit(ode::SciMLBase.ODEProblem{U, T, I, P},
+                        algorithm = default_algorithm(ode);
+                        dt,
+                        adaptive = true,
+                        abstol = 1.0e-11,
+                        reltol = 1.0e-7,
+                        controller = default_stepsize_controller(algorithm, ode),
+                        dtmin = zero(last(ode.tspan) - first(ode.tspan)),
+                        dtmax = last(ode.tspan) - first(ode.tspan),
+                        force_dtmin = false,
+                        failfactor = 2, # not used by Rodas5P (a linearly implicit method)
+                        maxiters = typemax(Int),
+                        internalnorm = state_variable_norm(ode.p),
+                        save_everystep = false,
+                        unstable_check = Trixi.mpi_isparallel() ?
+                                         Trixi.ode_unstable_check :
+                                         DiffEqBase.ODE_DEFAULT_UNSTABLE_CHECK,
+                        kwargs...) where {U, T, I, P <: SemidiscretizationImplicit}
+    common_options = (; dt, adaptive, dtmin, dtmax, force_dtmin, failfactor, maxiters,
+                      internalnorm, save_everystep, unstable_check)
+    adaptive_options = adaptive ? (; abstol, reltol, controller) : (;)
+    options = merge(common_options, adaptive_options, (; kwargs...))
+    return SciMLBase.solve(ode, algorithm; options...)
 end
