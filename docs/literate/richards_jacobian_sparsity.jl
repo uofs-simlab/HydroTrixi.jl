@@ -71,7 +71,7 @@ ode = semidiscretize(semi, problem.tspan);
 # $K(N+1)^2 + 2(N+1)(K-1) + 2K(N+1)$ stored entries. The first term contains dense
 # element-local entries of
 # $\partial_{\boldsymbol{\Psi}}\boldsymbol{\mathcal{R}}$, the second term contains
-# LDG interface entries, and the final term contains the two constitutive identity
+# LDG interface entries, and the third term contains the two constitutive identity
 # diagonals. We verify the prototype size, number of stored entries, and stored values:
 
 mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
@@ -87,51 +87,57 @@ jac_prototype = ode.f.jac_prototype
 @assert nnz(jac_prototype) == expected_nonzeros
 @assert all(iszero, nonzeros(jac_prototype))
 
-# Next, we visualize the Jacobian sparsity pattern:
+# ## Column colouring
+#
+# A column colouring groups Jacobian columns whose structural row supports are disjoint
+# into one compressed seed direction. Forward-mode automatic differentiation propagates
+# several colour directions as separate components of the same dual numbers. ForwardDiff.jl
+# batches up to 12 directions by default, so all ten colours used here are evaluated in one
+# residual evaluation. HydroTrixi.jl supplies the deterministic colouring in `colorvec`
+# together with the Jacobian prototype:
 
-interface_pattern = spzeros(Bool, 2 * n_state_dofs, 2 * n_state_dofs)
-node_indices = LinearIndices((n_nodes, n_elements))
-for interface in Trixi.eachinterface(solver, cache)
-    left_element = cache.interfaces.neighbor_ids[1, interface]
-    right_element = cache.interfaces.neighbor_ids[2, interface]
-    left_face_dof = node_indices[n_nodes, left_element]
-    for right_node in Trixi.eachnode(solver)
-        right_dof = node_indices[right_node, right_element]
-        interface_pattern[left_face_dof, n_state_dofs + right_dof] = true
-        interface_pattern[right_dof, n_state_dofs + left_face_dof] = true
-    end
+column_colors = ode.f.colorvec
+n_spatial_colors = 2 * n_nodes + 1
+n_colors = maximum(column_colors)
+
+@assert column_colors[1:n_state_dofs] == fill(n_colors, n_state_dofs)
+@assert column_colors[(n_state_dofs + 1):end] ==
+        mod1.(1:n_state_dofs, n_spatial_colors)
+@assert n_colors == n_spatial_colors + 1
+
+# The pressure-head columns require $2N+3$ colours, assigned cyclically in spatial storage
+# order. The water-content columns each have a single structural entry in a distinct row,
+# so they all share one additional colour. We verify the defining property of the colouring:
+# every row has distinct colours among its structurally nonzero columns.
+
+row_indices, column_indices, _ = findnz(jac_prototype)
+for row in axes(jac_prototype, 1)
+    row_colors = column_colors[column_indices[row_indices .== row]]
+    @assert allunique(row_colors)
 end
 
-figure = Figure(size = (1050, 500))
+# To visualize the sparsity pattern and colouring together, we assign each stored Jacobian
+# entry the colour of its column.
+
+colored_pattern = fill(NaN, size(jac_prototype))
+for (row, column) in zip(row_indices, column_indices)
+    colored_pattern[row, column] = column_colors[column]
+end
+
+palette = cgrad(:tab10, n_colors; categorical = true)
+figure = Figure(size = (650, 650))
 jacobian_axis = Axis(figure[1, 1]; aspect = DataAspect(), yreversed = true)
-spatial_axis = Axis(figure[1, 2]; aspect = DataAspect(), yreversed = true)
 hidedecorations!(jacobian_axis)
-hidedecorations!(spatial_axis)
-spy!(jacobian_axis, transpose(jac_prototype); color = :black)
-spy!(jacobian_axis, transpose(interface_pattern); color = :orange)
-spy!(spatial_axis,
-     transpose(jac_prototype[1:n_state_dofs,
-                             (n_state_dofs + 1):(2 * n_state_dofs)]); color = :black)
-spy!(spatial_axis,
-     transpose(interface_pattern[1:n_state_dofs,
-                                 (n_state_dofs + 1):(2 * n_state_dofs)]);
-     color = :orange)
-vlines!(jacobian_axis, 1:(2 * n_state_dofs - 1); color = :white, linewidth = 0.5)
-hlines!(jacobian_axis, 1:(2 * n_state_dofs - 1); color = :white, linewidth = 0.5)
-vlines!(spatial_axis, 1:(n_state_dofs - 1); color = :white, linewidth = 0.5)
-hlines!(spatial_axis, 1:(n_state_dofs - 1); color = :white, linewidth = 0.5)
-vlines!(jacobian_axis, n_state_dofs; color = :black, linewidth = 1)
-hlines!(jacobian_axis, n_state_dofs; color = :black, linewidth = 1)
+heatmap!(jacobian_axis, transpose(colored_pattern); colormap = palette,
+         colorrange = (0.5, n_colors + 0.5))
+vlines!(jacobian_axis, n_state_dofs + 0.5; color = :black, linewidth = 1)
+hlines!(jacobian_axis, n_state_dofs + 0.5; color = :black, linewidth = 1)
 
-figure_path = joinpath(asset_dir, "pattern.png")
+figure_path = joinpath(asset_dir, "coloring.png")
 save(figure_path, figure; px_per_unit = 2)
-println("Saved sparse Jacobian pattern with $(nnz(jac_prototype)) entries to " *
-        figure_path)
+println("Saved $(n_colors)-colour Jacobian colouring with $(nnz(jac_prototype)) entries " *
+        "to " * figure_path)
 
-# In the figure below, the Jacobian sparsity is shown on the left, and the
-# spatial-operator Jacobian sparsity
-# $\partial_{\boldsymbol{\Psi}}\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)$ is shown on
-# the right. The orange entries show dependencies across element interfaces introduced by
-# the LDG fluxes.
+# The black lines separate the water-content and pressure-head blocks.
 #
-# ![Sparse Jacobian and spatial block patterns](../assets/generated/richards_jacobian_sparsity/pattern.png)
+# ![Sparse Jacobian column colouring](../assets/generated/richards_jacobian_sparsity/coloring.png)
