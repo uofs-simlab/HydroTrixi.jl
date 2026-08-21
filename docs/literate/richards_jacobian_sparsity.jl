@@ -117,7 +117,9 @@ for row in axes(jac_prototype, 1)
 end
 
 # To visualize the sparsity pattern and colouring together, we assign each stored Jacobian
-# entry the colour of its column.
+# entry the colour of its column. The black lines separate the water-content and 
+# pressure-head blocks.
+
 
 colored_pattern = fill(NaN, size(jac_prototype))
 for (row, column) in zip(row_indices, column_indices)
@@ -138,6 +140,4 @@ save(figure_path, figure; px_per_unit = 2)
 println("Saved $(n_colors)-colour Jacobian colouring with $(nnz(jac_prototype)) entries " *
         "to " * figure_path)
 
-# The black lines separate the water-content and pressure-head blocks.
-#
 # ![Sparse Jacobian column colouring](../assets/generated/richards_jacobian_sparsity/coloring.png)
