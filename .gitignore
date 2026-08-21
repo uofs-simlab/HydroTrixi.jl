@@ -32,6 +32,7 @@ plots/
 docs/src/assets/generated/
 run/
 tmp/
+/benchmark/
 
 # Track only the top-level README for now
 *.md

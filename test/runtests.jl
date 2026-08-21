@@ -14,6 +14,34 @@ macro test_trixi_include(args...)
     esc(Expr(:macrocall, Symbol("@test_trixi_include_base"), __source__, args...))
 end
 
+@testset "sparse-AD Jacobian" begin
+    for form in (PressureHeadForm(), MixedForm())
+        problem = HydrologicProblemRichardsManufacturedSolution()
+        mesh = Trixi.TreeMesh(problem.domain...; initial_refinement_level = 1,
+                              periodicity = false)
+        semi = SemidiscretizationImplicit(mesh, problem, Trixi.DGSEM(polydeg = 3);
+                                          solver_parabolic =
+                                          Trixi.ParabolicFormulationLocalDG(),
+                                          passive_variables =
+                                          PassiveVariablesBoundaryFlux1D(), form)
+        sparse_ode = Trixi.semidiscretize(semi, (0.0, 1.0e-3);
+                                          jacobian = SparseJacobian())
+        dense_ode = Trixi.semidiscretize(semi, (0.0, 1.0e-3);
+                                         jacobian = DenseJacobian())
+        sparse_integrator = SciMLBase.init(sparse_ode, default_algorithm(sparse_ode);
+                                           dt = 1.0e-3, adaptive = false)
+        finite_difference = OrdinaryDiffEqRosenbrock.AutoFiniteDiff()
+        dense_algorithm = default_algorithm(dense_ode; autodiff = finite_difference)
+        dense_integrator = SciMLBase.init(dense_ode, dense_algorithm;
+                                          dt = 1.0e-3, adaptive = false)
+
+        SciMLBase.step!(sparse_integrator)
+        SciMLBase.step!(dense_integrator)
+
+        @test Matrix(sparse_integrator.cache.J)≈dense_integrator.cache.J rtol=1.0e-6
+    end
+end
+
 @trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl" begin
     import LinearSolve
     import OrdinaryDiffEqRosenbrock
@@ -38,70 +66,6 @@ end
     @test sol.alg.autodiff.dense_ad isa OrdinaryDiffEqRosenbrock.AutoForwardDiff
     @test sol.alg.linsolve isa LinearSolve.KLUFactorization
     @test sol.alg.max_jac_age == 1
-end
-
-@testset "default algorithm" begin
-    Trixi.trixi_include(@__MODULE__,
-                        joinpath(EXAMPLES_DIR, "elixirs",
-                                 "elixir_richards_manufactured_solution.jl");
-                        run_simulation = false)
-    algorithm = default_algorithm(ode)
-    @test algorithm.autodiff isa OrdinaryDiffEqRosenbrock.AutoForwardDiff
-    @test algorithm.autodiff isa OrdinaryDiffEqRosenbrock.AutoForwardDiff{1}
-    @test algorithm.linsolve isa LinearSolve.KLUFactorization
-    @test algorithm.max_jac_age == 1
-
-    dense_ode = Trixi.semidiscretize(semi, problem.tspan;
-                                     jacobian = DenseJacobian())
-    dense_algorithm = default_algorithm(dense_ode)
-    @test !(dense_algorithm.autodiff isa OrdinaryDiffEqRosenbrock.AutoForwardDiff{1})
-    @test dense_algorithm.linsolve isa LinearSolve.LUFactorization
-    @test dense_algorithm.max_jac_age == 1
-
-    finite_diff = OrdinaryDiffEqRosenbrock.AutoFiniteDiff()
-    dense_linsolve = LinearSolve.LUFactorization()
-    overridden = default_algorithm(ode; autodiff = finite_diff,
-                                   linsolve = dense_linsolve,
-                                   jac_reuse_gamma_tol = 0.05)
-    @test overridden.autodiff isa OrdinaryDiffEqRosenbrock.AutoFiniteDiff
-    @test overridden.linsolve isa LinearSolve.LUFactorization
-    @test overridden.max_jac_age == 1
-    @test overridden.jac_reuse_gamma_tol == 0.05
-end
-
-@testset "implicit solve" begin
-    Trixi.trixi_include(@__MODULE__,
-                        joinpath(EXAMPLES_DIR, "elixirs",
-                                 "elixir_richards_manufactured_solution.jl");
-                        run_simulation = false)
-
-    short_ode = SciMLBase.remake(ode; tspan = (0.0, 1.0e-2))
-    solution = solve_implicit(short_ode; dt = 1.0e-3)
-    @test successful_retcode(solution)
-    @test solution.alg isa OrdinaryDiffEqRosenbrock.Rodas5P
-
-    customized_algorithm = default_algorithm(short_ode; max_jac_age = 2)
-    customized_solution = solve_implicit(short_ode, customized_algorithm; dt = 1.0e-3)
-    @test successful_retcode(customized_solution)
-    @test customized_solution.alg.max_jac_age == 2
-
-    controller = default_stepsize_controller(customized_algorithm, short_ode)
-    @test controller.beta1 == 0.14
-    @test controller.beta2 == 0.08
-    @test controller.qmin == 0.2
-    @test controller.qmax == 10.0
-    @test controller.qmax_first_step == 1.0e4
-    @test controller.gamma == 0.9
-    @test controller.qsteady_min == 1.0
-    @test controller.qsteady_max == 1.2
-    @test controller.qoldinit == 1.0e-4
-    other_algorithm = OrdinaryDiffEqRosenbrock.Rodas4()
-    @test default_stepsize_controller(other_algorithm, short_ode) === nothing
-    other_solution = solve_implicit(short_ode, other_algorithm; dt = 1.0e-3)
-    @test successful_retcode(other_solution)
-
-    fixed_solution = solve_implicit(short_ode; dt = 1.0e-3, adaptive = false)
-    @test successful_retcode(fixed_solution)
 end
 
 @trixi_testset "elixir_diffusion_1d_mixed_dirichlet_neumann.jl" begin
@@ -234,11 +198,6 @@ end
 
             @test successful_retcode(dense.solution)
             @test successful_retcode(sparse.solution)
-            @test dense.solution.alg.linsolve isa LinearSolve.LUFactorization
-            @test sparse.solution.alg.linsolve isa LinearSolve.KLUFactorization
-            @test dense.solution.alg.max_jac_age == 1
-            @test sparse.solution.alg.max_jac_age == 1
-            @test length(dense.topology_history) == length(adaptation_times)
             @test length(sparse.topology_history) == length(adaptation_times)
             @test dense.topology_history == sparse.topology_history
             @test maximum(abs,

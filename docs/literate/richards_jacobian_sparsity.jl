@@ -4,7 +4,7 @@
 #
 # # Sparse Jacobian evaluation for implicit semidiscretizations
 #
-# `SemidiscretizationImplicit` supplies a sparse residual Jacobian prototype to
+# `SemidiscretizationImplicit` supplies a sparse Jacobian prototype to
 # OrdinaryDiffEq.jl by default. The prototype determines the Jacobian storage, while the
 # time integration algorithm's `autodiff` setting determines how its entries are computed.
 # With adaptive mesh refinement, HydroTrixi.jl rebuilds the prototype and associated
@@ -67,7 +67,7 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 
 ode = semidiscretize(semi, problem.tspan);
 
-# For this one-dimensional mixed Richards discretization, the residual prototype has
+# For this one-dimensional mixed Richards discretization, the Jacobian prototype has
 # $K(N+1)^2 + 2(N+1)(K-1) + 2K(N+1)$ stored entries. The first term contains dense
 # element-local entries of
 # $\partial_{\boldsymbol{\Psi}}\boldsymbol{\mathcal{R}}$, the second term contains
@@ -87,7 +87,7 @@ jac_prototype = ode.f.jac_prototype
 @assert nnz(jac_prototype) == expected_nonzeros
 @assert all(iszero, nonzeros(jac_prototype))
 
-# Next, we visualize the residual Jacobian sparsity pattern:
+# Next, we visualize the Jacobian sparsity pattern:
 
 interface_pattern = spzeros(Bool, 2 * n_state_dofs, 2 * n_state_dofs)
 node_indices = LinearIndices((n_nodes, n_elements))
@@ -128,7 +128,7 @@ save(figure_path, figure; px_per_unit = 2)
 println("Saved sparse Jacobian pattern with $(nnz(jac_prototype)) entries to " *
         figure_path)
 
-# In the figure below, the residual Jacobian sparsity is shown on the left, and the
+# In the figure below, the Jacobian sparsity is shown on the left, and the
 # spatial-operator Jacobian sparsity
 # $\partial_{\boldsymbol{\Psi}}\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)$ is shown on
 # the right. The orange entries show dependencies across element interfaces introduced by

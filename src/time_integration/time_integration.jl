@@ -8,10 +8,11 @@ The recommended algorithm for `SemidiscretizationImplicit` is `Rodas5P`, an eigh
 fifth-order Rosenbrock-Wanner method, and it recomputes the Jacobian after at most one time
 step. When `ode` has the sparse Jacobian prototype supplied by [`semidiscretize`](@ref) with
 [`SparseJacobian`](@ref), the algorithm uses sparse forward-mode automatic differentiation
-with a fixed chunk size of one and a KLU linear solver. The fixed chunk size keeps the
-sparse differentiation cache type unchanged when AMR changes the number of colors.
-Otherwise, the algorithm uses dense forward-mode automatic differentiation with automatic
-chunk-size selection and a dense LU linear solver.
+with a deterministic analytical colouring and a KLU linear solver. The colouring keeps
+the sparse differentiation cache type unchanged when AMR changes a mesh that is large
+enough to contain the complete colour palette. Otherwise, the algorithm uses dense
+forward-mode automatic differentiation with automatic chunk-size selection and a dense LU
+linear solver.
 
 Keyword arguments override these defaults or are forwarded to the `Rodas5P` constructor.
 
@@ -29,11 +30,7 @@ Keyword arguments override these defaults or are forwarded to the `Rodas5P` cons
   [DOI: 10.1007/s10543-023-00967-x](https://doi.org/10.1007/s10543-023-00967-x)
 """
 function default_algorithm(ode::SciMLBase.ODEProblem{U, T, I, P};
-                           autodiff = if ode.f.jac_prototype isa SparseMatrixCSC
-                               OrdinaryDiffEqRosenbrock.AutoForwardDiff(; chunksize = 1)
-                           else
-                               OrdinaryDiffEqRosenbrock.AutoForwardDiff()
-                           end,
+                           autodiff = OrdinaryDiffEqRosenbrock.AutoForwardDiff(),
                            standardtag = Val{true}(),
                            diff_type = Val{:forward}(),
                            linsolve = ode.f.jac_prototype isa SparseMatrixCSC ?
@@ -125,21 +122,21 @@ The adaptive defaults use a PI controller configured for the fifth-order
 [`default_algorithm`](@ref), with coefficients ``\beta_1=0.14`` and ``\beta_2=0.08``,
 safety factor `0.9`, maximum growth factor `10`, maximum shrink factor `0.2`, and initial
 and minimum stored previous error `1.0e-4`. The maximum growth factor is `1.0e4` for the
-first step-size proposal and `10` thereafter. OrdinaryDiffEq's default steady-step
+first step-size proposal and `10` thereafter. OrdinaryDiffEq.jl's default steady-step
 deadband holds the time step fixed when the controller proposes a time-step divisor
-between `1.0` and `1.2`, suppressing decreases of up to one sixth. These choices implement
-the PI step-size rule used in the HydroTrixi.jl Richards-equation paper. The minimum and
-maximum time steps are zero and the length of `ode.tspan`, respectively. The defaults also
-use [`state_variable_norm`](@ref), disable saving every accepted step, and allow
-`typemax(Int)` iterations.
+between `1.0` and `1.2`. These controller parameters reproduce the defaults in
+`OrdinaryDiffEqCore` v3.33.1. For a time integration method of order ``p=5``, the
+[order-dependent defaults](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/alg_utils.jl#L526-L550)
+give ``\beta_1=7/(10p)=0.14`` and ``\beta_2=2/(5p)=0.08``, as well as the safety factor
+and steady-step deadband used here. The clipping factors come from the
+[step-size-factor defaults](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/alg_utils.jl#L232-L242),
+whereas the first-step growth factor and stored previous error come from the
+[`NewPIController` constructor](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/integrators/controllers.jl#L384-L398).
 
-The `dtmin`, `dtmax`, `force_dtmin`, and `failfactor` values reproduce the solve defaults
-in `OrdinaryDiffEqCore` v3.33.1: see the
-[solve defaults](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/solve.jl#L55-L89).
-Keyword arguments override the HydroTrixi.jl defaults or are forwarded to
-`SciMLBase.solve`.
+The defaults also use [`state_variable_norm`](@ref), disable saving every accepted step,
+and allow `typemax(Int)` iterations.
 
-The paper-defined controller is used only with `Rodas5P`. For any other integration
+HydroTrixi.jl's default controller is used only with `Rodas5P`. For any other integration
 algorithm, OrdinaryDiffEq.jl selects its default controller unless `controller` is passed
 explicitly.
 """

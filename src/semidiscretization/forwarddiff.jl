@@ -12,7 +12,7 @@ function remake_implicit_semidiscretization(dual_cache_input)
 end
 
 # Cache one remade semidiscretization for each dual-number type needed to evaluate the
-# residual Jacobian with ForwardDiff.jl
+# Jacobian with ForwardDiff.jl
 mutable struct RHSImplicitCache{Cache}
     dual_semidiscretizations::Cache
 

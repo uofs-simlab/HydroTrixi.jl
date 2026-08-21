@@ -18,7 +18,7 @@ abstract type AbstractJacobianStrategy end
 When [`semidiscretize`](@ref) is called with `jacobian = DenseJacobian()`, HydroTrixi.jl
 selects dense Jacobian storage and does not supply an analytical `jac` function.
 
-The residual Jacobian entries are computed using the backend passed to the
+The Jacobian entries are computed using the backend passed to the
 time integration algorithm's `autodiff` keyword, for example, `ADTypes.AutoForwardDiff()`
 or `ADTypes.AutoFiniteDiff()`.
 """
@@ -29,22 +29,28 @@ struct DenseJacobian <: AbstractJacobianStrategy end
 
 When [`semidiscretize`](@ref) is called with `jacobian = SparseJacobian()`, HydroTrixi.jl
 supplies a sparse zero matrix as `jac_prototype`, but no analytical `jac` function. The
-resulting `SparseMatrixCSC` is a prototype that encodes the sparsity pattern of the full
-residual Jacobian. It has size `length(u_ode)` by `length(u_ode)`, has `eltype(u_ode)`, and
-stores zeros at every coordinate in the pattern. When passive variables are present, their
-residual rows are included, and their columns are zero.
+resulting `SparseMatrixCSC` is a prototype that encodes the full Jacobian sparsity pattern.
+It has size `length(u_ode)` by `length(u_ode)`, has `eltype(u_ode)`, and stores zeros at
+every coordinate in the pattern. When passive variables are present, their rows are
+included, and their columns are zero.
 
 Entries arising only from the constant temporal mass matrix ``\boldsymbol{A}`` are
-excluded, since OrdinaryDiffEq.jl combines the residual information with ``\boldsymbol{A}``
-when constructing the Rosenbrock matrix
+excluded, since OrdinaryDiffEq.jl combines the Jacobian information with
+``\boldsymbol{A}`` when constructing the Rosenbrock matrix
 ``\boldsymbol{A} - \gamma\Delta t\,\boldsymbol{J}``.
 
-The residual Jacobian entries are computed using the backend passed to the
+The Jacobian entries are computed using the backend passed to the
 time integration algorithm's `autodiff` keyword, for example, `ADTypes.AutoForwardDiff()`
 or `ADTypes.AutoFiniteDiff()`.
 
 This is the default Jacobian strategy for `SemidiscretizationImplicit`. Jacobian storage,
 the time integration algorithm, and the differentiation backend are configured separately.
+
+For the supported serial, nonperiodic, one-dimensional LGL-DGSEM LDG discretization,
+HydroTrixi.jl also supplies a deterministic analytical column colouring. The construction
+assumes a fixed polynomial degree during h-adaptive mesh refinement and Trixi.jl's current
+physical ordering of one-dimensional leaf cells. It must be revisited if the stencil,
+field coupling, mesh type, boundary treatment, or leaf ordering changes.
 """
 struct SparseJacobian <: AbstractJacobianStrategy end
 
@@ -54,12 +60,30 @@ function jacobian_options(::DenseJacobian, u0_ode, semi)
 end
 
 function jacobian_options(::SparseJacobian, u0_ode, semi)
-    jac_prototype = residual_jacobian_prototype(u0_ode, semi)
-    return (; jac_prototype)
+    jac_prototype = jacobian_prototype(u0_ode, semi)
+    return (; jac_prototype, colorvec = colorvec(u0_ode, semi))
 end
 
-# Assemble the augmented residual Jacobian prototype supplied to SciML
-function residual_jacobian_prototype(u_ode, semi::SemidiscretizationImplicit)
+# Construct a deterministic column colouring for the supported one-dimensional LDG
+# pattern. With N + 1 nodes per element, every largest spatial conflict set contains the
+# right endpoint of one element and every node of the next two elements, requiring
+# 2N + 3 = 2 * n_nodes + 1 colours. The contiguous Trixi.jl element layout lets us assign
+# these colours cyclically in storage order.
+function colorvec(u_ode, semi::SemidiscretizationImplicit)
+    n_spatial_colors = 2 * Trixi.nnodes(semi.semi_base.solver) + 1
+
+    # SparseMatrixColorings requires every colour label to be no larger than the number of
+    # columns. This cap matters only for exceptionally small systems that cannot contain
+    # the full conflict set.
+    auxiliary_color = min(n_spatial_colors + 1, length(u_ode))
+    colors = fill(auxiliary_color, length(u_ode))
+    spatial_colors = state_variable_view(colors, semi)
+    spatial_colors .= mod1.(eachindex(spatial_colors), n_spatial_colors)
+    return colors
+end
+
+# Assemble the Jacobian prototype supplied to SciML
+function jacobian_prototype(u_ode, semi::SemidiscretizationImplicit)
     semi_base = semi.semi_base
     mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi_base)
     u_state = state_variable_view(u_ode, semi)
@@ -67,11 +91,11 @@ function residual_jacobian_prototype(u_ode, semi::SemidiscretizationImplicit)
                                                                  solver,
                                                                  semi_base.solver_parabolic,
                                                                  cache)
-    physical_pattern = physical_residual_jacobian_sparsity_pattern(spatial_pattern,
-                                                                   semi.operator_temporal)
+    physical_pattern = physical_jacobian_sparsity_pattern(spatial_pattern,
+                                                          semi.operator_temporal)
 
-    return residual_jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver,
-                                       cache, semi.passive_variables)
+    return jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver, cache,
+                              semi.passive_variables)
 end
 
 # Build the spatial operator Jacobian pattern for supported one-dimensional LDG schemes
@@ -145,15 +169,15 @@ function spatial_operator_jacobian_sparsity_pattern(u_state, mesh::Trixi.TreeMes
     return spatial_pattern
 end
 
-# Retain the spatial pattern for the standard physical residual
-function physical_residual_jacobian_sparsity_pattern(spatial_pattern,
-                                                     ::TemporalOperatorStandard)
+# Retain the spatial pattern for the standard physical system
+function physical_jacobian_sparsity_pattern(spatial_pattern,
+                                            ::TemporalOperatorStandard)
     return spatial_pattern
 end
 
-# Add the nodal capacity derivative to the physical-residual pattern
-function physical_residual_jacobian_sparsity_pattern(spatial_pattern,
-                                                     ::TemporalOperatorCapacity)
+# Add the nodal capacity derivative to the physical Jacobian pattern
+function physical_jacobian_sparsity_pattern(spatial_pattern,
+                                            ::TemporalOperatorCapacity)
     n_state_dofs = size(spatial_pattern, 1)
     identity_pattern = sparse(1:n_state_dofs, 1:n_state_dofs, trues(n_state_dofs),
                               n_state_dofs, n_state_dofs)
@@ -161,8 +185,8 @@ function physical_residual_jacobian_sparsity_pattern(spatial_pattern,
 end
 
 # Embed the spatial pattern in the constitutive evolved-state block layout
-function physical_residual_jacobian_sparsity_pattern(spatial_pattern,
-                                                     ::TemporalOperatorConstitutive)
+function physical_jacobian_sparsity_pattern(spatial_pattern,
+                                            ::TemporalOperatorConstitutive)
     n_state_dofs = size(spatial_pattern, 1)
     zero_pattern = spzeros(Bool, n_state_dofs, n_state_dofs)
     identity_pattern = sparse(1:n_state_dofs, 1:n_state_dofs, trues(n_state_dofs),
@@ -170,17 +194,17 @@ function physical_residual_jacobian_sparsity_pattern(spatial_pattern,
     return [zero_pattern spatial_pattern; identity_pattern identity_pattern]
 end
 
-# Convert the physical-residual pattern to the numerical prototype
-function residual_jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver,
-                                     cache, ::NoPassiveVariables)
+# Convert the physical Jacobian pattern to the numerical prototype
+function jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver, cache,
+                            ::NoPassiveVariables)
     jac_prototype = SparseMatrixCSC{eltype(u_ode), Int}(physical_pattern)
     fill!(nonzeros(jac_prototype), zero(eltype(jac_prototype)))
     return jac_prototype
 end
 
 # Append boundary-flux rows that depend on the adjacent state elements
-function residual_jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver,
-                                     cache, ::PassiveVariablesBoundaryFlux1D)
+function jacobian_prototype(u_ode, spatial_pattern, physical_pattern, solver, cache,
+                            ::PassiveVariablesBoundaryFlux1D)
     n_nodes = Trixi.nnodes(solver)
     n_state_dofs = size(spatial_pattern, 1)
     n_physical_dofs = size(physical_pattern, 1)

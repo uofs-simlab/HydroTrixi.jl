@@ -171,17 +171,13 @@ function (amr_callback::AMRCallbackImplicit)(integrator; kwargs...)
         invalidate_rhs_implicit_cache!(integrator.f)
         update_mass_matrix!(integrator.f, u_ode, semi)
         if has_jac_prototype
-            # Rebuild the augmented residual prototype for the adapted mesh
-            residual_prototype = residual_jacobian_prototype(integrator.u, integrator.p)
-            expected_size = (length(integrator.u), length(integrator.u))
-            if size(residual_prototype) != expected_size ||
-               !all(iszero, nonzeros(residual_prototype))
-                throw(ArgumentError("Adapted residual Jacobian prototype is inconsistent " *
-                                    "with the ODE state."))
-            end
+            # Rebuild the Jacobian prototype and deterministic colouring together
+            (; jac_prototype, colorvec) = jacobian_options(SparseJacobian(), integrator.u,
+                                                           integrator.p)
             ode_function = SciMLBase.remake(integrator.f;
-                                            sparsity = copy(residual_prototype),
-                                            jac_prototype = copy(residual_prototype))
+                                            sparsity = copy(jac_prototype),
+                                            jac_prototype = copy(jac_prototype),
+                                            colorvec)
             ode_problem = SciMLBase.remake(integrator.sol.prob;
                                            f = ode_function, u0 = copy(integrator.u))
 
