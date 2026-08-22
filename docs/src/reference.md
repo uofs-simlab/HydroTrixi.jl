@@ -72,6 +72,7 @@ default_algorithm
 default_stepsize_controller
 solve_implicit
 state_variable_norm
+evolved_variable_norm
 ```
 
 ## Analysis

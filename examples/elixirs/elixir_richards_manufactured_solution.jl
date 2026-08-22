@@ -20,7 +20,7 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 
 ode = semidiscretize(semi, problem.tspan; jacobian = SparseJacobian())
 algorithm = default_algorithm(ode)
-internalnorm = state_variable_norm(semi)
+internalnorm = evolved_variable_norm(semi)
 
 summary_callback = SummaryCallback()
 

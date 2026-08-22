@@ -75,6 +75,32 @@ function state_variable_norm(semi::SemidiscretizationImplicit)
     end
 end
 
+@doc raw"""
+    evolved_variable_norm(semi::SemidiscretizationImplicit)
+
+Return a norm that restricts adaptive error control to the evolved-variable degrees of
+freedom in `semi`. The returned callable can be passed as the `internalnorm` keyword to
+the SciML `solve` function as follows:
+```julia
+error_norm = evolved_variable_norm(semi)
+sol = solve(ode, default_algorithm(ode); internalnorm = error_norm, kwargs...)
+```
+
+For [`TemporalOperatorStandard`](@ref) and [`TemporalOperatorCapacity`](@ref), the norm
+uses the complete physical state and excludes appended passive diagnostic variables. For
+[`TemporalOperatorConstitutive`](@ref), it uses only the evolved-variable block and
+excludes the state-variable block and passive diagnostic variables. Thus, for the Richards
+equation, it restricts error control to pressure head for [`PressureHeadForm`](@ref) and
+water content for [`MixedForm`](@ref).
+"""
+function evolved_variable_norm(semi::SemidiscretizationImplicit)
+    return function (u, t)
+        u isa Number && return Trixi.ode_norm(u, t)
+        evolved_variables = evolved_variable_view(u, semi)
+        return Trixi.ode_norm(evolved_variables, t)
+    end
+end
+
 """
     default_stepsize_controller(algorithm, ode)
 
@@ -133,7 +159,7 @@ and steady-step deadband used here. The clipping factors come from the
 whereas the first-step growth factor and stored previous error come from the
 [`NewPIController` constructor](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/integrators/controllers.jl#L384-L398).
 
-The defaults also use [`state_variable_norm`](@ref), disable saving every accepted step,
+The defaults also use [`evolved_variable_norm`](@ref), disable saving every accepted step,
 and allow `typemax(Int)` iterations.
 
 HydroTrixi.jl's default controller is used only with `Rodas5P`. For any other integration
@@ -152,7 +178,7 @@ function solve_implicit(ode::SciMLBase.ODEProblem{U, T, I, P},
                         force_dtmin = false,
                         failfactor = 2, # not used by Rodas5P (a linearly implicit method)
                         maxiters = typemax(Int),
-                        internalnorm = state_variable_norm(ode.p),
+                        internalnorm = evolved_variable_norm(ode.p),
                         save_everystep = false,
                         unstable_check = Trixi.mpi_isparallel() ?
                                          Trixi.ode_unstable_check :

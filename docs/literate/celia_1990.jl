@@ -74,13 +74,13 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # `amr = true` for mesh adaptivity based on water content.
 #
 # The mixed state contains both water content and pressure head, while the pressure-head
-# form contains only pressure head. To give scalar `abstol` and `reltol` the same
-# pressure-head error estimator in both forms, [`state_variable_norm`](@ref) excludes
-# the evolved water content block and any passive diagnostic variables from the adaptive
-# error norm.
+# form contains only pressure head. [`evolved_variable_norm`](@ref), the default used by
+# [`solve_implicit`](@ref), restricts adaptive error control to water content in the mixed
+# form and pressure head in the pressure-head form. It excludes the algebraic pressure
+# head and any passive diagnostic variables in the mixed form.
 
 ode = semidiscretize(semi, problem.tspan)
-internalnorm = state_variable_norm(semi)
+internalnorm = evolved_variable_norm(semi)
 
 sol = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
                      internalnorm = internalnorm, saveat = 0.0:6.0:360.0,

@@ -81,7 +81,7 @@ end
 @trixi_testset "elixir_richards_manufactured_solution.jl mixed form" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        l2=[4.069609236532572e-5], linf=[0.00038090502378751445])
+                        l2=[4.0696092211162146e-5], linf=[0.0003809050528035818])
 end
 
 @testset "elixir_richards_manufactured_solution.jl zero penalty factor" begin
@@ -92,8 +92,8 @@ end
                         problem = problem)
     errors = analysis_callback(sol)
     @test successful_retcode(sol)
-    @test errors.l2≈[6.174720618993491e-5] rtol=1.0e-10
-    @test errors.linf≈[0.0005052944044704744] rtol=1.0e-10
+    @test errors.l2≈[6.174720607183763e-5] rtol=1.0e-10
+    @test errors.linf≈[0.0005052944044764973] rtol=1.0e-10
 end
 
 @testset "elixir_richards_manufactured_solution.jl finite-diff Jacobian" begin
@@ -102,8 +102,8 @@ end
     finite_diff_algorithm = default_algorithm(ode; autodiff)
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        algorithm=finite_diff_algorithm, l2=[4.0696092445803154e-5],
-                        linf=[0.00038090502896870326])
+                        algorithm=finite_diff_algorithm, l2=[4.0696092224417466e-5],
+                        linf=[0.0003809050439483319])
 end
 
 @trixi_testset "elixir_richards_manufactured_solution.jl pressure-head form" begin
@@ -143,6 +143,39 @@ end
     n_state_variables = length(HydroTrixi.state_variable_view(ode.u0, semi))
     test_state = vcat(fill(100.0, n_state_variables), fill(-2.0, n_state_variables),
                       [1.0e6, -1.0e6])
+    @test @inferred(error_norm(test_state, 0.0)) == 2.0
+end
+
+@testset "evolved-variable norm" begin
+    elixir = joinpath(EXAMPLES_DIR, "elixirs",
+                      "elixir_richards_manufactured_solution.jl")
+
+    for form in (PressureHeadForm(), MixedForm())
+        Trixi.trixi_include(@__MODULE__, elixir; form = form, run_simulation = false)
+        error_norm = evolved_variable_norm(semi)
+        n_evolved_variables = length(HydroTrixi.evolved_variable_view(ode.u0, semi))
+
+        test_state = if form isa PressureHeadForm
+            fill(-2.0, n_evolved_variables)
+        else
+            vcat(fill(-2.0, n_evolved_variables), fill(100.0, n_evolved_variables))
+        end
+
+        @test @inferred(error_norm(-2.0, 0.0)) == 2.0
+        @test @inferred(error_norm(test_state, 0.0)) == 2.0
+    end
+
+    semi_standard = SemidiscretizationImplicit(semi.semi_base,
+                                               TemporalOperatorStandard())
+    standard_norm = evolved_variable_norm(semi_standard)
+    @test @inferred(standard_norm(fill(-2.0, length(ode.u0) ÷ 2), 0.0)) == 2.0
+
+    celia_elixir = joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_celia_1990.jl")
+    Trixi.trixi_include(@__MODULE__, celia_elixir; run_simulation = false)
+    error_norm = evolved_variable_norm(semi)
+    n_evolved_variables = length(HydroTrixi.evolved_variable_view(ode.u0, semi))
+    test_state = vcat(fill(-2.0, n_evolved_variables),
+                      fill(100.0, n_evolved_variables), [1.0e6, -1.0e6])
     @test @inferred(error_norm(test_state, 0.0)) == 2.0
 end
 

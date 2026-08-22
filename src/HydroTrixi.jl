@@ -58,6 +58,7 @@ export default_algorithm
 export default_stepsize_controller
 export solve_implicit
 export state_variable_norm
+export evolved_variable_norm
 export compute_eoc
 export examples_dir
 
