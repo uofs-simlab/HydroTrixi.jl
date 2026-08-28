@@ -30,6 +30,7 @@ Haverkamp
 VanGenuchten
 water_content
 water_content_timederivative
+effective_saturation
 water_capacity
 hydraulic_conductivity
 pressure_head
@@ -65,12 +66,20 @@ DenseJacobian
 SparseJacobian
 ```
 
+## Spatial adaptivity
+
+```@docs
+ControllerTwoThreshold
+IndicatorTotalVariation
+```
+
 ## Time integration
 
 ```@docs
 default_algorithm
 default_stepsize_controller
 solve_implicit
+pressure_head_out_of_domain
 state_variable_norm
 evolved_variable_norm
 ```

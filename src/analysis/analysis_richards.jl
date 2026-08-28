@@ -46,7 +46,7 @@ Analysis integral for the time derivative of the total water content,
 
 For the mixed formulation, this integrates the derivative of the evolved variable
 ``\theta``. For the pressure-head formulation, it integrates
-``C(\psi) \partial_t\psi`` using [`water_capacity`](@ref). The two expressions agree when
+``c(\psi) \partial_t\psi`` using [`water_capacity`](@ref). The two expressions agree when
 the constitutive constraint ``\theta = \vartheta(\psi)`` is satisfied.
 """
 function water_content_timederivative end

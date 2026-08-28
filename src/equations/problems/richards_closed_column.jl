@@ -12,14 +12,15 @@ linear invariant is also retained by the time integration method up to roundoff.
 The problem provides the constitutive map ``\theta = \vartheta(\psi)`` required by the
 mixed formulation. The pressure head is initialized as
 ```math
-\psi(z, 0) = \psi_{\text{base}} + z + A \left( 1 - \cos\left(\frac{2\pi (z - z_{\min})}{L}\right) \right),
+\psi(z, 0) = \psi_{\mathrm{base}} + z +
+A \left( 1 - \cos\left(\frac{2\pi (z - z_{\min})}{L}\right) \right),
 ```
-where ``\psi_{\text{base}}`` is `base_head`, ``A`` is `amplitude`, and 
+where ``\psi_{\mathrm{base}}`` is `base_head`, ``A`` is `amplitude`, and
 ``L = z_{\max} - z_{\min}``. This profile satisfies ``\partial \psi / \partial z = 1`` at 
 both boundaries, and therefore the flux
 ```math
-f(\psi, \partial_z\psi) =
-\mathcal{K}(\psi) \left( \frac{\partial \psi}{\partial z} - 1 \right)
+f(\psi, \partial_z\psi) \coloneqq
+\kappa(\psi) \left( \partial_z \psi - 1 \right)
 ```
 vanishes at ``z = z_{\min}`` and ``z = z_{\max}`` at the initial time, and should
 remain zero for all time due to the homogeneous Neumann boundary conditions.

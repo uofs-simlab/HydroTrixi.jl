@@ -7,20 +7,18 @@
 A one-dimensional Richards equation model for vertical flow in a soil column, with depth
 ``z`` measured positive downward. The pressure head is ``\psi(z,t)``, the constitutive
 water-content function is ``\vartheta(\psi)``, and the nonlinear flux is
-``f(\psi, \partial_z\psi) = \mathcal{K}(\psi)(\partial_z\psi - 1)``. The unit
+``f(\psi, \partial_z\psi) \coloneqq \kappa(\psi)(\partial_z\psi - 1)``. The unit
 gravitational-gradient term follows from the downward-positive depth convention.
 
 The model supplies the spatial operator shared by the pressure-head formulation
 ```math
-C(\psi) \frac{\partial \psi}{\partial t} =
-\frac{\partial}{\partial z}
-\left( \mathcal{K}(\psi) \left( \frac{\partial \psi}{\partial z} - 1 \right) \right),
+c(\psi) \partial_t \psi =
+\partial_z \left( \kappa(\psi) \left( \partial_z \psi - 1 \right) \right),
 ```
-where ``C(\psi) = \vartheta'(\psi)``, and the mixed formulation
+where ``c(\psi) \coloneqq \vartheta'(\psi)``, and the mixed formulation
 ```math
-\frac{\partial \theta}{\partial t} =
-\frac{\partial}{\partial z}
-\left( \mathcal{K}(\psi) \left( \frac{\partial \psi}{\partial z} - 1 \right) \right),
+\partial_t \theta =
+\partial_z \left( \kappa(\psi) \left( \partial_z \psi - 1 \right) \right),
 \qquad
 \theta = \vartheta(\psi).
 ```
@@ -28,10 +26,10 @@ The temporal formulation and constitutive constraint are supplied by
 [`SemidiscretizationImplicit`](@ref). The hydraulic conductivity is supplied through
 `soil_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the model type
 parameter `SoilModel`. [`BoundaryConditionDirichletPenalty`](@ref) uses the default penalty
-``\mathcal{K}(\psi_D)N(N+1)/h``, where ``\psi_D`` is the prescribed boundary pressure
-head. If `soil_model` is omitted, it defaults to a [`Haverkamp`](@ref) model parameterized
-with the Celia et al. (1990) reference values reported in Ireson et al. (2023), Eq. (25),
-in SI units (lengths in metres and time in seconds).
+``\kappa(\psi_{\mathrm{D}})N(N+1)/h``, where ``\psi_{\mathrm{D}}`` is the prescribed
+boundary pressure head. If `soil_model` is omitted, it defaults to a [`Haverkamp`](@ref)
+model parameterized with the Celia et al. (1990) reference values reported in Ireson et al.
+(2023), Eq. (25), in SI units (lengths in metres and time in seconds).
 """
 struct RichardsEquation1D{SoilModel} <:
        Trixi.AbstractEquationsParabolic{1, 1, Trixi.GradientVariablesConservative}
@@ -58,6 +56,11 @@ first component.
 @inline pressure_head(psi::Number) = psi
 @inline pressure_head(u) = u[1]
 @inline pressure_head(u, ::RichardsEquation1D) = pressure_head(u)
+
+@inline function pressure_head_out_of_domain(u, semi, t, ::RichardsEquation1D)
+    pressure_heads = state_variable_view(u, semi)
+    return any(psi -> psi >= zero(psi), pressure_heads)
+end
 
 function RichardsEquation1D(; soil_model = default_soil_model())
     return RichardsEquation1D(soil_model)
@@ -86,6 +89,23 @@ end
 end
 
 @doc raw"""
+    effective_saturation(u, equations::RichardsEquation1D)
+
+Return the effective saturation associated with the pressure head ``\psi`` stored in `u`,
+defined as
+```math
+S_{\mathrm{e}}(\psi) \coloneqq
+\frac{\vartheta(\psi) - \theta_{\mathrm{r}}}
+     {\theta_{\mathrm{s}} - \theta_{\mathrm{r}}},
+```
+where ``\theta_{\mathrm{r}}`` and ``\theta_{\mathrm{s}}`` are the residual and saturated
+water-content values, respectively, for the Richards equation model `equations`.
+"""
+@inline function effective_saturation(u, equations::RichardsEquation1D)
+    return effective_saturation(pressure_head(u), equations.soil_model)
+end
+
+@doc raw"""
     water_content(u, equations::RichardsEquation1D)
 
 Return the volumetric water content ``\vartheta(\psi)`` associated with the pressure head
@@ -93,15 +113,15 @@ state `u` under the Richards equation model `equations`.
 """
 @inline function water_content(u, equations::RichardsEquation1D)
     soil_model = equations.soil_model
-    S_e = effective_saturation(pressure_head(u), soil_model)
+    S_e = effective_saturation(u, equations)
     return soil_model.theta_r + (soil_model.theta_s - soil_model.theta_r) * S_e
 end
 
 @doc raw"""
     water_capacity(u, equations::RichardsEquation1D)
 
-Return the capacity ``C(\psi) = \mathrm{d}\vartheta / \mathrm{d}\psi`` associated with
-the pressure head state `u` under the Richards equation model `equations`.
+Return the capacity ``c(\psi) \coloneqq \vartheta'(\psi)`` associated with the pressure
+head state `u` under the Richards equation model `equations`.
 """
 @inline function water_capacity(u, equations::RichardsEquation1D)
     return water_capacity(pressure_head(u), equations.soil_model)
@@ -142,16 +162,7 @@ stored in `equations`.
 end
 
 @inline function pressure_head_from_water_content(theta, model::Haverkamp)
-    theta_clamped = clamp(theta, model.theta_r, model.theta_s)
-    theta_range = model.theta_s - model.theta_r
-    effective_saturation = (theta_clamped - model.theta_r) / theta_range
-
-    if effective_saturation >= one(effective_saturation)
-        return zero(theta_clamped)
-    end
-
-    effective_saturation_min = eps(one(effective_saturation))
-    effective_saturation = max(effective_saturation, effective_saturation_min)
+    effective_saturation = (theta - model.theta_r) / (model.theta_s - model.theta_r)
     unsaturated_head = (model.alpha *
                         (one(effective_saturation) - effective_saturation) /
                         effective_saturation)^(inv(model.beta))
@@ -166,10 +177,14 @@ end
     return K_s * (dpsi_dz - one(dpsi_dz))
 end
 
+# Penalty coefficient used in BoundaryConditionDirichletPenalty
 @inline function boundary_penalty_coefficient(u_boundary, equations::RichardsEquation1D)
     return hydraulic_conductivity(u_boundary, equations)
 end
 
+# These boundary condition methods are needed because Trixi.jl defines the corresponding
+# generic behavior only for `AbstractLaplaceDiffusion`, which is not a supertype of
+# `RichardsEquation1D`. The behavior here matches those Laplace-diffusion methods.
 @inline function (boundary_condition::Trixi.BoundaryConditionDirichlet)(flux_inner,
                                                                         u_inner,
                                                                         normal::AbstractVector,

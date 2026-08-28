@@ -64,10 +64,9 @@ manufactured pressure head is
 The boundary conditions impose this profile using the penalty formulation. The storage
 source term
 ```math
-s = C(\psi)\frac{\partial \psi}{\partial t}
-- \frac{\partial}{\partial z}
-\left(\mathcal{K}(\psi)\left(\frac{\partial \psi}{\partial z} - 1\right)\right),
-\qquad C(\psi) = \vartheta'(\psi),
+s = c(\psi)\partial_t \psi
+- \partial_z \left(\kappa(\psi)\left(\partial_z \psi - 1\right)\right),
+\qquad c(\psi) \coloneqq \vartheta'(\psi),
 ```
 makes the profile solve the one-dimensional Richards equation with the Haverkamp
 constitutive laws. The default setup uses the same Haverkamp parameters as

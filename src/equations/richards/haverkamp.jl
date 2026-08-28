@@ -8,15 +8,16 @@ A Haverkamp constitutive model for the Richards equation, written in the form us
 Celia et al. (1990) and Ireson et al. (2023). For ``\psi < 0``, the effective saturation
 and hydraulic conductivity are
 ```math
-S_e(\psi) = \frac{\alpha}{\alpha + |\psi|^\beta},
+S_{\mathrm{e}}(\psi) = \frac{\alpha}{\alpha + |\psi|^\beta},
 \qquad
-\mathcal{K}(\psi) = \mathcal{K}_s\,\frac{A}{A + |\psi|^\gamma},
+\kappa(\psi) = \kappa_{\mathrm{s}}\,\frac{A}{A + |\psi|^\gamma},
 ```
 with saturated values recovered for ``\psi \ge 0``. The parameters ``\alpha`` and ``A``
 carry units of ``[L]^\beta`` and ``[L]^\gamma`` respectively, where ``[L]`` is the
 length unit chosen by the caller for ``\psi``. The associated water content is
 ```math
-\vartheta(\psi) = \vartheta_r + (\vartheta_s - \vartheta_r) S_e(\psi).
+\vartheta(\psi) = \theta_{\mathrm{r}} +
+                   (\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}(\psi).
 ```
 
 # References

@@ -35,7 +35,7 @@ export RichardsEquation1D
 export Haverkamp
 export VanGenuchten
 export water_content, water_content_timederivative, mass_bias, mass_bias_history
-export water_capacity, hydraulic_conductivity, pressure_head
+export effective_saturation, water_capacity, hydraulic_conductivity, pressure_head
 export HydrologicProblemCelia1990
 export HydrologicProblemRichardsManufacturedSolution
 export HydrologicProblemRichardsClosedColumn
@@ -57,8 +57,11 @@ export pressure_head_from_water_content
 export default_algorithm
 export default_stepsize_controller
 export solve_implicit
+export pressure_head_out_of_domain
 export state_variable_norm
 export evolved_variable_norm
+export ControllerTwoThreshold
+export IndicatorTotalVariation
 export compute_eoc
 export examples_dir
 

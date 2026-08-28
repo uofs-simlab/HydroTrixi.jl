@@ -10,13 +10,14 @@ Bouloutas, and Zarba (1990) as a `HydrologicProblem` for HydroTrixi.jl semidiscr
 The problem uses the Haverkamp constitutive laws in the form reported by Ireson et al.
 (2023), Eq. (25):
 ```math
-\vartheta(\psi) = \vartheta_r + (\vartheta_s - \vartheta_r)
+\vartheta(\psi) = \theta_{\mathrm{r}} +
+                  (\theta_{\mathrm{s}} - \theta_{\mathrm{r}})
 \frac{\alpha}{\alpha + |\psi|^\beta},
 \qquad
-\mathcal{K}(\psi) = \mathcal{K}_s\,\frac{A}{A + |\psi|^\gamma},
+\kappa(\psi) = \kappa_{\mathrm{s}}\,\frac{A}{A + |\psi|^\gamma},
 ```
-for ``\psi < 0``, with saturated values ``\vartheta = \vartheta_s`` and
-``\mathcal{K} = \mathcal{K}_s`` for ``\psi \ge 0``. The setup uses depth ``z`` in
+for ``\psi < 0``, with saturated values ``\vartheta = \theta_{\mathrm{s}}`` and
+``\kappa = \kappa_{\mathrm{s}}`` for ``\psi \ge 0``. The setup uses depth ``z`` in
 metres, positive downward on ``z \in [0, 0.4]``, and time in seconds on
 ``t \in [0, 360]``. The pressure head is initialized at ``-0.615`` m, with a Dirichlet
 boundary value of ``-0.207`` m at the soil surface (`x_neg`) and ``-0.615`` m at the

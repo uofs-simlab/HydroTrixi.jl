@@ -63,7 +63,7 @@ derivative of the state variables. The `TemporalOperator` type may be
 [`TemporalOperatorCapacity`](@ref), which determine the structure of the temporal mass
 matrix and the partitioning of the state variables, and correspond to time-derivative
 terms in PDEs of the form ``\partial_t u = R(u, t)``,
-``\partial_t \vartheta(u) = R(u, t)``, or ``C(u)\partial_t u = R(u, t)``, respectively,
+``\partial_t \vartheta(u) = R(u, t)``, or ``c(u)\partial_t u = R(u, t)``, respectively,
 where $R$ denotes a generic spatial operator. The `PassiveVariables` type may be
 [`NoPassiveVariables`](@ref) or [`PassiveVariablesBoundaryFlux1D`](@ref), the latter of
 which appends two passive scalar variables to the ODE state that store the time-integrated

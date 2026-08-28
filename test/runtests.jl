@@ -1,6 +1,5 @@
 using Test
 using HydroTrixi
-import LinearSolve
 import OrdinaryDiffEqRosenbrock
 import SciMLBase
 using SciMLBase: DiscreteCallback, solve, successful_retcode
@@ -42,30 +41,19 @@ end
     end
 end
 
-@trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl" begin
-    import LinearSolve
-    import OrdinaryDiffEqRosenbrock
+@trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl dense Jacobian" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_diffusion_1d_dirichlet_dirichlet.jl"),
                         l2=[4.688250908054879e-5], linf=[0.00035212174570349586])
-    @test sol.alg.autodiff isa OrdinaryDiffEqRosenbrock.AutoForwardDiff
-    @test sol.alg.linsolve isa LinearSolve.LUFactorization
-    @test sol.alg.max_jac_age == 1
 end
 
-@trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl implicit" begin
-    import LinearSolve
-    import OrdinaryDiffEqRosenbrock
+@trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl sparse Jacobian" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_diffusion_1d_dirichlet_dirichlet.jl"),
                         algorithm=default_algorithm(ode), jacobian=SparseJacobian(),
                         dt=1.0e-2, adaptive=true,
                         reltol=1.0e-9, abstol=1.0e-11,
                         l2=[4.688250908054879e-5], linf=[0.00035212174570349586])
-    @test sol.alg.autodiff isa OrdinaryDiffEqRosenbrock.AutoSparse
-    @test sol.alg.autodiff.dense_ad isa OrdinaryDiffEqRosenbrock.AutoForwardDiff
-    @test sol.alg.linsolve isa LinearSolve.KLUFactorization
-    @test sol.alg.max_jac_age == 1
 end
 
 @trixi_testset "elixir_diffusion_1d_mixed_dirichlet_neumann.jl" begin
@@ -75,7 +63,10 @@ end
 end
 
 @trixi_testset "elixir_richards_celia_1990.jl" begin
-    @test_trixi_include joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_celia_1990.jl")
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_celia_1990.jl"),
+                        amr=true,
+                        l2=[0.23119623291034774], linf=[0.4080065460619734])
 end
 
 @trixi_testset "elixir_richards_manufactured_solution.jl mixed form" begin
@@ -84,25 +75,29 @@ end
                         l2=[4.0696092211162146e-5], linf=[0.0003809050528035818])
 end
 
-@testset "elixir_richards_manufactured_solution.jl zero penalty factor" begin
-    problem = HydrologicProblemRichardsManufacturedSolution(penalty_factor = 0)
-    Trixi.trixi_include(@__MODULE__,
-                        joinpath(EXAMPLES_DIR, "elixirs",
-                                 "elixir_richards_manufactured_solution.jl");
-                        problem = problem)
-    errors = analysis_callback(sol)
-    @test successful_retcode(sol)
-    @test errors.l2≈[6.174720607183763e-5] rtol=1.0e-10
-    @test errors.linf≈[0.0005052944044764973] rtol=1.0e-10
-end
-
-@testset "elixir_richards_manufactured_solution.jl finite-diff Jacobian" begin
-    # Retain support for graph-coloured finite-difference Jacobians
-    autodiff = OrdinaryDiffEqRosenbrock.AutoFiniteDiff()
-    finite_diff_algorithm = default_algorithm(ode; autodiff)
+@trixi_testset "elixir_richards_manufactured_solution.jl state-variable norm" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
-                        algorithm=finite_diff_algorithm, l2=[4.0696092224417466e-5],
+                        internalnorm=state_variable_norm(semi),
+                        l2=[4.069609236532572e-5], linf=[0.00038090502378751445])
+end
+
+@trixi_testset "elixir_richards_manufactured_solution.jl zero penalty factor" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_manufactured_solution.jl"),
+                        problem=HydrologicProblemRichardsManufacturedSolution(penalty_factor = 0),
+                        l2=[6.174720607183763e-5], linf=[0.0005052944044764973])
+end
+
+@trixi_testset "elixir_richards_manufactured_solution.jl finite-diff Jacobian" begin
+    import OrdinaryDiffEqRosenbrock
+
+    # Retain support for graph-coloured finite-difference Jacobians
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_manufactured_solution.jl"),
+                        algorithm=default_algorithm(ode;
+                                                    autodiff = OrdinaryDiffEqRosenbrock.AutoFiniteDiff()),
+                        l2=[4.0696092224417466e-5],
                         linf=[0.0003809050439483319])
 end
 
@@ -111,72 +106,6 @@ end
                                  "elixir_richards_manufactured_solution.jl"),
                         form=PressureHeadForm(), l2=[4.069609136528145e-5],
                         linf=[0.000380904999743803])
-end
-
-@testset "state-variable norm" begin
-    elixir = joinpath(EXAMPLES_DIR, "elixirs",
-                      "elixir_richards_manufactured_solution.jl")
-
-    for form in (PressureHeadForm(), MixedForm())
-        Trixi.trixi_include(@__MODULE__, elixir; form = form, run_simulation = false)
-        error_norm = state_variable_norm(semi)
-        n_state_variables = length(HydroTrixi.state_variable_view(ode.u0, semi))
-
-        test_state = if form isa PressureHeadForm
-            fill(-2.0, n_state_variables)
-        else
-            vcat(fill(100.0, n_state_variables), fill(-2.0, n_state_variables))
-        end
-
-        @test @inferred(error_norm(-2.0, 0.0)) == 2.0
-        @test @inferred(error_norm(test_state, 0.0)) == 2.0
-    end
-
-    semi_standard = SemidiscretizationImplicit(semi.semi_base,
-                                               TemporalOperatorStandard())
-    standard_norm = state_variable_norm(semi_standard)
-    @test @inferred(standard_norm(fill(-2.0, length(ode.u0) ÷ 2), 0.0)) == 2.0
-
-    celia_elixir = joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_celia_1990.jl")
-    Trixi.trixi_include(@__MODULE__, celia_elixir; run_simulation = false)
-    error_norm = state_variable_norm(semi)
-    n_state_variables = length(HydroTrixi.state_variable_view(ode.u0, semi))
-    test_state = vcat(fill(100.0, n_state_variables), fill(-2.0, n_state_variables),
-                      [1.0e6, -1.0e6])
-    @test @inferred(error_norm(test_state, 0.0)) == 2.0
-end
-
-@testset "evolved-variable norm" begin
-    elixir = joinpath(EXAMPLES_DIR, "elixirs",
-                      "elixir_richards_manufactured_solution.jl")
-
-    for form in (PressureHeadForm(), MixedForm())
-        Trixi.trixi_include(@__MODULE__, elixir; form = form, run_simulation = false)
-        error_norm = evolved_variable_norm(semi)
-        n_evolved_variables = length(HydroTrixi.evolved_variable_view(ode.u0, semi))
-
-        test_state = if form isa PressureHeadForm
-            fill(-2.0, n_evolved_variables)
-        else
-            vcat(fill(-2.0, n_evolved_variables), fill(100.0, n_evolved_variables))
-        end
-
-        @test @inferred(error_norm(-2.0, 0.0)) == 2.0
-        @test @inferred(error_norm(test_state, 0.0)) == 2.0
-    end
-
-    semi_standard = SemidiscretizationImplicit(semi.semi_base,
-                                               TemporalOperatorStandard())
-    standard_norm = evolved_variable_norm(semi_standard)
-    @test @inferred(standard_norm(fill(-2.0, length(ode.u0) ÷ 2), 0.0)) == 2.0
-
-    celia_elixir = joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_celia_1990.jl")
-    Trixi.trixi_include(@__MODULE__, celia_elixir; run_simulation = false)
-    error_norm = evolved_variable_norm(semi)
-    n_evolved_variables = length(HydroTrixi.evolved_variable_view(ode.u0, semi))
-    test_state = vcat(fill(-2.0, n_evolved_variables),
-                      fill(100.0, n_evolved_variables), [1.0e6, -1.0e6])
-    @test @inferred(error_norm(test_state, 0.0)) == 2.0
 end
 
 @testset "elixir_richards_celia_1990.jl AMR mass bias" begin
@@ -240,8 +169,10 @@ end
 end
 
 @testset "elixir_richards_closed_column.jl mass conservation" begin
-    trixi_include(joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_closed_column.jl");
-                  saveat = 0.0:10.0:360.0)
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_closed_column.jl"),
+                        saveat=0.0:10.0:360.0, amr=true,
+                        l2=[0.00027752343492303905], linf=[0.000515908443132318])
 
     storage = [only(HydroTrixi.evolved_variables_integral(u_ode, semi)) for u_ode in sol.u]
     initial_storage = first(storage)

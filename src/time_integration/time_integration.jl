@@ -49,6 +49,27 @@ function default_algorithm(ode::SciMLBase.ODEProblem{U, T, I, P};
                                             jac_reuse_gamma_tol, kwargs...)
 end
 
+"""
+    pressure_head_out_of_domain(u, semi, t)
+
+Return `true` if any pressure-head degree of freedom in the candidate ODE state `u` is
+nonnegative. The call signature matches SciML's `isoutofdomain` predicate and can be
+passed directly to [`solve_implicit`](@ref):
+```julia
+sol = solve_implicit(ode; isoutofdomain = pressure_head_out_of_domain, kwargs...)
+```
+
+The domain criterion dispatches on the equations stored by
+[`SemidiscretizationImplicit`](@ref). For [`RichardsEquation1D`](@ref), the pressure head
+is obtained from the state-variable block, so the criterion applies to both the mixed and
+pressure-head forms. Returning `true` rejects the candidate time step; it does not
+constrain internal time-integration stages.
+"""
+@inline function pressure_head_out_of_domain(u, semi::SemidiscretizationImplicit, t)
+    _, equations, _, _ = Trixi.mesh_equations_solver_cache(semi)
+    return pressure_head_out_of_domain(u, semi, t, equations)
+end
+
 @doc raw"""
     state_variable_norm(semi::SemidiscretizationImplicit)
 
