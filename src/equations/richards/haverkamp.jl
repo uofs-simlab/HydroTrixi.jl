@@ -2,19 +2,18 @@
 #! format: noindent
 
 @doc raw"""
-    Haverkamp(; saturated_hydraulic_conductivity, alpha, beta, A, gamma, theta_s, theta_r)
+    Haverkamp(; saturated_hydraulic_conductivity, a, beta, b, gamma, theta_s, theta_r)
 
 A Haverkamp constitutive model for the Richards equation, written in the form used by
 Celia et al. (1990) and Ireson et al. (2023). For ``\psi < 0``, the effective saturation
 and hydraulic conductivity are
 ```math
-S_{\mathrm{e}}(\psi) = \frac{\alpha}{\alpha + |\psi|^\beta},
+S_{\mathrm{e}}(\psi) = \frac{1}{1 + (a|\psi|)^\beta},
 \qquad
-\kappa(\psi) = \kappa_{\mathrm{s}}\,\frac{A}{A + |\psi|^\gamma},
+\kappa(\psi) = \frac{\kappa_{\mathrm{s}}}{1 + (b|\psi|)^\gamma},
 ```
-with saturated values recovered for ``\psi \ge 0``. The parameters ``\alpha`` and ``A``
-carry units of ``[L]^\beta`` and ``[L]^\gamma`` respectively, where ``[L]`` is the
-length unit chosen by the caller for ``\psi``. The associated water content is
+with saturated values recovered for ``\psi \ge 0``. The parameters ``a`` and ``b`` are
+inverse pressure-head scales. The associated water content is
 ```math
 \vartheta(\psi) = \theta_{\mathrm{r}} +
                    (\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}(\psi).
@@ -36,20 +35,20 @@ length unit chosen by the caller for ``\psi``. The associated water content is
 """
 struct Haverkamp{RealT}
     saturated_hydraulic_conductivity::RealT
-    alpha::RealT
+    a::RealT
     beta::RealT
-    A::RealT
+    b::RealT
     gamma::RealT
     theta_s::RealT
     theta_r::RealT
 end
 
-function Haverkamp(; saturated_hydraulic_conductivity, alpha, beta, A, gamma, theta_s,
+function Haverkamp(; saturated_hydraulic_conductivity, a, beta, b, gamma, theta_s,
                    theta_r)
-    RealT = promote_type(typeof(saturated_hydraulic_conductivity), typeof(alpha),
-                         typeof(beta), typeof(A), typeof(gamma),
+    RealT = promote_type(typeof(saturated_hydraulic_conductivity), typeof(a),
+                         typeof(beta), typeof(b), typeof(gamma),
                          typeof(theta_s), typeof(theta_r))
-    return Haverkamp{RealT}(saturated_hydraulic_conductivity, alpha, beta, A, gamma,
+    return Haverkamp{RealT}(saturated_hydraulic_conductivity, a, beta, b, gamma,
                             theta_s, theta_r)
 end
 
@@ -58,7 +57,7 @@ end
         return one(psi)
     end
 
-    return model.alpha / (model.alpha + abs(psi)^model.beta)
+    return inv(one(psi) + (model.a * abs(psi))^model.beta)
 end
 
 @inline function hydraulic_conductivity(psi, model::Haverkamp)
@@ -66,7 +65,7 @@ end
         return model.saturated_hydraulic_conductivity
     end
 
-    return model.saturated_hydraulic_conductivity * model.A /
-           (model.A + abs(psi)^model.gamma)
+    return model.saturated_hydraulic_conductivity /
+           (one(psi) + (model.b * abs(psi))^model.gamma)
 end
 end # @muladd

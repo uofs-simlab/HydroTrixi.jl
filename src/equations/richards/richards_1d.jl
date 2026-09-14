@@ -37,8 +37,8 @@ struct RichardsEquation1D{SoilModel} <:
 end
 
 @inline default_soil_model() = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
-                                         alpha = 0.01936848004, beta = 3.96,
-                                         A = 3.890790677e-4, gamma = 4.74,
+                                         a = 2.7073950541818448, beta = 3.96,
+                                         b = 5.2408447406427436, gamma = 4.74,
                                          theta_s = 0.287,
                                          theta_r = 0.075)
 
@@ -134,8 +134,9 @@ end
 
     abs_psi = abs(psi)
     theta_range = model.theta_s - model.theta_r
-    denominator = model.alpha + abs_psi^model.beta
-    return theta_range * model.alpha * model.beta * abs_psi^(model.beta - 1) /
+    scaled_abs_psi = model.a * abs_psi
+    denominator = one(psi) + scaled_abs_psi^model.beta
+    return theta_range * model.a * model.beta * scaled_abs_psi^(model.beta - 1) /
            denominator^2
 end
 
@@ -163,9 +164,8 @@ end
 
 @inline function pressure_head_from_water_content(theta, model::Haverkamp)
     effective_saturation = (theta - model.theta_r) / (model.theta_s - model.theta_r)
-    unsaturated_head = (model.alpha *
-                        (one(effective_saturation) - effective_saturation) /
-                        effective_saturation)^(inv(model.beta))
+    unsaturated_head = ((one(effective_saturation) - effective_saturation) /
+                        effective_saturation)^(inv(model.beta)) / model.a
     return -unsaturated_head
 end
 

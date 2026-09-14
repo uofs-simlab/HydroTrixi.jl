@@ -38,10 +38,11 @@ end
         conductivity_derivative = zero(psi)
     else
         abs_psi = abs(psi)
-        conductivity_denominator = soil_model.A + abs_psi^soil_model.gamma
+        scaled_abs_psi = soil_model.b * abs_psi
+        conductivity_denominator = one(psi) + scaled_abs_psi^soil_model.gamma
         conductivity_derivative = soil_model.saturated_hydraulic_conductivity *
-                                  soil_model.A * soil_model.gamma *
-                                  abs_psi^(soil_model.gamma - 1) /
+                                  soil_model.b * soil_model.gamma *
+                                  scaled_abs_psi^(soil_model.gamma - 1) /
                                   conductivity_denominator^2
     end
     flux_derivative = conductivity_derivative * psi_z * (psi_z - 1) +

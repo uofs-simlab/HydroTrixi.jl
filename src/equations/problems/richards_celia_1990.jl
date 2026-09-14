@@ -12,9 +12,9 @@ The problem uses the Haverkamp constitutive laws in the form reported by Ireson 
 ```math
 \vartheta(\psi) = \theta_{\mathrm{r}} +
                   (\theta_{\mathrm{s}} - \theta_{\mathrm{r}})
-\frac{\alpha}{\alpha + |\psi|^\beta},
+\frac{1}{1 + (a|\psi|)^\beta},
 \qquad
-\kappa(\psi) = \kappa_{\mathrm{s}}\,\frac{A}{A + |\psi|^\gamma},
+\kappa(\psi) = \frac{\kappa_{\mathrm{s}}}{1 + (b|\psi|)^\gamma},
 ```
 for ``\psi < 0``, with saturated values ``\vartheta = \theta_{\mathrm{s}}`` and
 ``\kappa = \kappa_{\mathrm{s}}`` for ``\psi \ge 0``. The setup uses depth ``z`` in
@@ -42,8 +42,9 @@ The returned problem setup contains the fields `equations`, `state_to_evolved`,
 """
 function HydrologicProblemCelia1990(; tspan = (0.0, 360.0), penalty_factor = 1)
     soil_model = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
-                           alpha = 0.01936848004, beta = 3.96, A = 3.890790677e-4,
-                           gamma = 4.74, theta_s = 0.287, theta_r = 0.075)
+                           a = 2.7073950541818448, beta = 3.96,
+                           b = 5.2408447406427436, gamma = 4.74,
+                           theta_s = 0.287, theta_r = 0.075)
     equations = RichardsEquation1D(soil_model = soil_model)
     state_to_evolved = water_content
     evolved_to_state = pressure_head_from_water_content
