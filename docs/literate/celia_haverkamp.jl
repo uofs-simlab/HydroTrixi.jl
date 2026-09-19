@@ -2,13 +2,13 @@
 # CurrentModule = HydroTrixi
 # ```
 #
-# # Celia *et al.* (1990) infiltration problem
+# # Celia-Haverkamp infiltration problem
 #
-# This tutorial runs the one-dimensional Richards benchmark from the following paper:
+# This tutorial runs the first infiltration Richards benchmark from the following paper:
 #
 # Celia, M. A., Bouloutas, E. T., Zarba, R. L. (1990). A general
 # mass-conservative numerical solution for the unsaturated flow equation.
-# *Water Resources Research*, 26(7), 1483-1496. 
+# *Water Resources Research*, 26(7), 1483-1496.
 # [DOI: 10.1029/WR026i007p01483](https://doi.org/10.1029/WR026i007p01483)
 #
 # First, we load the required packages.
@@ -26,23 +26,23 @@ nothing #hide
 # ## Solve the Richards problem
 #
 # The setup below follows the
-# [`elixir_richards_celia_1990.jl`](https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/examples/elixirs/elixir_richards_celia_1990.jl)
+# [`elixir_richards_celia_haverkamp.jl`](https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/examples/elixirs/elixir_richards_celia_haverkamp.jl)
 # example, but we keep a saved time history so the same solution object can drive
 # the animation step later in the tutorial.
 
-asset_dir = docs_generated_dir("celia_1990")
+asset_dir = docs_generated_dir("celia_haverkamp")
 
 # ### 1. Load the benchmark definition
 #
-# [`HydrologicProblemCelia1990`](@ref) packages the Richards equation,
+# [`HydrologicProblemCeliaHaverkamp`](@ref) packages the Richards equation,
 # constitutive relations, boundary data, spatial domain, and time interval for the
 # standard infiltration problem. Depth is measured positive downward from the soil surface.
 
-problem = HydrologicProblemCelia1990()
+problem = HydrologicProblemCeliaHaverkamp()
 
 # ### 2. Build the mesh
 #
-# The benchmark is one-dimensional, so a `TreeMesh` with five levels of initial refinement 
+# The benchmark is one-dimensional, so a `TreeMesh` with five levels of initial refinement
 # gives 32 cells before time integration begins.
 
 mesh = TreeMesh(problem.domain..., initial_refinement_level = 5)
@@ -70,7 +70,7 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # step size is $\Delta t = 1.0 \times 10^{-2}$ seconds. We specify
 # `saveat = 0.0:6.0:360.0` to save a solution every six seconds, which will be used to
 # create an animation in the next tutorial section. The `adaptive = true` keyword below
-# controls time adaptivity only; run `examples/elixirs/elixir_richards_celia_1990.jl` with
+# controls time adaptivity only; run `examples/elixirs/elixir_richards_celia_haverkamp.jl` with
 # `amr = true` for mesh adaptivity based on water content.
 #
 # The mixed state contains both water content and pressure head, while the pressure-head
@@ -103,7 +103,7 @@ println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) save
 using CairoMakie
 using LaTeXStrings
 
-# 
+#
 # The mixed formulation of the Richards equation orders its state as
 # $\boldsymbol{y} = (\boldsymbol{\theta},\boldsymbol{\psi})^\mathrm{T}$, where
 # $\boldsymbol{\theta}$ contains water content and $\boldsymbol{\psi}$ contains pressure
@@ -111,21 +111,21 @@ using LaTeXStrings
 # [`plot_solution_1d`](@ref). The output file is written into the docs asset
 # directory prepared by the build.
 
-plot_path = joinpath(asset_dir, "richards_celia_1990_pressure_head.png")
+plot_path = joinpath(asset_dir, "richards_celia_haverkamp_pressure_head.png")
 
 _ = plot_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
                      ylims = (-0.65, -0.15), output_path = plot_path)
 
 println("Saved final-time plot to $(plot_path)")
 
-# ![Final-time pressure head profile](../assets/generated/celia_1990/richards_celia_1990_pressure_head.png)
+# ![Final-time pressure head profile](../assets/generated/celia_haverkamp/richards_celia_haverkamp_pressure_head.png)
 #
 # ## Render the GIF animation
 #
 # Because the solve already stored a time history, [`animate_solution_1d`](@ref)
 # only needs to read the saved states and render them.
 
-animation_path = joinpath(asset_dir, "richards_celia_1990_pressure_head.gif")
+animation_path = joinpath(asset_dir, "richards_celia_haverkamp_pressure_head.gif")
 
 _ = animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
                         ylims = (-0.65, -0.15), output_path = animation_path,
@@ -133,4 +133,4 @@ _ = animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\ps
 
 println("Saved animation to $(animation_path)")
 
-# ![Pressure head animation](../assets/generated/celia_1990/richards_celia_1990_pressure_head.gif)
+# ![Pressure head animation](../assets/generated/celia_haverkamp/richards_celia_haverkamp_pressure_head.gif)

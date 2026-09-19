@@ -169,6 +169,13 @@ end
     return -unsaturated_head
 end
 
+@inline function pressure_head_from_water_content(theta, model::VanGenuchten)
+    effective_saturation = (theta - model.theta_r) / (model.theta_s - model.theta_r)
+    unsaturated_head = (effective_saturation^(-inv(model.m)) -
+                        one(effective_saturation))^(inv(model.n)) / model.alpha
+    return -unsaturated_head
+end
+
 @inline function Trixi.flux(u, gradients, orientation::Integer,
                             equations::RichardsEquation1D)
     psi = u[1]

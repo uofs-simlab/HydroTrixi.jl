@@ -62,11 +62,80 @@ end
                         l2=[2.7083226488116088e-5], linf=[0.00022679747793086236])
 end
 
-@trixi_testset "elixir_richards_celia_1990.jl" begin
+@trixi_testset "elixir_richards_celia_haverkamp.jl" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
-                                 "elixir_richards_celia_1990.jl"),
+                                 "elixir_richards_celia_haverkamp.jl"),
                         amr=true,
-                        l2=[0.23119623291034774], linf=[0.4080065460619734])
+                        l2=[0.2312163774363683], linf=[0.4080000141652919])
+
+    # Normalization remains finite for constant and nearly constant states.
+    mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
+    u = fill(-0.5, size(cache.elements.node_coordinates))
+    @test all(iszero, amr_indicator(u, mesh, equations, dg, cache))
+    u[1] += eps()
+    @test all(isfinite, amr_indicator(u, mesh, equations, dg, cache))
+end
+
+@trixi_testset "elixir_richards_celia_haverkamp.jl normalized saturation indicator" begin
+    # Normalization removes the affine change from water content to saturation.
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_celia_haverkamp.jl"),
+                        amr=true, variable=effective_saturation,
+                        l2=[0.2312163774363683], linf=[0.4080000141652919])
+end
+
+@trixi_testset "elixir_richards_celia_new_mexico.jl" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_celia_new_mexico.jl"),
+                        l2=[6.748850474885821], linf=[9.250000021161606])
+
+    mesh, _, dg, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
+    @test maximum(Trixi.current_element_levels(mesh, dg, cache)) == 10
+end
+
+@trixi_testset "elixir_richards_celia_new_mexico.jl normalized saturation indicator" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_celia_new_mexico.jl"),
+                        variable=effective_saturation,
+                        l2=[6.748850474885821], linf=[9.250000021161606])
+
+    mesh, _, dg, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
+    @test maximum(Trixi.current_element_levels(mesh, dg, cache)) == 10
+end
+
+@trixi_testset "elixir_richards_celia_haverkamp.jl pressure-head mapped error AMR" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_celia_haverkamp.jl"),
+                        form=PressureHeadForm(), error_control_variables=water_content,
+                        amr=true, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr_interval=1, amr_base_level=1, max_level=4,
+                        adapt_initial_condition=false,
+                        l2=[0.04980091115465496], linf=[0.41441316902984104])
+
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.stats.nreject > 0
+    mesh, _, dg, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
+    levels = Trixi.current_element_levels(mesh, dg, cache)
+    @test extrema(levels) == (1, 4)
+    @test length(sol.u[end]) > length(ode.u0)
+end
+
+@trixi_testset "elixir_richards_celia_haverkamp.jl mixed evolved error AMR" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_celia_haverkamp.jl"),
+                        error_control_variables=water_content,
+                        amr=true, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr_interval=1, amr_base_level=1, max_level=4,
+                        adapt_initial_condition=false,
+                        l2=[0.04979785267197109], linf=[0.41441386613429065])
+
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.stats.naccept == 83
+    @test sol.stats.nreject > 0
+    mesh, _, dg, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
+    levels = Trixi.current_element_levels(mesh, dg, cache)
+    @test extrema(levels) == (1, 4)
+    @test length(sol.u[end]) > length(ode.u0)
 end
 
 @trixi_testset "elixir_richards_manufactured_solution.jl mixed form" begin
@@ -108,19 +177,123 @@ end
                         linf=[0.000380904999743803])
 end
 
-@testset "elixir_richards_celia_1990.jl AMR mass bias" begin
+@trixi_testset "elixir_richards_manufactured_solution.jl mapped error control" begin
+    import OrdinaryDiffEqRosenbrock
+
+    # Cover both final-stage estimators and weighted estimators such as Rodas5Pe.
+    for (integration_algorithm, l2_reference, linf_reference) in
+        ((OrdinaryDiffEqRosenbrock.Rodas4(), 0.004825104682560886, 0.025906733031606066),
+         (OrdinaryDiffEqRosenbrock.Rodas42(), 0.004825116227347337, 0.025906634553169328),
+         (OrdinaryDiffEqRosenbrock.Rodas4P(), 0.004825093476699578, 0.025906665817691854),
+         (OrdinaryDiffEqRosenbrock.Rodas4P2(), 0.004825096265966346, 0.02590667474524755),
+         (OrdinaryDiffEqRosenbrock.Rodas5(), 0.0048250484071016, 0.025906469159872048),
+         (OrdinaryDiffEqRosenbrock.Rodas5P(), 0.004825051926237008, 0.025906458238520003),
+         (OrdinaryDiffEqRosenbrock.Rodas5Pe(), 0.004825045396870383, 0.025906403901456265),
+         (OrdinaryDiffEqRosenbrock.Rodas6P(), 0.004825050923678062, 0.025906474857098738))
+        @testset "$(nameof(typeof(integration_algorithm)))" begin
+            @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                         "elixir_richards_manufactured_solution.jl"),
+                                algorithm=integration_algorithm, form=PressureHeadForm(),
+                                error_control_variables=water_content,
+                                tspan=(0.0, 10.0), initial_refinement_level=2,
+                                dt=0.5, reltol=1.0e-4, abstol=1.0e-8,
+                                l2=[l2_reference], linf=[linf_reference])
+            @test SciMLBase.successful_retcode(sol)
+        end
+    end
+end
+
+@trixi_testset "elixir_richards_manufactured_solution.jl mixed mapped error control" begin
+    import OrdinaryDiffEqCore
+    import OrdinaryDiffEqRosenbrock
+
+    mapping_calls = Ref(0)
+    function checked_water_content(value, equations)
+        # Explicit mappings receive pressure head, including for the mixed form.
+        @assert value < 0
+        mapping_calls[] += 1
+        return water_content(value, equations)
+    end
+
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_manufactured_solution.jl"),
+                        error_control_variables=checked_water_content,
+                        tspan=(0.0, 10.0), initial_refinement_level=2,
+                        dt=0.5, reltol=1.0e-4, abstol=fill(1.0e-8, length(ode.u0)),
+                        l2=[0.004825064501334634], linf=[0.025906520810019762])
+    @test SciMLBase.successful_retcode(sol)
+    @test mapping_calls[] > 0
+
+    # Reinitialization must reset the wrapped PI controller's adaptive history.
+    controller = HydroTrixi.StepsizeControllerMappedError(
+        OrdinaryDiffEqCore.PIController(0.14, 0.08), checked_water_content)
+    integrator = SciMLBase.init(ode, default_algorithm(ode);
+                                controller, dt = 0.5, reltol = 1.0e-4,
+                                abstol = fill(1.0e-8, length(ode.u0)),
+                                internalnorm = evolved_variable_norm(semi),
+                                save_everystep = false)
+    SciMLBase.step!(integrator)
+    SciMLBase.reinit!(integrator)
+    reinitialized_solution = SciMLBase.solve!(integrator)
+    @test SciMLBase.successful_retcode(reinitialized_solution)
+    @test last(reinitialized_solution.u)≈last(sol.u) rtol=1.0e-10
+
+    options = (; dt = 0.5, error_control_variables = checked_water_content)
+    for unsupported in (OrdinaryDiffEqRosenbrock.Rosenbrock23(),
+                        OrdinaryDiffEqRosenbrock.Rodas5Pr())
+        @test_throws ArgumentError solve_implicit(ode, unsupported; options...)
+    end
+    @test_throws ArgumentError solve_implicit(ode; options...,
+                                              reltol = fill(1.0e-4, length(ode.u0)))
+    @test_throws ArgumentError solve_implicit(ode; options...,
+                                              step_limiter = (u, integrator, p, t) -> nothing)
+
+    # Fixed stepping does not evaluate the optional conversion.
+    mapping_calls[] = 0
+    fixed = solve_implicit(ode; options..., adaptive = false)
+    @test SciMLBase.successful_retcode(fixed)
+    @test mapping_calls[] == 0
+end
+
+@testset "Richards manufactured solution Dirichlet-Neumann convergence" begin
+    base_problem = HydrologicProblemRichardsManufacturedSolution()
+    dirichlet_left = Trixi.BoundaryConditionDirichlet(base_problem.initial_condition)
+    right_flux = HydroTrixi.richards_manufactured_right_boundary_flux
+    neumann_right = Trixi.BoundaryConditionNeumann(right_flux)
+    boundary_conditions = (; x_neg = dirichlet_left, x_pos = neumann_right)
+    problem = HydrologicProblem(equations = base_problem.equations,
+                                state_to_evolved = base_problem.state_to_evolved,
+                                evolved_to_state = base_problem.evolved_to_state,
+                                initial_condition = base_problem.initial_condition,
+                                boundary_conditions = boundary_conditions,
+                                source_terms = base_problem.source_terms,
+                                domain = base_problem.domain, tspan = base_problem.tspan)
+
+    eocs, _ = Trixi.convergence_test(@__MODULE__,
+                                     joinpath(EXAMPLES_DIR, "elixirs",
+                                              "elixir_richards_manufactured_solution.jl"),
+                                     3; problem = problem,
+                                     initial_refinement_level = 4)
+    mean_convergence = Trixi.calc_mean_convergence(eocs)
+    @test isapprox(mean_convergence[:l2], [4.0]; rtol = 0.1)
+    @test isapprox(mean_convergence[:linf], [4.0]; rtol = 0.1)
+end
+
+@testset "elixir_richards_celia_haverkamp.jl AMR mass bias" begin
     Trixi.trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
-                                 "elixir_richards_celia_1990.jl");
+                                 "elixir_richards_celia_haverkamp.jl");
                         tspan = (0.0, 1.0), amr = true, run_simulation = false)
 
+    # AMR must not trigger DAE reinitialization when it leaves the mesh unchanged.
     sol = solve(ode, default_algorithm(ode); dt = 1.0e-2, adaptive = true,
+                initializealg = SciMLBase.CheckInit(),
                 reltol = 1.0e-7, abstol = 1.0e-11, save_everystep = false,
                 save_start = false,
                 save_end = true, maxiters = typemax(Int), callback = callbacks)
     @test abs(HydroTrixi.mass_bias(sol.u[end], semi)) < 1.0e-12
 end
 
-@testset "elixir_richards_celia_1990.jl AMR Jacobian" begin
+@testset "elixir_richards_celia_haverkamp.jl AMR Jacobian" begin
     # Scheduled AMR callback to keep simulation topologies consistent between runs
     function solve_scheduled_amr(ode, semi, mesh, amr_callback, adaptation_times;
                                  algorithm = default_algorithm(ode))
@@ -145,15 +318,17 @@ end
         return (; solution, topology_history)
     end
 
-    elixir = joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_celia_1990.jl")
+    elixir = joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_celia_haverkamp.jl")
     adaptation_times = collect(30.0:30.0:330.0)
 
     # Test dense and sparse Jacobian runs for both mixed and pressure-head forms
     for form in (MixedForm(), PressureHeadForm())
         @testset "$(nameof(typeof(form)))" begin
             dense, sparse = map((DenseJacobian(), SparseJacobian())) do jacobian_strategy
+                # Bound the dense Jacobian size while exercising normalized AMR.
                 Trixi.trixi_include(@__MODULE__, elixir;
                                     form = form, jacobian = jacobian_strategy, amr = true,
+                                    max_level = 6,
                                     run_simulation = false)
                 solve_scheduled_amr(ode, semi, mesh, amr_callback, adaptation_times)
             end

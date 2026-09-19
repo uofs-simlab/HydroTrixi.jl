@@ -6,5 +6,5 @@ EditURL = "https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/docs/src/tutor
 
 The following tutorials are authored as a self-contained `Literate.jl` source under `docs/literate` and executed as part of the documentation build:
 
-- [Celia *et al.* (1990) infiltration problem](tutorials/celia_1990.md)
+- [Celia-Haverkamp infiltration problem](tutorials/celia_haverkamp.md)
 - [Sparse Jacobian evaluation](tutorials/richards_jacobian_sparsity.md)

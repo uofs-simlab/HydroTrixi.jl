@@ -16,7 +16,8 @@ examples_dir
 
 ```@docs
 HydrologicProblem
-HydrologicProblemCelia1990
+HydrologicProblemCeliaHaverkamp
+HydrologicProblemCeliaNewMexico
 HydrologicProblemRichardsManufacturedSolution
 HydrologicProblemRichardsClosedColumn
 BoundaryConditionDirichletPenalty

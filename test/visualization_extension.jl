@@ -15,6 +15,21 @@ using LaTeXStrings
     end
 end
 
+@testset "convergence triangles on physical spacing" begin
+    x = [0.25, 0.5, 1.0]
+    series = ((; x, errors = (x .^ 5,), labels = (L"$L^2$",)),)
+    mktempdir() do tmpdir
+        output_path = joinpath(tmpdir, "spacing_convergence.pdf")
+        fig = plot_convergence_1d(series; output_path, xticks = x,
+                                  triangle_order = 5, triangle_slope = :positive)
+        @test fig isa CairoMakie.Figure
+        @test isfile(output_path)
+        @test_throws ArgumentError HydroTrixi.plot_bottom_triangle!(fig.content[1], 0.25, 0.5,
+                                                                    1.0, 5;
+                                                                    triangle_slope = :positive)
+    end
+end
+
 @testset "arbitrary convergence series" begin
     x = [8.0, 16.0, 32.0]
     series = ((; x, errors = (x .^ -2, 2 .* x .^ -2, x .^ -3),

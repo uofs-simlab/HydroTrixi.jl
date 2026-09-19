@@ -3,24 +3,27 @@ using SciMLBase
 using Trixi
 
 ###############################################################################
-# semidiscretization of the Celia et al. Richards equation benchmark
+# semidiscretization of the Celia et al. New Mexico Richards benchmark
 
-problem = HydrologicProblemCelia1990(tspan = (0.0, 360.0))
+problem = HydrologicProblemCeliaNewMexico(tspan = (0.0, 86_400.0))
 
 # Spatial discretization
-mesh = TreeMesh(problem.domain..., initial_refinement_level = 5, periodicity = false)
+mesh = TreeMesh(problem.domain..., initial_refinement_level = 6, periodicity = false)
 solver = DGSEM(polydeg = 3)
+form = MixedForm()
 
 semi = SemidiscretizationImplicit(mesh, problem, solver;
                                   solver_parabolic = ParabolicFormulationLocalDG(),
                                   passive_variables = PassiveVariablesBoundaryFlux1D(),
-                                  form = MixedForm())
+                                  form = form)
 
 ###############################################################################
-# ODE solvers, callbacks etc.
+# ODE solvers and callbacks
 
 ode = semidiscretize(semi, problem.tspan; jacobian = SparseJacobian())
 internalnorm = evolved_variable_norm(semi)
+# Control error in water content for both mixed and pressure-head forms.
+error_control_variables = water_content
 
 summary_callback = SummaryCallback()
 
@@ -35,14 +38,19 @@ analysis_callback = AnalysisCallback(semi, interval = analysis_interval,
 alive_callback = AliveCallback(analysis_interval = analysis_interval)
 
 # Configure optional spatial adaptivity
-amr = false
+amr = true
+amr_interval = 10
+amr_base_level = 2
 
 if amr
-    amr_indicator = IndicatorTotalVariation(semi; variable = effective_saturation)
-    amr_controller = ControllerTwoThreshold(semi, amr_indicator; base_level = 1,
-                                            coarsen_threshold = 0.03,
-                                            max_level = 6, refine_threshold = 0.09)
-    amr_callback = AMRCallback(semi, amr_controller; interval = 20,
+    amr_indicator = IndicatorTotalVariation(semi; variable = water_content,
+                                            normalize = true)
+    amr_controller = ControllerTwoThreshold(semi, amr_indicator;
+                                            base_level = amr_base_level,
+                                            coarsen_threshold = 0.003,
+                                            max_level = 10,
+                                            refine_threshold = 0.03)
+    amr_callback = AMRCallback(semi, amr_controller; interval = amr_interval,
                                adapt_initial_condition = true,
                                adapt_initial_condition_only_refine = true)
     callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback,
@@ -61,6 +69,7 @@ if run_simulation
                          reltol = 1.0e-7, abstol = 1.0e-11,
                          saveat = Float64[], ode_default_options()...,
                          internalnorm = internalnorm,
+                         error_control_variables = error_control_variables,
                          isoutofdomain = pressure_head_out_of_domain,
                          callback = callbacks,
                          maxiters = typemax(Int))

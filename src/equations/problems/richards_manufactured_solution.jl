@@ -25,6 +25,13 @@ end
     return psi, psi_t, psi_z, psi_zz
 end
 
+# Exact normal flux at the right boundary for a manufactured Neumann condition
+@inline function richards_manufactured_right_boundary_flux(x, t, equations)
+    psi, _, psi_z, _ = richards_manufactured_profile(x, t)
+    flux = hydraulic_conductivity(psi, equations) * (psi_z - one(psi_z))
+    return Trixi.SVector(flux)
+end
+
 # Source term corresponding to the manufactured pressure head
 @inline function source_terms_richards_manufactured_solution(u, gradients, x, t,
                                                              equations)
@@ -71,9 +78,9 @@ s = c(\psi)\partial_t \psi
 ```
 makes the profile solve the one-dimensional Richards equation with the Haverkamp
 constitutive laws. The default setup uses the same Haverkamp parameters as
-[`HydrologicProblemCelia1990`](@ref). The dimensionless `penalty_factor` is the coefficient
-``C_\tau`` in the boundary penalty; setting it to zero omits the additional divergence-flux
-penalty.
+[`HydrologicProblemCeliaHaverkamp`](@ref). The dimensionless `penalty_factor` is the
+coefficient ``C_\tau`` in the boundary penalty; setting it to zero omits the additional
+divergence-flux penalty.
 
 The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds on
 ``t \in [0, 120]`` by default. It is intended for regression and convergence checks of

@@ -15,6 +15,8 @@ forward-mode automatic differentiation with automatic chunk-size selection and a
 linear solver.
 
 Keyword arguments override these defaults or are forwarded to the `Rodas5P` constructor.
+Configure differentiation through `autodiff` and preconditioning through `linsolve`.
+Pass `step_limiter` and `stage_limiter` to `solve` or `solve_implicit`.
 
 # References
 - Davis, T. A., and Palamadai Natarajan, E. (2010). Algorithm 907: KLU, a direct sparse
@@ -31,21 +33,14 @@ Keyword arguments override these defaults or are forwarded to the `Rodas5P` cons
 """
 function default_algorithm(ode::SciMLBase.ODEProblem{U, T, I, P};
                            autodiff = OrdinaryDiffEqRosenbrock.AutoForwardDiff(),
-                           standardtag = Val{true}(),
-                           diff_type = Val{:forward}(),
                            linsolve = ode.f.jac_prototype isa SparseMatrixCSC ?
                                       LinearSolve.KLUFactorization() :
                                       LinearSolve.LUFactorization(),
-                           precs = OrdinaryDiffEqCore.DEFAULT_PRECS,
-                           step_limiter! = OrdinaryDiffEqCore.trivial_limiter!,
-                           stage_limiter! = OrdinaryDiffEqCore.trivial_limiter!,
                            concrete_jac = nothing,
                            max_jac_age = 1,
                            jac_reuse_gamma_tol = 0.03,
                            kwargs...) where {U, T, I, P <: SemidiscretizationImplicit}
-    return OrdinaryDiffEqRosenbrock.Rodas5P(; autodiff, standardtag, concrete_jac,
-                                            diff_type, linsolve, precs,
-                                            step_limiter!, stage_limiter!, max_jac_age,
+    return OrdinaryDiffEqRosenbrock.Rodas5P(; autodiff, concrete_jac, linsolve, max_jac_age,
                                             jac_reuse_gamma_tol, kwargs...)
 end
 
@@ -136,29 +131,37 @@ default_stepsize_controller(algorithm, ode) = nothing
 function default_stepsize_controller(algorithm::OrdinaryDiffEqRosenbrock.Rodas5P,
                                      ode)
     controller_type = typeof(float(first(ode.tspan)))
-    return OrdinaryDiffEqCore.NewPIController(controller_type, algorithm;
-                                              # Current- and previous-error exponents
-                                              beta1 = 0.14,
-                                              beta2 = 0.08,
-                                              # Minimum shrink and maximum growth factors
-                                              qmin = 0.2,
-                                              qmax = 10.0,
-                                              # Allow larger growth after the first step
-                                              qmax_first_step = 1.0e4,
-                                              # Safety factor
-                                              gamma = 0.9,
-                                              # OrdinaryDiffEq's deadband, which holds the
-                                              # time step fixed when the controller gives
-                                              # a time-step divisor between 1.0 and 1.2
-                                              qsteady_min = 1.0,
-                                              qsteady_max = 1.2,
-                                              # Previous-error initialization and floor
-                                              qoldinit = 1.0e-4)
+    return OrdinaryDiffEqCore.PIController(controller_type, algorithm;
+                                           # Current- and previous-error exponents
+                                           beta1 = 0.14,
+                                           beta2 = 0.08,
+                                           # Minimum shrink and maximum growth factors
+                                           qmin = 0.2,
+                                           qmax = 10.0,
+                                           # Allow larger growth after the first step
+                                           qmax_first_step = 1.0e4,
+                                           # Safety factor
+                                           gamma = 0.9,
+                                           # OrdinaryDiffEq's deadband, which holds the
+                                           # time step fixed when the controller gives
+                                           # a time-step divisor between 1.0 and 1.2
+                                           qsteady_min = 1.0,
+                                           qsteady_max = 1.2,
+                                           # Previous-error initialization and floor
+                                           qoldinit = 1.0e-4)
 end
+
+@inline function error_control_uses_evolved_variables(mapping,
+                                                      operator::TemporalOperatorConstitutive)
+    return mapping === operator.state_to_evolved
+end
+
+@inline error_control_uses_evolved_variables(mapping, operator) = false
 
 @doc raw"""
     solve_implicit(ode, algorithm=default_algorithm(ode);
                    dt, adaptive=true, abstol=1.0e-11, reltol=1.0e-7,
+                   error_control_variables=nothing,
                    kwargs...)
 
 Solve `ode` with HydroTrixi.jl's implicit time integration defaults. The initial time step
@@ -171,21 +174,53 @@ safety factor `0.9`, maximum growth factor `10`, maximum shrink factor `0.2`, an
 and minimum stored previous error `1.0e-4`. The maximum growth factor is `1.0e4` for the
 first step-size proposal and `10` thereafter. OrdinaryDiffEq.jl's default steady-step
 deadband holds the time step fixed when the controller proposes a time-step divisor
-between `1.0` and `1.2`. These controller parameters reproduce the defaults in
-`OrdinaryDiffEqCore` v3.33.1. For a time integration method of order ``p=5``, the
-[order-dependent defaults](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/alg_utils.jl#L526-L550)
-give ``\beta_1=7/(10p)=0.14`` and ``\beta_2=2/(5p)=0.08``, as well as the safety factor
-and steady-step deadband used here. The clipping factors come from the
-[step-size-factor defaults](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/alg_utils.jl#L232-L242),
-whereas the first-step growth factor and stored previous error come from the
-[`NewPIController` constructor](https://github.com/SciML/OrdinaryDiffEq.jl/blob/3eb62b46769c5db70c131f6b4331ebb0a6864117/lib/OrdinaryDiffEqCore/src/integrators/controllers.jl#L384-L398).
+between `1.0` and `1.2`. These parameters are specified explicitly by
+[`default_stepsize_controller`](@ref).
 
 The defaults also use [`evolved_variable_norm`](@ref), disable saving every accepted step,
-and allow `typemax(Int)` iterations.
+and allow `typemax(Int)` iterations. Consistent initial states are constructed by
+[`semidiscretize`](@ref), and AMR reconstructs state variables from the transferred evolved
+variables. No additional nonlinear correction is requested; `initializealg` can be passed
+through to SciML to override its initialization method.
 
-HydroTrixi.jl's default controller is used only with `Rodas5P`. For any other integration
-algorithm, OrdinaryDiffEq.jl selects its default controller unless `controller` is passed
-explicitly.
+`error_control_variables = nothing` means no additional conversion: the existing
+`internalnorm` controls the error. Its default, [`evolved_variable_norm`](@ref), selects
+stored water content for [`MixedForm`](@ref) and stored pressure head for
+[`PressureHeadForm`](@ref). A user-supplied `internalnorm` is preserved.
+
+With an explicit function `error_control_variables(value, equations)`, apply that
+function pointwise to the physical state-variable entries of the candidate, embedded,
+and previous solutions before forming and scaling the error. Passive diagnostics are
+excluded. For example, on a pressure-head problem:
+```julia
+sol = solve_implicit(ode; dt = 1.0e-2, error_control_variables = water_content,
+                     abstol = 1.0e-8, reltol = 1.0e-5)
+```
+The tolerances then apply to the converted quantities. Scalar tolerances are broadcast;
+array `abstol` must follow the full ODE layout, and its state-variable entries are
+selected. `reltol` must be scalar because it is also used by the Rosenbrock linear solves.
+An explicit function always requests conversion, including for [`MixedForm`](@ref):
+`error_control_variables = water_content` evaluates `water_content` on pressure head
+rather than selecting the stored water-content block. Use `nothing` to retain error
+control in the evolved variables.
+
+The converted residual is reduced with `Trixi.ode_norm` (an MPI-aware RMS norm).
+`internalnorm` remains available to OrdinaryDiffEq for its original estimator and other
+solver operations; it is not applied to the converted residual. A controller wrapper
+replaces the original error estimate before step-size selection and acceptance. The
+original error scaling and norm are still computed;
+stages, Jacobians, and linear solves are not repeated. The option has no effect when
+`adaptive = false`.
+
+Converted error control supports the in-place implementations of `Rodas4`, `Rodas42`,
+`Rodas4P`, `Rodas4P2`, `Rodas5`, `Rodas5P`, `Rodas5Pe`, and `Rodas6P` with the default
+step limiter. It wraps an OrdinaryDiffEq controller, such as
+`OrdinaryDiffEqCore.PIController(algorithm)`; if `controller` is `nothing`, it creates
+that PI controller. Unsupported algorithms are rejected when conversion is enabled.
+
+Without conversion, HydroTrixi.jl's default controller is used only with `Rodas5P`.
+For any other integration algorithm, OrdinaryDiffEq.jl selects its default controller
+unless `controller` is passed explicitly.
 """
 function solve_implicit(ode::SciMLBase.ODEProblem{U, T, I, P},
                         algorithm = default_algorithm(ode);
@@ -200,13 +235,23 @@ function solve_implicit(ode::SciMLBase.ODEProblem{U, T, I, P},
                         failfactor = 2, # not used by Rodas5P (a linearly implicit method)
                         maxiters = typemax(Int),
                         internalnorm = evolved_variable_norm(ode.p),
+                        error_control_variables = nothing,
                         save_everystep = false,
                         unstable_check = Trixi.mpi_isparallel() ?
                                          Trixi.ode_unstable_check :
                                          DiffEqBase.ODE_DEFAULT_UNSTABLE_CHECK,
                         kwargs...) where {U, T, I, P <: SemidiscretizationImplicit}
-    common_options = (; dt, adaptive, dtmin, dtmax, force_dtmin, failfactor, maxiters,
-                      internalnorm, save_everystep, unstable_check)
+    if adaptive && error_control_variables !== nothing
+        if error_control_uses_evolved_variables(error_control_variables,
+                                                ode.p.operator_temporal)
+            internalnorm = evolved_variable_norm(ode.p)
+        else
+            controller = StepsizeControllerMappedError(controller, algorithm, ode,
+                                                        error_control_variables; reltol)
+        end
+    end
+    common_options = (; dt, adaptive, dtmin, dtmax, force_dtmin, failfactor,
+                      maxiters, internalnorm, save_everystep, unstable_check)
     adaptive_options = adaptive ? (; abstol, reltol, controller) : (;)
     options = merge(common_options, adaptive_options, (; kwargs...))
     return SciMLBase.solve(ode, algorithm; options...)

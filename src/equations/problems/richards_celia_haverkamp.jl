@@ -2,10 +2,11 @@
 #! format: noindent
 
 @doc raw"""
-    HydrologicProblemCelia1990(; tspan = (0.0, 360.0), penalty_factor = 1)
+    HydrologicProblemCeliaHaverkamp(; tspan = (0.0, 360.0), penalty_factor = 1)
 
-Return the one-dimensional Richards-equation infiltration problem introduced by Celia,
-Bouloutas, and Zarba (1990) as a `HydrologicProblem` for HydroTrixi.jl semidiscretizations.
+Return the first one-dimensional Richards-equation infiltration problem introduced by
+Celia, Bouloutas, and Zarba (1990), based on the Haverkamp constitutive laws, as a
+`HydrologicProblem` for HydroTrixi.jl semidiscretizations.
 
 The problem uses the Haverkamp constitutive laws in the form reported by Ireson et al.
 (2023), Eq. (25):
@@ -40,7 +41,7 @@ The returned problem setup contains the fields `equations`, `state_to_evolved`,
   equation (openRE, v1.0). *Geoscientific Model Development*, 16, 659-677.
   [DOI: 10.5194/gmd-16-659-2023](https://doi.org/10.5194/gmd-16-659-2023)
 """
-function HydrologicProblemCelia1990(; tspan = (0.0, 360.0), penalty_factor = 1)
+function HydrologicProblemCeliaHaverkamp(; tspan = (0.0, 360.0), penalty_factor = 1)
     soil_model = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
                            a = 2.7073950541818448, beta = 3.96,
                            b = 5.2408447406427436, gamma = 4.74,

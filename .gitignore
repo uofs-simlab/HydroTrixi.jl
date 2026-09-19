@@ -34,16 +34,20 @@ run/
 tmp/
 /benchmark/
 
-# Track only the top-level README for now
 *.md
 !README.md
 !docs/src/index.md
 !docs/src/license.md
 !docs/src/reference.md
 !docs/src/tutorials.md
+!AGENTS.md
+!examples/convergence/README.md
 
 # macOS Finder metadata
 .DS_Store
 
 # Underscore-prefixed directories
 **/_*/
+
+# Local convergence experiment notes and validation artifacts
+/examples/convergence/_experiments/

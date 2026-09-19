@@ -22,11 +22,14 @@ end
 
 function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error, order;
                                           gap_factor = 1.5, trianglefontsize = 12,
+                                          triangle_slope = :negative,
                                           font = HydroTrixi.DEFAULT_PLOT_FONT,)
-    if fine_x <= coarse_x
-        throw(ArgumentError("`fine_x` must be greater than `coarse_x`."))
-    end
-    refinement_ratio = fine_x / coarse_x
+    triangle_slope in (:negative, :positive) ||
+        throw(ArgumentError("triangle_slope must be :negative or :positive"))
+    valid_interval = triangle_slope === :negative ? fine_x > coarse_x : coarse_x > fine_x
+    valid_interval && min(coarse_x, fine_x) > 0 ||
+        throw(ArgumentError("Triangle endpoints must follow the requested refinement direction."))
+    refinement_ratio = max(fine_x, coarse_x) / min(fine_x, coarse_x)
     upper_error = reference_error / gap_factor
     lower_error = upper_error / refinement_ratio^order
 
@@ -43,7 +46,7 @@ function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error,
     return nothing
 end
 
-function convergence_triangle_from_data(series_groups, order)
+function convergence_triangle_from_data(series_groups, order; triangle_slope = :negative)
     # Automatic placement assumes every curve uses the same refinement levels.
     reference_x = first(series_groups).x
     if !all(group -> group.x == reference_x, series_groups)
@@ -52,9 +55,18 @@ function convergence_triangle_from_data(series_groups, order)
 
     # Span the last refinement interval and place the triangle below the lowest error at
     # the coarser of those two levels.
-    reference_error = minimum(errors[end - 1] for group in series_groups
+    length(reference_x) >= 2 || throw(ArgumentError("A triangle requires two levels."))
+    indices = sortperm(reference_x; rev = triangle_slope === :positive)
+    coarse, fine = indices[end - 1], indices[end]
+    reference_error = minimum(errors[coarse] for group in series_groups
                               for errors in group.errors)
-    return (; coarse_x = reference_x[end - 1], fine_x = reference_x[end],
+    if triangle_slope === :positive
+        # Keep the entire triangle below both endpoint errors, including at a plateau.
+        reference_error = min(reference_error,
+                              minimum(errors[fine] for group in series_groups
+                                      for errors in group.errors))
+    end
+    return (; coarse_x = reference_x[coarse], fine_x = reference_x[fine],
             reference_error, order)
 end
 
@@ -76,6 +88,7 @@ function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVect
                                         legend_position = (:right, :top), xlims = nothing,
                                         ylims = nothing, xscale = log10, yscale = log10,
                                         xticks = :doubling, triangle_order = nothing,
+                                        triangle_slope = :negative,
                                         triangle_gap_factor = 1.5,)
     HydroTrixi.set_serif_tex_theme!(font = font)
     trianglefontsize = isnothing(trianglefontsize) ? fontsize : trianglefontsize
@@ -113,10 +126,12 @@ function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVect
     end
 
     if !isnothing(triangle_order)
-        triangle = convergence_triangle_from_data(series_groups, triangle_order)
+        triangle = convergence_triangle_from_data(series_groups, triangle_order;
+                                                  triangle_slope)
         HydroTrixi.plot_bottom_triangle!(ax, triangle.coarse_x, triangle.fine_x,
                                          triangle.reference_error, triangle.order;
                                          gap_factor = triangle_gap_factor,
+                                         triangle_slope,
                                          trianglefontsize = trianglefontsize, font = font)
     end
 

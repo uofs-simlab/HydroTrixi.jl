@@ -29,6 +29,7 @@ include("analysis/analysis.jl")
 
 include("equations/problems/problems.jl")
 include("time_integration/time_integration.jl")
+include("time_integration/stepsize_controller_mapped_error.jl")
 
 export HydrologicProblem
 export RichardsEquation1D
@@ -36,7 +37,8 @@ export Haverkamp
 export VanGenuchten
 export water_content, water_content_timederivative, mass_bias, mass_bias_history
 export effective_saturation, water_capacity, hydraulic_conductivity, pressure_head
-export HydrologicProblemCelia1990
+export HydrologicProblemCeliaHaverkamp
+export HydrologicProblemCeliaNewMexico
 export HydrologicProblemRichardsManufacturedSolution
 export HydrologicProblemRichardsClosedColumn
 export BoundaryConditionDirichletPenalty

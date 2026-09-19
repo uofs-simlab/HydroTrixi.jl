@@ -74,14 +74,12 @@ function refresh_linear_solver_cache!(cache::OrdinaryDiffEqRosenbrock.Rosenbrock
     return nothing
 end
 
-# Install the adapted sparsity pattern and force a new Rosenbrock Jacobian
+# Install the adapted sparsity pattern before rebuilding the linear solver
 function refresh_linear_solver_cache!(cache::OrdinaryDiffEqRosenbrock.RosenbrockCache,
-                                      jac_prototype, dt)
+                                      jac_prototype)
     cache.J = copy(jac_prototype)
     fill!(nonzeros(cache.J), zero(eltype(cache.J)))
     cache.W = copy(cache.J)
-    cache.jac_reuse = OrdinaryDiffEqRosenbrock.JacReuseState(zero(dt),
-                                                             cache.alg.max_jac_age)
 
     return refresh_linear_solver_cache!(cache)
 end
@@ -137,14 +135,15 @@ function initialize_amr!(cb::SciMLBase.DiscreteCallback{Condition, Affect!}, u, 
                          integrator) where {Condition, Affect! <: AMRCallbackImplicit}
     amr_callback = cb.affect!
     semi = integrator.p
+    initial_condition_modified = false
 
     if amr_callback.adapt_initial_condition
         only_refine = amr_callback.adapt_initial_condition_only_refine
         has_changed = amr_callback(integrator; only_refine = only_refine)
+        initial_condition_modified = has_changed
         iterations = 1
         while has_changed
             Trixi.compute_coefficients!(integrator.u, t, semi)
-            SciMLBase.u_modified!(integrator, true)
             has_changed = amr_callback(integrator; only_refine = only_refine)
             iterations += 1
             allowed_max_iterations = max(10, Trixi.max_level(amr_callback.controller))
@@ -156,6 +155,7 @@ function initialize_amr!(cb::SciMLBase.DiscreteCallback{Condition, Affect!}, u, 
         end
     end
 
+    SciMLBase.derivative_discontinuity!(integrator, initial_condition_modified)
     return nothing
 end
 
@@ -208,15 +208,15 @@ function (amr_callback::AMRCallbackImplicit)(integrator; kwargs...)
             integrator.cache.uf.f = ode_function
 
             resize!(integrator, length(integrator.u))
-            refresh_linear_solver_cache!(integrator.cache, ode_function.jac_prototype,
-                                         integrator.dt)
+            refresh_linear_solver_cache!(integrator.cache, ode_function.jac_prototype)
         else
             resize!(integrator, length(u_ode))
             refresh_linear_solver_cache!(integrator.cache)
         end
-        SciMLBase.u_modified!(integrator, true)
     end
 
+    # SciML assumes callbacks modify the state unless they explicitly clear this flag.
+    SciMLBase.derivative_discontinuity!(integrator, has_changed)
     return has_changed
 end
 

@@ -21,6 +21,8 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 ode = semidiscretize(semi, problem.tspan; jacobian = SparseJacobian())
 algorithm = default_algorithm(ode)
 internalnorm = evolved_variable_norm(semi)
+# Use water_content with PressureHeadForm() to control error in water content.
+error_control_variables = nothing
 
 summary_callback = SummaryCallback()
 
@@ -41,5 +43,6 @@ if run_simulation
                          reltol = 1.0e-9, abstol = 1.0e-11,
                          saveat = Float64[], ode_default_options()...,
                          internalnorm = internalnorm, callback = callbacks,
+                         error_control_variables = error_control_variables,
                          maxiters = typemax(Int))
 end

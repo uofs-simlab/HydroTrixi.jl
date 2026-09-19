@@ -25,14 +25,14 @@ HydroTrixiVisualizationExt = ["CairoMakie", "LaTeXStrings"]
 
 [compat]
 CairoMakie = "0.15"
-DiffEqBase = "6.215"
+DiffEqBase = "7.19"
 LaTeXStrings = "1"
-LinearSolve = "3.87"
-OrdinaryDiffEqCore = "3.33"
-OrdinaryDiffEqNonlinearSolve = "1.28"
-OrdinaryDiffEqRosenbrock = "1.31"
+LinearSolve = "5.1"
+OrdinaryDiffEqCore = "4.16"
+OrdinaryDiffEqNonlinearSolve = "2"
+OrdinaryDiffEqRosenbrock = "2.7.1"
 PreallocationTools = "1"
-SciMLBase = "2"
+SciMLBase = "3.55"
 Trixi = "0.16.24"
 julia = "1.10"
 

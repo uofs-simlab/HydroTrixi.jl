@@ -43,7 +43,7 @@ function generate_tutorials!()
     ENV["HYDROTRIXI_DOCS_SRC"] = DOCS_SRC
     ENV["HYDROTRIXI_DOCS_LITERATE"] = DOCS_LITERATE
 
-    for source in ("celia_1990.jl", "richards_jacobian_sparsity.jl")
+    for source in ("celia_haverkamp.jl", "richards_jacobian_sparsity.jl")
         Literate.markdown(joinpath(DOCS_LITERATE, source), DOCS_TUTORIALS; execute = true,
                           flavor = Literate.DocumenterFlavor(), credit = false)
     end
@@ -61,7 +61,7 @@ makedocs(; modules = [HydroTrixi], repo = Remotes.GitHub("uofs-simlab", "HydroTr
                                   edit_link = "main", assets = String[]),
          pages = ["Home" => "index.md",
              "Tutorials" => ["Overview" => "tutorials.md",
-                 "Celia *et al.* (1990) infiltration problem" => "tutorials/celia_1990.md",
+                 "Celia Haverkamp infiltration problem" => "tutorials/celia_haverkamp.md",
                  "Sparse Jacobian evaluation" => "tutorials/richards_jacobian_sparsity.md"
              ], "Reference" => "reference.md",
              "License" => "license.md"], plugins = [links, fallbacks])

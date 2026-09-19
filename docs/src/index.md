@@ -10,7 +10,7 @@ HydroTrixi.jl uses an arbitrary-order local discontinuous Galerkin spectral-elem
 
 ## Tutorials
 
-- [Celia *et al.* (1990) infiltration problem](tutorials/celia_1990.md)
+- [Celia Haverkamp infiltration problem](tutorials/celia_haverkamp.md)
 - [Sparse Jacobian evaluation](tutorials/richards_jacobian_sparsity.md)
 
 ## Installation
