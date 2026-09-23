@@ -42,7 +42,7 @@ function plot_convergence_1d end
 
 Plot the water mass bias obtained by differencing the saved history of
 ```math
-F_K(t)-F_0(t)
+F_{\mathrm{B}}(t)-F_{\mathrm{T}}(t)
 -\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
  \boldsymbol{\theta}_k(t)
 ```

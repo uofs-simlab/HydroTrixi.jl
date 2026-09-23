@@ -12,24 +12,27 @@ gravitational-gradient term follows from the downward-positive depth convention.
 
 The model supplies the spatial operator shared by the pressure-head formulation
 ```math
-c(\psi) \partial_t \psi =
-\partial_z \left( \kappa(\psi) \left( \partial_z \psi - 1 \right) \right),
+c(\psi(z,t)) \partial_t \psi(z,t) =
+\partial_z f(\psi(z,t),\partial_z\psi(z,t)),
 ```
 where ``c(\psi) \coloneqq \vartheta'(\psi)``, and the mixed formulation
 ```math
-\partial_t \theta =
-\partial_z \left( \kappa(\psi) \left( \partial_z \psi - 1 \right) \right),
+\partial_t \theta(z,t) =
+\partial_z f(\psi(z,t),\partial_z\psi(z,t)),
 \qquad
-\theta = \vartheta(\psi).
+\theta(z,t) = \vartheta(\psi(z,t)).
 ```
 The temporal formulation and constitutive constraint are supplied by
 [`SemidiscretizationImplicit`](@ref). The hydraulic conductivity is supplied through
-`constitutive_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the model type
-parameter `ConstitutiveModel`. [`BoundaryConditionDirichletPenalty`](@ref) uses the default penalty
-``\kappa(\psi_{\mathrm{D}})N(N+1)/h``, where ``\psi_{\mathrm{D}}`` is the prescribed
-boundary pressure head. If `constitutive_model` is omitted, it defaults to a [`Haverkamp`](@ref)
-model parameterized with the Celia et al. (1990) reference values reported in Ireson et al.
-(2023), Eq. (25), in SI units (lengths in metres and time in seconds).
+`constitutive_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the
+model type parameter `ConstitutiveModel`. [`BoundaryConditionDirichletPenalty`](@ref) uses
+the default penalty
+``\tau(\psi_b,h,N)=\kappa(\psi_b)N(N+1)/h``, where ``\psi_b`` is the prescribed
+top or bottom boundary pressure head ``\psi_{\mathrm{T}}`` or
+``\psi_{\mathrm{B}}``; its optional `penalty_factor` multiplies ``\tau``. If
+`constitutive_model` is omitted, it defaults to a [`Haverkamp`](@ref) model parameterized
+with the Celia et al. (1990) reference values reported in Ireson et al. (2023), Eq. (25),
+in SI units (lengths in metres and time in seconds).
 """
 struct RichardsEquation1D{ConstitutiveModel} <:
        Trixi.AbstractEquationsParabolic{1, 1, Trixi.GradientVariablesConservative}
@@ -155,8 +158,8 @@ end
 @doc raw"""
     pressure_head_from_water_content(theta, equations::RichardsEquation1D)
 
-Return the pressure head associated with water content `theta` for the retention curve
-stored in `equations`.
+Return the pressure head ``\psi=\vartheta^{-1}(\theta)`` associated with water content
+`theta` for the retention curve stored in `equations`.
 """
 @inline function pressure_head_from_water_content(theta, equations::RichardsEquation1D)
     return pressure_head_from_water_content(theta, equations.constitutive_model)

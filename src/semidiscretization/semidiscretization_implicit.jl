@@ -34,15 +34,16 @@ struct NoPassiveVariables <: AbstractPassiveVariables end
 Append two passive scalar variables that store the cumulative numerical boundary fluxes
 at the negative and positive boundaries of a one-dimensional scalar problem, following
 the solver flux output method (SFOM) proposed by Ireson et al. (2023). For a Richards
-column on ``[0,L]``, measuring depth positive downwards, denote these variables by
-``F_0`` and ``F_K``, satisfying
+column on ``[0,L]``, measuring depth positive downward, denote these variables by
+``F_{\mathrm{T}}`` and ``F_{\mathrm{B}}``, satisfying
 ```math
-\dot{F}_0(t)=f_0^\star(t), \qquad
-\dot{F}_K(t)=f_K^\star(t), \qquad
-F_0(t^0)=F_K(t^0)=0,
+\dot{F}_{\mathrm{T}}(t)=f_{\mathrm{T}}^\star(t), \qquad
+\dot{F}_{\mathrm{B}}(t)=f_{\mathrm{B}}^\star(t), \qquad
+F_{\mathrm{T}}(t^0)=F_{\mathrm{B}}(t^0)=0,
 ```
-where ``f_0^\star`` and ``f_K^\star`` are the numerical fluxes at the soil surface and
-bottom of the column, respectively.
+where ``f_{\mathrm{T}}^\star`` and ``f_{\mathrm{B}}^\star`` are the numerical fluxes at
+the soil surface and bottom of the column, respectively. The returned named-tuple keys
+`x_neg` and `x_pos` represent these top and bottom quantities in the Julia API.
 
 # References
 - Ireson, A. M., Spiteri, R. J., Clark, M. P., Mathias, S. A. (2023).
@@ -60,22 +61,24 @@ struct PassiveVariablesBoundaryFlux1D <: AbstractPassiveVariables end
 
 A semidiscretization wrapper for the constant mass-matrix system
 ```math
-\boldsymbol{A}\dot{\boldsymbol{y}}(t) = \boldsymbol{\mathcal{F}}(\boldsymbol{y}(t),t).
+\boldsymbol{M}\dot{\boldsymbol{y}}(t) =
+\boldsymbol{\mathcal{F}}(\boldsymbol{y}(t),t).
 ```
 arising from a physical system that may not be expressed explicitly in terms of the time
 derivative of the state variables. The `TemporalOperator` type may be
 [`TemporalOperatorStandard`](@ref), [`TemporalOperatorConstitutive`](@ref), or
 [`TemporalOperatorCapacity`](@ref), which determine the structure of the temporal mass
 matrix and the partitioning of the state variables, and correspond to time-derivative
-terms in PDEs of the form ``\partial_t u = R(u, t)``,
-``\partial_t \vartheta(u) = R(u, t)``, or ``c(u)\partial_t u = R(u, t)``, respectively,
-where $R$ denotes a generic spatial operator. The `PassiveVariables` type may be
+terms in PDEs of the form ``\partial_t u = \mathcal{R}(u, t)``,
+``\partial_t \vartheta(u) = \mathcal{R}(u, t)``, or
+``c(u)\partial_t u = \mathcal{R}(u, t)``, respectively, where ``\mathcal{R}`` denotes a
+generic spatial operator. The `PassiveVariables` type may be
 [`NoPassiveVariables`](@ref) or [`PassiveVariablesBoundaryFlux1D`](@ref), the latter of
 which appends two passive scalar variables to the ODE state that store the time-integrated
 boundary fluxes for a one-dimensional scalar problem.
 
 !!! note
-    The constant temporal mass matrix ``\boldsymbol{A}`` is distinct from the spatial
+    The constant temporal mass matrix ``\boldsymbol{M}`` is distinct from the spatial
     discretization mass matrix, which is handled by `semi_base` inside
     ``\boldsymbol{\mathcal{R}}``.
 """
@@ -140,6 +143,12 @@ Here, ``\boldsymbol{\mathcal{R}}`` is the spatial operator, and
 state variables. Passive variables, when present, are appended after both blocks. The
 optional `evolved_to_state` inverse is required by adaptive mesh refinement to
 reconstruct the state variables after transferring the evolved block.
+
+For the mixed Richards formulation, these generic blocks are
+``\boldsymbol{u}_{\mathrm{evolved}}=\boldsymbol{\Theta}`` and
+``\boldsymbol{u}_{\mathrm{state}}=\boldsymbol{\Psi}``, while the spatial and
+constitutive maps are ``\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)`` and
+``\boldsymbol{\vartheta}(\boldsymbol{\Psi})``, respectively.
 """
 struct TemporalOperatorConstitutive{StateToEvolved, EvolvedToState} <:
        AbstractTemporalOperator
@@ -167,6 +176,11 @@ appended, the stored state satisfies ``\boldsymbol{y} = \boldsymbol{u}``, the re
 matrix is the identity. The optional adaptive mesh refinement transfer maps convert the
 state variables to the transferred variables before mesh adaptation and reconstruct the
 state afterwards.
+
+For the pressure-head Richards formulation,
+``\boldsymbol{u}=\boldsymbol{\Psi}`` and the right-hand side is
+``\boldsymbol{C}(\boldsymbol{\Psi})^{-1}
+\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)``.
 """
 struct TemporalOperatorCapacity{CapacityFunction, TransferVariables, TransferToState} <:
        AbstractTemporalOperator

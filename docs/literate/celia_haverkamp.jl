@@ -104,8 +104,8 @@ using LaTeXStrings
 
 #
 # The mixed formulation of the Richards equation orders its state as
-# $\boldsymbol{y} = (\boldsymbol{\theta},\boldsymbol{\psi})^\mathrm{T}$, where
-# $\boldsymbol{\theta}$ contains water content and $\boldsymbol{\psi}$ contains pressure
+# $\boldsymbol{y} = (\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}$, where
+# $\boldsymbol{\Theta}$ contains water content and $\boldsymbol{\Psi}$ contains pressure
 # head. We therefore plot `component = 2` with
 # [`plot_solution_1d`](@ref). The output file is written into the docs asset
 # directory prepared by the build.

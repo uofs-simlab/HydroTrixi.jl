@@ -60,7 +60,8 @@ expressions agree when the constitutive constraint
 """
 function water_content_timederivative end
 
-# The paper denotes the nodal rate by θ̇_k in mixed form and C_k ψ̇_k in pressure-head form.
+# The manuscript denotes the nodal rate by θ̇_k in mixed form and C_k ψ̇_k in
+# pressure-head form.
 @inline function water_content_timederivative_integral(du_ode::AbstractVector,
                                                        u_ode::AbstractVector,
                                                        semi::SemidiscretizationImplicit)
@@ -115,20 +116,23 @@ Trixi.pretty_form_utf(::typeof(water_content_timederivative)) = "d/dt ∫θ"
 
 Return the signed cumulative water mass balance
 ```math
-B_h(t)=F_K(t)-F_0(t)
+F_{\mathrm{B}}(t)-F_{\mathrm{T}}(t)
 -\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
  \boldsymbol{\theta}_k(t),
 ```
-where ``F_0`` and ``F_K`` are the passive SFOM variables satisfying
-``\dot{F}_0=f_0^\star`` and ``\dot{F}_K=f_K^\star``, respectively, and
-``\boldsymbol{\theta}_k`` is the nodal water-content vector. Thus, this function returns
-the negative of the fully discrete invariant
+where ``F_{\mathrm{T}}`` and ``F_{\mathrm{B}}`` are the passive SFOM variables satisfying
+``\dot{F}_{\mathrm{T}}=f_{\mathrm{T}}^\star`` and
+``\dot{F}_{\mathrm{B}}=f_{\mathrm{B}}^\star``, respectively, and
+``\boldsymbol{\theta}_k`` is the nodal water-content vector. The Julia named-tuple keys
+`x_neg` and `x_pos` represent the top and bottom boundaries. This function returns the
+negative of the fully discrete invariant
 ```math
 \sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
-\boldsymbol{\theta}_k(t)+F_0(t)-F_K(t)
+\boldsymbol{\theta}_k(t)+F_{\mathrm{T}}(t)-F_{\mathrm{B}}(t)
 ```
-used in the accompanying paper. Its change between two times vanishes when the fully
-discrete water mass balance is satisfied.
+used in the accompanying manuscript. Differencing this quantity between time levels
+produces the signed mass bias ``\epsilon_{\mathrm{B}}^n`` documented by
+[`mass_bias`](@ref).
 
 This solver flux output method diagnostic requires
 [`PassiveVariablesBoundaryFlux1D`](@ref), which advances the integrated numerical
@@ -150,23 +154,26 @@ end
 end
 
 Trixi.pretty_form_ascii(::typeof(mass_balance)) = "mass_balance"
-Trixi.pretty_form_utf(::typeof(mass_balance)) = "B_h"
+Trixi.pretty_form_utf(::typeof(mass_balance)) = "mass balance"
 
 @doc raw"""
     mass_bias(u_ode, semi::SemidiscretizationImplicit, initial_water_content)
 
 Return the water mass bias relative to an initial total water content:
 ```math
-\epsilon_{\mathrm{B}}(t)=\left(F_K(t)-F_0(t)\right)
+\epsilon_{\mathrm{B}}^n =
+\left(F_{\mathrm{B}}^n-F_{\mathrm{B}}^0\right)
+-\left(F_{\mathrm{T}}^n-F_{\mathrm{T}}^0\right)
 -\left(
-\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
-\boldsymbol{\theta}_k(t)
+\sum_{k=1}^{K^n}J_k^n\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
+\boldsymbol{\theta}_k^n
 -
-\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
-\boldsymbol{\theta}_k(t^0)
+\sum_{k=1}^{K^0}J_k^0\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
+\boldsymbol{\theta}_k^0
 \right).
 ```
-This method assumes the initialization ``F_0(t^0)=F_K(t^0)=0``. For complete
+This method assumes the initialization
+``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``. For complete
 saved time histories, prefer [`mass_bias_history`](@ref), which differences
 [`mass_balance`](@ref) and therefore also supports nonzero initial SFOM variables.
 """
@@ -187,7 +194,7 @@ Return the saved times and corresponding water mass biases for `sol`.
 The solution must use a [`SemidiscretizationImplicit`](@ref) with
 [`PassiveVariablesBoundaryFlux1D`](@ref). By default, the first saved state must be at the
 initial time ``t^0``. When it is not available, pass `initial_water_content` explicitly;
-this assumes ``F_0(t^0)=F_K(t^0)=0``. Solution
+this assumes ``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``. Solution
 postprocessing requires a fixed state layout; for AMR solutions, use the analysis-file
 method instead.
 

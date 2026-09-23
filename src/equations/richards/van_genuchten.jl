@@ -5,22 +5,28 @@
     VanGenuchten(; saturated_hydraulic_conductivity, alpha, n, theta_s, theta_r,
                    m = 1 - 1 / n, pore_connectivity = 1 / 2)
 
-A van Genuchten-Mualem soil-hydraulic model, written in terms of the effective
-saturation following Ireson et al. (2023). For ``\psi < 0`` the effective saturation is
+A van Genuchten–Mualem soil-hydraulic model, written in terms of the effective
+saturation following Ireson et al. (2023). For ``\psi < 0``, the water content and
+hydraulic conductivity are
 ```math
-S_{\mathrm{e}}(\psi) = \left(1 + (\alpha |\psi|)^n\right)^{-m},
-```
-with ``S_{\mathrm{e}}(\psi) = 1`` for ``\psi \ge 0``. The hydraulic conductivity is
-```math
+\vartheta(\psi) = \theta_{\mathrm{r}}+
+(\theta_{\mathrm{s}}-\theta_{\mathrm{r}})
+\left(1+(\alpha|\psi|)^n\right)^{-m},
+\qquad
 \kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^l
-\left(1 - \left(1 - S_{\mathrm{e}}(\psi)^{1 / m}\right)^m\right)^2,
+\left(1-\left(1-S_{\mathrm{e}}(\psi)^{1/m}\right)^m\right)^2,
 ```
-where ``\kappa_{\mathrm{s}}`` is the `saturated_hydraulic_conductivity` parameter and
-``l`` is the `pore_connectivity` parameter. The volumetric water content
-``\vartheta(\psi) = \theta_{\mathrm{r}} +
-(\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}(\psi)`` follows from the generic
-[`water_content`](@ref) relation using the residual and saturated water contents `theta_r`
-and `theta_s`.
+where
+```math
+S_{\mathrm{e}}(\psi) \coloneqq
+\frac{\vartheta(\psi)-\theta_{\mathrm{r}}}
+{\theta_{\mathrm{s}}-\theta_{\mathrm{r}}}.
+```
+Here, ``\kappa_{\mathrm{s}}`` is the `saturated_hydraulic_conductivity` parameter and
+``l`` is the `pore_connectivity` parameter. Although the accompanying manuscript
+restricts the mathematical formulation to ``\psi<0``, this implementation extends the
+model with ``S_{\mathrm{e}}(\psi)=1``, ``\vartheta(\psi)=\theta_{\mathrm{s}}``, and
+``\kappa(\psi)=\kappa_{\mathrm{s}}`` for ``\psi\geq 0``.
 
 # References
 - van Genuchten, M. Th. (1980). A closed-form equation for predicting the

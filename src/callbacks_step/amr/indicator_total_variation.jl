@@ -7,9 +7,9 @@
 
 Compute the element-local total variation of the sensor selected by `variable`
 for a one-dimensional LGL-DGSEM discretization. On each element ``k``, the
-indicator is
+unnormalized total variation is
 ```math
-\eta_k(t) \coloneqq \sum_{i=0}^N \omega_i
+\mathcal{V}_k(t) \coloneqq \sum_{i=0}^N \omega_i
 \left|\sum_{j=0}^N D_{ij}v_{k,j}(t)\right|
 \approx \int_{-1}^1
 \left|\frac{\mathrm{d}}{\mathrm{d}\xi}v_k^N(\xi,t)\right|\mathrm{d}\xi,
@@ -20,14 +20,16 @@ where ``N`` is the polynomial degree, ``\omega_i`` are the LGL quadrature weight
 With `normalize = true`, divide by the range of `variable` over all mesh nodes,
 recomputed on every indicator evaluation:
 ```math
-\widehat\eta_k = \frac{\eta_k}{v_{\max}-v_{\min}+\varepsilon}.
+\eta_k(t) =
+\frac{\mathcal{V}_k(t)}{v_{\max}(t)-v_{\min}(t)+\varepsilon}.
 ```
 The regularization ``\varepsilon`` is set by `normalization_epsilon` and defaults to
-`1.0e-11`.
-Constant fields have zero indicator. Extrema use the current nodal solution over
-all MPI ranks, without adding boundary values or interelement jumps.
-The normalized indicator is dimensionless; with `normalize = false`, it has the
-same units as `variable` and retains the unnormalized behavior.
+`1.0e-11`. The manuscript uses this normalized form with ``v_{k,j}=\theta_{k,j}``, so
+``v_{\min}=\theta_{\min}`` and ``v_{\max}=\theta_{\max}``. Constant fields have zero
+indicator. Extrema use the current nodal solution over all MPI ranks, without adding
+boundary values or interelement jumps. The normalized indicator is dimensionless; with
+`normalize = false`, the function returns ``\mathcal{V}_k``, which has the same units as
+`variable`.
 """
 struct IndicatorTotalVariation{RealT <: Real, Variable, Cache} <: Trixi.AbstractIndicator
     variable             ::Variable

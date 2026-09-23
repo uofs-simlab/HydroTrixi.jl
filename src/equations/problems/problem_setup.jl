@@ -121,11 +121,11 @@ abstract type AbstractImplicitForm end
     MixedForm()
 
 Select the mixed form of the Richards equation in
-[`SemidiscretizationImplicit`](@ref). The nodal water-content vector ``\boldsymbol{\theta}``
-is evolved directly, while the pressure-head vector ``\boldsymbol{\psi}`` is constrained
-algebraically by
+[`SemidiscretizationImplicit`](@ref). The global water-content vector
+``\boldsymbol{\Theta}`` is evolved directly, while the global pressure-head vector
+``\boldsymbol{\Psi}`` is constrained algebraically by
 ```math
-\boldsymbol{\theta} = \boldsymbol{\vartheta}(\boldsymbol{\psi}).
+\boldsymbol{\Theta} = \boldsymbol{\vartheta}(\boldsymbol{\Psi}).
 ```
 Consequently, the discrete water content is a linear function of the evolved state.
 """
@@ -142,6 +142,11 @@ operator divides the spatial residual by the nodal capacity
 water mass balance as [`MixedForm`](@ref), but water content is a nonlinear function of
 the evolved state and is therefore not generally preserved as a linear invariant by the
 time integrator.
+
+In the manuscript's global notation, ``\boldsymbol{y}=\boldsymbol{\Psi}`` and the
+right-hand side is
+``\boldsymbol{C}(\boldsymbol{\Psi})^{-1}
+\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)``.
 
 The optional `transfer_variables` map controls which variable is transferred during
 adaptive mesh refinement. The default transfers pressure head directly. Use
@@ -195,10 +200,11 @@ end
 
 Create an implicit semidiscretization for `hydrologic_problem` using the parabolic spatial
 solver and the selected temporal operator. With `form = MixedForm()`, the global state is
-ordered as ``\boldsymbol{y} = (\boldsymbol{\theta},\boldsymbol{\psi})^\mathrm{T}`` and
+ordered as ``\boldsymbol{y} =
+(\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}`` and
 defines an index-1 differential-algebraic equation when all nodal capacity values are
 strictly positive. With `form = PressureHeadForm()`, the state is
-``\boldsymbol{y} = \boldsymbol{\psi}`` and defines an ordinary differential equation
+``\boldsymbol{y} = \boldsymbol{\Psi}`` and defines an ordinary differential equation
 after division by the nodal capacity values.
 
 The optional `source_terms` keyword defaults to the hydrologic problem source terms, and

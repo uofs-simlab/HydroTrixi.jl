@@ -41,6 +41,7 @@ tmp/
 !docs/src/reference.md
 !docs/src/tutorials.md
 !examples/convergence/README.md
+!examples/conservation/README.md
 
 # macOS Finder metadata
 .DS_Store

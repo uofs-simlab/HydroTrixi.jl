@@ -34,10 +34,14 @@ It has size `length(u_ode)` by `length(u_ode)`, has `eltype(u_ode)`, and stores 
 every coordinate in the pattern. When passive variables are present, their rows are
 included, and their columns are zero.
 
-Entries arising only from the constant temporal mass matrix ``\boldsymbol{A}`` are
+Entries arising only from the constant temporal mass matrix ``\boldsymbol{M}`` are
 excluded, since OrdinaryDiffEq.jl combines the Jacobian information with
-``\boldsymbol{A}`` when constructing the Rosenbrock matrix
-``\boldsymbol{A} - \gamma\Delta t\,\boldsymbol{J}``.
+``\boldsymbol{M}`` when constructing the Rosenbrock matrix
+```math
+\boldsymbol{M} - \gamma\Delta t^n
+\frac{\partial\boldsymbol{\mathcal{F}}}{\partial\boldsymbol{y}}
+(\boldsymbol{y}^n,t^n).
+```
 
 The Jacobian entries are computed using the backend passed to the
 time integration algorithm's `autodiff` keyword, for example, `ADTypes.AutoForwardDiff()`

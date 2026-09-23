@@ -7,26 +7,27 @@
 Return the second one-dimensional Richards-equation infiltration problem considered by
 Celia, Bouloutas, and Zarba (1990), based on field data from New Mexico.
 
-The soil follows the Mualem-van Genuchten constitutive laws
+The soil follows the van Genuchten–Mualem constitutive laws
 ```math
 S_{\mathrm{e}}(\psi) = \left(1 + (\alpha |\psi|)^n\right)^{-m},
 \qquad
-\kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}^l
-\left(1 - \left(1 - S_{\mathrm{e}}^{1/m}\right)^m\right)^2,
+\kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^l
+\left(1 - \left(1 - S_{\mathrm{e}}(\psi)^{1/m}\right)^m\right)^2,
 ```
 where ``m = 1 - 1/n`` and
-``\vartheta = \theta_{\mathrm{r}} +
-(\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}``. The parameter values are
+``\vartheta(\psi) = \theta_{\mathrm{r}} +
+(\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}(\psi)``. The parameter values are
 ``\alpha = 3.35\,\mathrm{m}^{-1}``, ``n = 2``, ``l = 0.5``,
 ``\kappa_{\mathrm{s}} = 9.22 \times 10^{-5}\,\mathrm{m}\,\mathrm{s}^{-1}``,
 ``\theta_{\mathrm{s}} = 0.368``, and ``\theta_{\mathrm{r}} = 0.102``.
 
 Depth ``z`` is measured in metres, positive downward on ``z \in [0, 1]``, and time is
 measured in seconds on ``t \in [0, 86400]`` (one day). The initial pressure head is
-``-10`` m. Fixed pressure heads of ``-0.75`` m and ``-10`` m are imposed at the soil
-surface (`x_neg`) and column bottom (`x_pos`), respectively. This one-metre domain follows
-the depth axis used for the final profiles in Figure 3 of Celia et al. (1990); the paper's
-nearby statement placing a boundary at 60 cm is inconsistent with that figure.
+``\psi(z,0)=-10`` m. The Dirichlet data are ``\psi_{\mathrm{T}}(t)=-0.75`` m at the soil
+surface (`x_neg`) and ``\psi_{\mathrm{B}}(t)=-10`` m at the column bottom (`x_pos`). This
+one-metre domain follows the depth axis used for the final profiles in Figure 3 of Celia
+et al. (1990); the paper's nearby statement placing a boundary at 60 cm is inconsistent
+with that figure.
 
 The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref). The dimensionless
 `penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty; setting it to zero

@@ -10,19 +10,28 @@ u^* = u_b
 ```
 on the gradient pass and the numerical flux
 ```math
-f^* = f_{\mathrm{inner}} - n_b C_\tau\,\kappa(u_b)\frac{N(N+1)}{h}(u_{\mathrm{inner}} - u_b)
+f^* = f_{\mathrm{inner}} - n_b C_\tau\,\tau_b
+(u_{\mathrm{inner}} - u_b),
+\qquad
+\tau_b = \mathcal{D}(u_b)\frac{N(N+1)}{h},
 ```
-on the divergence pass, where ``n_b \in \{-1, 1\}`` is
-the outward unit normal. The solver supplies the polynomial degree ``N`` and boundary-cell
-size ``h``. Since the endpoint weight of the collocated Legendre-Gauss-Lobatto rule on
-``[-1, 1]`` is ``2/(N(N+1))`` and the inverse Jacobian of the affine map from the reference 
-cell to the physical boundary cell is ``2/h``, jumps in the numerical trace get lifted with 
-a scaling of ``N(N+1)/h`` when converted into a gradient on the reference element, and 
-further scaled by the diffusion coefficient to obtain a flux on the divergence pass, where 
-``\kappa(u_b)`` is the diffusion coefficient evaluated at the boundary value using 
-`boundary_penalty_coefficient(u_b, equations)`. The dimensionless `penalty_factor` is
-``C_\tau``; its default value is one. Setting it to zero omits this additional
-divergence-flux penalty while retaining the prescribed trace on the gradient pass.
+on the divergence pass, where ``n_b \in \{-1, 1\}`` is the outward unit normal and
+``\mathcal{D}(u_b)`` is the equation-dependent diffusion coefficient returned by
+`boundary_penalty_coefficient(u_b, equations)`. The solver supplies the polynomial degree
+``N`` and boundary-cell size ``h``. Since the endpoint weight of the collocated
+Legendre-Gauss-Lobatto rule on ``[-1, 1]`` is ``2/(N(N+1))`` and the inverse Jacobian of
+the affine map from the reference cell to the physical boundary cell is ``2/h``, jumps in
+the numerical trace get lifted with a scaling of ``N(N+1)/h`` when converted into a
+gradient on the reference element.
+
+For [`RichardsEquation1D`](@ref), ``u_b`` is a prescribed top or bottom pressure head
+``\psi_{\mathrm{T}}`` or ``\psi_{\mathrm{B}}``, and the manuscript's penalty is
+```math
+\tau(\psi_b,h,N) \coloneqq \frac{N(N+1)\kappa(\psi_b)}{h}.
+```
+The dimensionless `penalty_factor` is ``C_\tau``; its default value is one. Setting it to
+zero omits this additional divergence-flux penalty while retaining the prescribed trace
+on the gradient pass.
 
 # References
 - Manzanero, J., Rueda-Ramírez, A. M., Rubio, G., Ferrer, E. (2018). The Bassi Rebay 1

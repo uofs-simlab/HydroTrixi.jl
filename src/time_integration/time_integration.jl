@@ -148,7 +148,21 @@ sol = solve_implicit(ode; dt = 1.0e-2,
                      error_control_mapping = water_content,
                      abstol = 1.0e-8, reltol = 1.0e-5)
 ```
-The tolerances then apply to the mapped quantities. Scalar tolerances are broadcast;
+For a Richards discretization with ``K^n`` elements and polynomial degree ``N``, this
+configuration reproduces the manuscript's water-content error estimate
+```math
+E^{n+1} = \sqrt{\frac{1}{K^n(N+1)}
+\sum_{j=1}^{K^n(N+1)}
+\left|
+\frac{\Theta_j^{n+1}-\widehat{\Theta}_j^{n+1}}
+{\texttt{abstol}+\texttt{reltol}
+\max\left(|\Theta_j^n|,|\Theta_j^{n+1}|\right)}
+\right|^2}.
+```
+Here, ``\boldsymbol{\Theta}^n`` and ``\boldsymbol{\Theta}^{n+1}`` are the mapped
+water-content vectors for the previous and primary solutions, respectively, and
+``\widehat{\boldsymbol{\Theta}}^{n+1}`` is the mapped embedded approximation. The
+tolerances then apply to these mapped quantities. Scalar tolerances are broadcast;
 array `abstol` must follow the full ODE layout, and entries corresponding to the selected
 block are used. `reltol` must be scalar because it is also used by the Rosenbrock linear
 solves.
@@ -177,7 +191,7 @@ function solve_implicit(ode::SciMLBase.ODEProblem{U, T, I, P},
                         abstol = 1.0e-11,
                         reltol = 1.0e-7,
                         controller = default_stepsize_controller(algorithm, ode),
-                        dtmin = zero(last(ode.tspan) - first(ode.tspan)),
+                        dtmin = 1.0e-5,
                         dtmax = last(ode.tspan) - first(ode.tspan),
                         force_dtmin = false,
                         failfactor = 2, # not used by Rodas5P (a linearly implicit method)

@@ -17,12 +17,13 @@ The problem uses the Haverkamp constitutive laws in the form reported by Ireson 
 \qquad
 \kappa(\psi) = \frac{\kappa_{\mathrm{s}}}{1 + (b|\psi|)^\gamma},
 ```
-for ``\psi < 0``, with saturated values ``\vartheta = \theta_{\mathrm{s}}`` and
-``\kappa = \kappa_{\mathrm{s}}`` for ``\psi \ge 0``. The setup uses depth ``z`` in
+for ``\psi < 0``, with saturated values
+``\vartheta(\psi) = \theta_{\mathrm{s}}`` and
+``\kappa(\psi) = \kappa_{\mathrm{s}}`` for ``\psi \ge 0``. The setup uses depth ``z`` in
 metres, positive downward on ``z \in [0, 0.4]``, and time in seconds on
-``t \in [0, 360]``. The pressure head is initialized at ``-0.615`` m, with a Dirichlet
-boundary value of ``-0.207`` m at the soil surface (`x_neg`) and ``-0.615`` m at the
-bottom of the column (`x_pos`).
+``t \in [0, 360]``. The pressure head is initialized as ``\psi(z,0)=-0.615`` m. The
+Dirichlet data are ``\psi_{\mathrm{T}}(t)=-0.207`` m at the soil surface (`x_neg`) and
+``\psi_{\mathrm{B}}(t)=-0.615`` m at the bottom of the column (`x_pos`).
 
 The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref). The dimensionless
 `penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty; setting it to

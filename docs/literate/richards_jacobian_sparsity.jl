@@ -11,17 +11,17 @@
 # Rosenbrock solver state whenever the mesh topology changes.
 #
 # For the mixed Richards formulation, the state is
-# $\boldsymbol{y}=(\boldsymbol{\theta},\boldsymbol{\psi})^\mathrm{T}$, where
-# $\boldsymbol{\theta}$ is water content, and $\boldsymbol{\psi}$ is pressure head. Let
-# $\boldsymbol{\mathcal{R}}(\boldsymbol{\psi},t)$ denote the spatial residual, and let
-# $\boldsymbol{\vartheta}(\boldsymbol{\psi})$ denote the nodal constitutive map. The
+# $\boldsymbol{y}=(\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}$, where
+# $\boldsymbol{\Theta}$ is water content, and $\boldsymbol{\Psi}$ is pressure head. Let
+# $\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)$ denote the spatial residual, and let
+# $\boldsymbol{\vartheta}(\boldsymbol{\Psi})$ denote the nodal constitutive map. The
 # residual and its Jacobian sparsity pattern are
 #
 # ```math
 # \boldsymbol{\mathcal{F}}(\boldsymbol{y},t) =
 # \begin{bmatrix}
-# \boldsymbol{\mathcal{R}}(\boldsymbol{\psi},t) \\
-# \boldsymbol{\theta}-\boldsymbol{\vartheta}(\boldsymbol{\psi})
+# \boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t) \\
+# \boldsymbol{\Theta}-\boldsymbol{\vartheta}(\boldsymbol{\Psi})
 # \end{bmatrix},
 # \qquad
 # \operatorname{pattern}\left(\frac{\partial\boldsymbol{\mathcal{F}}}
@@ -33,12 +33,17 @@
 # \end{bmatrix},
 # \qquad
 # \boldsymbol{S} = \operatorname{pattern}\left(
-# \frac{\partial\boldsymbol{\mathcal{R}}}{\partial\boldsymbol{\psi}}\right).
+# \frac{\partial\boldsymbol{\mathcal{R}}}{\partial\boldsymbol{\Psi}}\right).
 # ```
 #
 # `jac_prototype` stores zeros at the coordinates in this pattern. Entries arising only
-# from the temporal mass matrix $\boldsymbol{A}$ are added by OrdinaryDiffEq.jl when it
-# constructs the Rosenbrock matrix $\boldsymbol{A}-\gamma\Delta t_n\boldsymbol{J}_n$.
+# from the temporal mass matrix $\boldsymbol{M}$ are added by OrdinaryDiffEq.jl when it
+# constructs the Rosenbrock matrix
+# ```math
+# \boldsymbol{M}-\gamma\Delta t^n
+# \frac{\partial\boldsymbol{\mathcal{F}}}{\partial\boldsymbol{y}}
+# (\boldsymbol{y}^n,t^n).
+# ```
 #
 # We now construct and visualize this pattern for a small mixed Richards problem with $K=4$
 # elements and polynomial degree $N=3$, following
@@ -70,7 +75,7 @@ ode = semidiscretize(semi, problem.tspan);
 # For this one-dimensional mixed Richards discretization, the Jacobian prototype has
 # $K(N+1)^2 + 2(N+1)(K-1) + 2K(N+1)$ stored entries. The first term contains dense
 # element-local entries of
-# $\partial_{\boldsymbol{\psi}}\boldsymbol{\mathcal{R}}$, the second term contains
+# $\partial_{\boldsymbol{\Psi}}\boldsymbol{\mathcal{R}}$, the second term contains
 # LDG interface entries, and the third term contains the two constitutive identity
 # diagonals. We verify the prototype size, number of stored entries, and stored values:
 
