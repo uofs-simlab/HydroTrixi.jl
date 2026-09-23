@@ -1,15 +1,20 @@
 # Tuples and vectors collect multiple solutions or analysis files
 @inline function is_mass_bias_source_collection(source)
-    source isa Tuple && return true
-    source isa AbstractVector || return false
+    if source isa Tuple
+        return true
+    end
+    if !(source isa AbstractVector)
+        return false
+    end
     return !(hasproperty(source, :prob) && hasproperty(source, :u))
 end
 
 function HydroTrixi.plot_mass_bias(source; output_path = joinpath(pwd(), "mass_bias.pdf"),
                                    initial_water_content = nothing, time_column = "time",
-                                   mass_bias_column = "mass_bias", label = L"$\epsilon_b$",
+                                   mass_balance_column = "mass_balance",
+                                   label = L"$\epsilon_{\mathrm{B}}$",
                                    labels = nothing, xlabel = L"$t$",
-                                   ylabel = L"$\epsilon_b$", absolute = false,
+                                   ylabel = L"$\epsilon_{\mathrm{B}}$", absolute = false,
                                    ynorm = :auto, exponent_text = :auto,
                                    font = HydroTrixi.DEFAULT_PLOT_FONT,
                                    size = HydroTrixi.DEFAULT_SOLUTION_FIGSIZE,
@@ -35,7 +40,7 @@ function HydroTrixi.plot_mass_bias(source; output_path = joinpath(pwd(), "mass_b
                                     "saved solutions."))
             end
             HydroTrixi.mass_bias_history(source_item; time_column = time_column,
-                                         mass_bias_column = mass_bias_column)
+                                         mass_balance_column = mass_balance_column)
         else
             HydroTrixi.mass_bias_history(source_item;
                                          initial_water_content = initial_water_content)
@@ -97,7 +102,9 @@ function HydroTrixi.plot_mass_bias(source; output_path = joinpath(pwd(), "mass_b
                 labelsize = legendfontsize, show_legend = show_legend)
 
     outdir = dirname(output_path)
-    outdir == "" || mkpath(outdir)
+    if outdir != ""
+        mkpath(outdir)
+    end
     save(output_path, fig; px_per_unit = 1)
 
     return fig

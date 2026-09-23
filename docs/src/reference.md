@@ -49,6 +49,8 @@ AbstractTemporalOperator
 TemporalOperatorStandard
 TemporalOperatorConstitutive
 TemporalOperatorCapacity
+evolved_variable_block
+state_variable_block
 ```
 
 ### Passive diagnostic variables
@@ -81,13 +83,13 @@ default_algorithm
 default_stepsize_controller
 solve_implicit
 pressure_head_out_of_domain
-state_variable_norm
-evolved_variable_norm
 ```
 
 ## Analysis
 
 ```@docs
+AnalysisCallbackFullState
+mass_balance
 mass_bias
 mass_bias_history
 compute_eoc

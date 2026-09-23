@@ -77,7 +77,7 @@ function colorvec(u_ode, semi::SemidiscretizationImplicit)
     # the full conflict set.
     auxiliary_color = min(n_spatial_colors + 1, length(u_ode))
     colors = fill(auxiliary_color, length(u_ode))
-    spatial_colors = state_variable_view(colors, semi)
+    spatial_colors = state_variable_block(colors, semi)
     spatial_colors .= mod1.(eachindex(spatial_colors), n_spatial_colors)
     return colors
 end
@@ -86,7 +86,7 @@ end
 function jacobian_prototype(u_ode, semi::SemidiscretizationImplicit)
     semi_base = semi.semi_base
     mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi_base)
-    u_state = state_variable_view(u_ode, semi)
+    u_state = state_variable_block(u_ode, semi)
     spatial_pattern = spatial_operator_jacobian_sparsity_pattern(u_state, mesh, equations,
                                                                  solver,
                                                                  semi_base.solver_parabolic,

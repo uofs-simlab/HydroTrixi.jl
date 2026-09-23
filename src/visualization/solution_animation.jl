@@ -73,7 +73,9 @@ end
 # Create the animation destination directory when necessary
 function prepare_animation_output_path(output_path)
     outdir = dirname(output_path)
-    outdir == "" || mkpath(outdir)
+    if outdir != ""
+        mkpath(outdir)
+    end
 
     return nothing
 end

@@ -22,7 +22,7 @@ animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (
                     ylims = (-0.65, -0.15), output_path = animation_path, framerate = 30)
 
 plot_mass_bias(sol; output_path = mass_bias_path, xlabel = L"$t$ (s)",
-               ylabel = L"$\epsilon_b$ (m)",
+               ylabel = L"$\epsilon_{\mathrm{B}}$ (m)",
                xticks = range(0.0, final_time; length = 7))
 
 println("Saved Celia Haverkamp pressure-head animation to: $(animation_path)")

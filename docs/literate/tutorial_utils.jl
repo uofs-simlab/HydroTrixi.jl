@@ -5,7 +5,9 @@ function docs_generated_dir(name)
         ENV["HYDROTRIXI_DOCS_SRC"]
     else
         candidate = normpath(joinpath(@__DIR__, "..", "src"))
-        isdir(candidate) || error("Set HYDROTRIXI_DOCS_SRC before executing this tutorial.")
+        if !isdir(candidate)
+            error("Set HYDROTRIXI_DOCS_SRC before executing this tutorial.")
+        end
         candidate
     end
 

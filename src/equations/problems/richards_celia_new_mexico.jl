@@ -39,10 +39,10 @@ omits the additional divergence-flux penalty.
   [DOI: 10.1029/WR026i007p01483](https://doi.org/10.1029/WR026i007p01483)
 """
 function HydrologicProblemCeliaNewMexico(; tspan = (0.0, 86_400.0), penalty_factor = 1)
-    soil_model = VanGenuchten(saturated_hydraulic_conductivity = 9.22e-5,
+    constitutive_model = VanGenuchten(saturated_hydraulic_conductivity = 9.22e-5,
                               alpha = 3.35, n = 2.0, pore_connectivity = 0.5,
                               theta_s = 0.368, theta_r = 0.102)
-    equations = RichardsEquation1D(soil_model = soil_model)
+    equations = RichardsEquation1D(constitutive_model = constitutive_model)
     state_to_evolved = water_content
     evolved_to_state = pressure_head_from_water_content
     initial_condition(x, t, equations) = Trixi.SVector(-10.0)

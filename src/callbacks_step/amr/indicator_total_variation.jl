@@ -2,7 +2,8 @@
 #! format: noindent
 
 @doc raw"""
-    IndicatorTotalVariation(semi; variable, normalize = false)
+    IndicatorTotalVariation(semi; variable, normalize = false,
+                            normalization_epsilon = 1.0e-11)
 
 Compute the element-local total variation of the sensor selected by `variable`
 for a one-dimensional LGL-DGSEM discretization. On each element ``k``, the
@@ -19,24 +20,30 @@ where ``N`` is the polynomial degree, ``\omega_i`` are the LGL quadrature weight
 With `normalize = true`, divide by the range of `variable` over all mesh nodes,
 recomputed on every indicator evaluation:
 ```math
-\widehat\eta_k = \frac{\eta_k}{v_{\max}-v_{\min}+\operatorname{eps}}.
+\widehat\eta_k = \frac{\eta_k}{v_{\max}-v_{\min}+\varepsilon}.
 ```
-Here `eps` is the machine epsilon of the indicator's floating-point type.
+The regularization ``\varepsilon`` is set by `normalization_epsilon` and defaults to
+`1.0e-11`.
 Constant fields have zero indicator. Extrema use the current nodal solution over
 all MPI ranks, without adding boundary values or interelement jumps.
 The normalized indicator is dimensionless; with `normalize = false`, it has the
 same units as `variable` and retains the unnormalized behavior.
 """
-struct IndicatorTotalVariation{Variable, Cache} <: Trixi.AbstractIndicator
-    variable ::Variable
-    normalize::Bool
-    cache    ::Cache
+struct IndicatorTotalVariation{RealT <: Real, Variable, Cache} <: Trixi.AbstractIndicator
+    variable             ::Variable
+    normalize            ::Bool
+    normalization_epsilon::RealT
+    cache                ::Cache
 end
 
 function IndicatorTotalVariation(semi::Trixi.AbstractSemidiscretization;
-                                 variable, normalize::Bool = false)
+                                 variable, normalize::Bool = false,
+                                 normalization_epsilon::Real = 1.0e-11)
+    if !isfinite(normalization_epsilon) || normalization_epsilon <= 0
+        throw(ArgumentError("`normalization_epsilon` must be finite and positive."))
+    end
     cache = Trixi.create_cache(IndicatorTotalVariation, semi)
-    return IndicatorTotalVariation(variable, normalize, cache)
+    return IndicatorTotalVariation(variable, normalize, normalization_epsilon, cache)
 end
 
 function Trixi.create_cache(::Type{IndicatorTotalVariation},
@@ -55,7 +62,7 @@ function (indicator::IndicatorTotalVariation)(u::AbstractArray{<:Any, 3},
                                               mesh::Trixi.TreeMesh{1}, equations,
                                               dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
                                               cache; kwargs...)
-    (; variable, normalize) = indicator
+    (; variable, normalize, normalization_epsilon) = indicator
     (; alpha, minima, maxima, nodal_values_threaded) = indicator.cache
     (; derivative_matrix, weights) = dg.basis
     resize!(alpha, Trixi.nelements(dg, cache))
@@ -99,7 +106,7 @@ function (indicator::IndicatorTotalVariation)(u::AbstractArray{<:Any, 3},
             v_min = Trixi.MPI.Allreduce(v_min, min, Trixi.mpi_comm())
             v_max = Trixi.MPI.Allreduce(v_max, max, Trixi.mpi_comm())
         end
-        scale = v_max - v_min + eps(eltype(alpha))
+        scale = v_max - v_min + normalization_epsilon
         alpha ./= scale
     end
 

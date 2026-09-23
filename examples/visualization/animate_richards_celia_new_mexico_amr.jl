@@ -25,7 +25,7 @@ Trixi.trixi_include(@__MODULE__,
                              "elixir_richards_celia_new_mexico.jl");
                     tspan = (0.0, final_time), form = form, analysis_interval = 200,
                     amr = true, amr_interval = amr_interval,
-                    amr_base_level = amr_base_level,
+                    base_level = amr_base_level,
                     run_simulation = false, save_analysis = true,
                     output_directory = plots_dir, analysis_filename = analysis_filename)
 
@@ -40,7 +40,7 @@ animate_solution_1d(ode; callback = callbacks, dt = 1.0e-2, adaptive = true,
                     output_path = animation_path, framerate = 30)
 
 plot_mass_bias(analysis_path; output_path = mass_bias_path, xlabel = L"$t$ (s)",
-               ylabel = L"$\epsilon_b$ (m)",
+               ylabel = L"$\epsilon_{\mathrm{B}}$ (m)",
                xticks = range(0.0, final_time; length = 7))
 
 println("Saved Celia New Mexico $(form_name) AMR animation to: $(animation_path)")

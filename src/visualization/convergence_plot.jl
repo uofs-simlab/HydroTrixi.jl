@@ -13,7 +13,9 @@ function HydroTrixi.doubling_dof_ticks(values::AbstractVector{<:Real}; base::Int
         push!(ticks, tick)
         tick *= 2
     end
-    isempty(ticks) && push!(ticks, float(base))
+    if isempty(ticks)
+        push!(ticks, float(base))
+    end
 
     labels = string.(round.(Int, ticks))
 
@@ -24,11 +26,13 @@ function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error,
                                           gap_factor = 1.5, trianglefontsize = 12,
                                           triangle_slope = :negative,
                                           font = HydroTrixi.DEFAULT_PLOT_FONT,)
-    triangle_slope in (:negative, :positive) ||
+    if !(triangle_slope in (:negative, :positive))
         throw(ArgumentError("triangle_slope must be :negative or :positive"))
+    end
     valid_interval = triangle_slope === :negative ? fine_x > coarse_x : coarse_x > fine_x
-    valid_interval && min(coarse_x, fine_x) > 0 ||
+    if !(valid_interval && min(coarse_x, fine_x) > 0)
         throw(ArgumentError("Triangle endpoints must follow the requested refinement direction."))
+    end
     refinement_ratio = max(fine_x, coarse_x) / min(fine_x, coarse_x)
     upper_error = reference_error / gap_factor
     lower_error = upper_error / refinement_ratio^order
@@ -55,7 +59,9 @@ function convergence_triangle_from_data(series_groups, order; triangle_slope = :
 
     # Span the last refinement interval and place the triangle below the lowest error at
     # the coarser of those two levels.
-    length(reference_x) >= 2 || throw(ArgumentError("A triangle requires two levels."))
+    if length(reference_x) < 2
+        throw(ArgumentError("A triangle requires two levels."))
+    end
     indices = sortperm(reference_x; rev = triangle_slope === :positive)
     coarse, fine = indices[end - 1], indices[end]
     reference_error = minimum(errors[coarse] for group in series_groups
@@ -139,7 +145,9 @@ function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVect
                 labelsize = legendfontsize, show_legend = show_legend)
 
     outdir = dirname(output_path)
-    outdir == "" || mkpath(outdir)
+    if outdir != ""
+        mkpath(outdir)
+    end
     save(output_path, fig; px_per_unit = 1)
 
     return fig

@@ -2,7 +2,7 @@
 #! format: noindent
 
 @doc raw"""
-    RichardsEquation1D(; soil_model)
+    RichardsEquation1D(; constitutive_model)
 
 A one-dimensional Richards equation model for vertical flow in a soil column, with depth
 ``z`` measured positive downward. The pressure head is ``\psi(z,t)``, the constitutive
@@ -24,19 +24,19 @@ where ``c(\psi) \coloneqq \vartheta'(\psi)``, and the mixed formulation
 ```
 The temporal formulation and constitutive constraint are supplied by
 [`SemidiscretizationImplicit`](@ref). The hydraulic conductivity is supplied through
-`soil_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the model type
-parameter `SoilModel`. [`BoundaryConditionDirichletPenalty`](@ref) uses the default penalty
+`constitutive_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the model type
+parameter `ConstitutiveModel`. [`BoundaryConditionDirichletPenalty`](@ref) uses the default penalty
 ``\kappa(\psi_{\mathrm{D}})N(N+1)/h``, where ``\psi_{\mathrm{D}}`` is the prescribed
-boundary pressure head. If `soil_model` is omitted, it defaults to a [`Haverkamp`](@ref)
+boundary pressure head. If `constitutive_model` is omitted, it defaults to a [`Haverkamp`](@ref)
 model parameterized with the Celia et al. (1990) reference values reported in Ireson et al.
 (2023), Eq. (25), in SI units (lengths in metres and time in seconds).
 """
-struct RichardsEquation1D{SoilModel} <:
+struct RichardsEquation1D{ConstitutiveModel} <:
        Trixi.AbstractEquationsParabolic{1, 1, Trixi.GradientVariablesConservative}
-    soil_model::SoilModel
+    constitutive_model::ConstitutiveModel
 end
 
-@inline default_soil_model() = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
+@inline default_constitutive_model() = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
                                          a = 2.7073950541818448, beta = 3.96,
                                          b = 5.2408447406427436, gamma = 4.74,
                                          theta_s = 0.287,
@@ -58,12 +58,12 @@ first component.
 @inline pressure_head(u, ::RichardsEquation1D) = pressure_head(u)
 
 @inline function pressure_head_out_of_domain(u, semi, t, ::RichardsEquation1D)
-    pressure_heads = state_variable_view(u, semi)
+    pressure_heads = state_variable_block(u, semi)
     return any(psi -> psi >= zero(psi), pressure_heads)
 end
 
-function RichardsEquation1D(; soil_model = default_soil_model())
-    return RichardsEquation1D(soil_model)
+function RichardsEquation1D(; constitutive_model = default_constitutive_model())
+    return RichardsEquation1D(constitutive_model)
 end
 
 @inline Trixi.varnames(::typeof(Trixi.cons2cons), ::RichardsEquation1D) = ("psi",)
@@ -81,7 +81,7 @@ end
 Return the hydraulic conductivity associated with the pressure head stored in `u`.
 """
 @inline function hydraulic_conductivity(u, equations::RichardsEquation1D)
-    return hydraulic_conductivity(pressure_head(u), equations.soil_model)
+    return hydraulic_conductivity(pressure_head(u), equations.constitutive_model)
 end
 
 @inline function Trixi.max_diffusivity(u, equations::RichardsEquation1D)
@@ -102,7 +102,7 @@ where ``\theta_{\mathrm{r}}`` and ``\theta_{\mathrm{s}}`` are the residual and s
 water-content values, respectively, for the Richards equation model `equations`.
 """
 @inline function effective_saturation(u, equations::RichardsEquation1D)
-    return effective_saturation(pressure_head(u), equations.soil_model)
+    return effective_saturation(pressure_head(u), equations.constitutive_model)
 end
 
 @doc raw"""
@@ -112,9 +112,9 @@ Return the volumetric water content ``\vartheta(\psi)`` associated with the pres
 state `u` under the Richards equation model `equations`.
 """
 @inline function water_content(u, equations::RichardsEquation1D)
-    soil_model = equations.soil_model
+    constitutive_model = equations.constitutive_model
     S_e = effective_saturation(u, equations)
-    return soil_model.theta_r + (soil_model.theta_s - soil_model.theta_r) * S_e
+    return constitutive_model.theta_r + (constitutive_model.theta_s - constitutive_model.theta_r) * S_e
 end
 
 @doc raw"""
@@ -124,7 +124,7 @@ Return the capacity ``c(\psi) \coloneqq \vartheta'(\psi)`` associated with the p
 head state `u` under the Richards equation model `equations`.
 """
 @inline function water_capacity(u, equations::RichardsEquation1D)
-    return water_capacity(pressure_head(u), equations.soil_model)
+    return water_capacity(pressure_head(u), equations.constitutive_model)
 end
 
 @inline function water_capacity(psi, model::Haverkamp)
@@ -159,7 +159,7 @@ Return the pressure head associated with water content `theta` for the retention
 stored in `equations`.
 """
 @inline function pressure_head_from_water_content(theta, equations::RichardsEquation1D)
-    return pressure_head_from_water_content(theta, equations.soil_model)
+    return pressure_head_from_water_content(theta, equations.constitutive_model)
 end
 
 @inline function pressure_head_from_water_content(theta, model::Haverkamp)
@@ -180,7 +180,7 @@ end
                             equations::RichardsEquation1D)
     psi = u[1]
     dpsi_dz = first(gradients)[1]
-    K_s = hydraulic_conductivity(psi, equations.soil_model)
+    K_s = hydraulic_conductivity(psi, equations.constitutive_model)
     return K_s * (dpsi_dz - one(dpsi_dz))
 end
 

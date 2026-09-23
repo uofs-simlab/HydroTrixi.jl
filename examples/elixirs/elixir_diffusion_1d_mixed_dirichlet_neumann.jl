@@ -10,8 +10,9 @@ diffusivity = 0.5
 equations = Trixi.LinearDiffusionEquation1D(diffusivity)
 
 # Spatial discretization
+polydeg = 3
 mesh = TreeMesh((0.0,), (1.0,), initial_refinement_level = 3, periodicity = false)
-solver = DGSEM(polydeg = 3)
+solver = DGSEM(; polydeg)
 
 # Define the exact solution and initial condition
 forcing_amplitude = 0.4
@@ -44,14 +45,12 @@ semi = SemidiscretizationImplicit(semi_base, TemporalOperatorStandard())
 tspan = (0.0, 1.0)
 ode = semidiscretize(semi, tspan)
 
-summary_callback = SummaryCallback()
-
 analysis_interval = 1000
-analysis_callback = AnalysisCallback(semi, interval = analysis_interval)
+analysis_callback = AnalysisCallback(semi; interval = analysis_interval,
+                                     analysis_polydeg = polydeg)
 
-alive_callback = AliveCallback(analysis_interval = analysis_interval)
-
-callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
+callbacks = CallbackSet(SummaryCallback(), analysis_callback,
+                        AliveCallback(analysis_interval = analysis_interval))
 
 ###############################################################################
 # run the simulation

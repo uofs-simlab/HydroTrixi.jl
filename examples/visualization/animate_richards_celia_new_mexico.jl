@@ -22,7 +22,7 @@ animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (
                     ylims = (-10.5, -0.5), output_path = animation_path, framerate = 30)
 
 plot_mass_bias(sol; output_path = mass_bias_path, xlabel = L"$t$ (s)",
-               ylabel = L"$\epsilon_b$ (m)",
+               ylabel = L"$\epsilon_{\mathrm{B}}$ (m)",
                xticks = range(0.0, final_time; length = 7))
 
 println("Saved Celia New Mexico pressure-head animation to: $(animation_path)")

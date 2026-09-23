@@ -65,55 +65,13 @@ constrain internal time-integration stages.
     return pressure_head_out_of_domain(u, semi, t, equations)
 end
 
-@doc raw"""
-    state_variable_norm(semi::SemidiscretizationImplicit)
-
-Return a norm that restricts adaptive error control to the state-variable degrees of
-freedom in `semi`. The returned callable can be passed as the `internalnorm` keyword to
-the SciML `solve` function as follows:
-```julia
-error_norm = state_variable_norm(semi)
-sol = solve(ode, default_algorithm(ode); internalnorm = error_norm, kwargs...)
-```
-
-For [`TemporalOperatorStandard`](@ref) and [`TemporalOperatorCapacity`](@ref), the norm
-uses the complete physical state and excludes appended passive diagnostic variables. For
-[`TemporalOperatorConstitutive`](@ref), it uses only the state-variable block and excludes
-the evolved-variable block and passive diagnostic variables. Thus, for the Richards
-equation, it restricts error control to pressure head for both [`PressureHeadForm`](@ref)
-and [`MixedForm`](@ref).
-"""
-function state_variable_norm(semi::SemidiscretizationImplicit)
+function variable_block_norm(block, semi::SemidiscretizationImplicit)
     return function (u, t)
-        u isa Number && return Trixi.ode_norm(u, t)
-        state_variables = state_variable_view(u, semi)
-        return Trixi.ode_norm(state_variables, t)
-    end
-end
-
-@doc raw"""
-    evolved_variable_norm(semi::SemidiscretizationImplicit)
-
-Return a norm that restricts adaptive error control to the evolved-variable degrees of
-freedom in `semi`. The returned callable can be passed as the `internalnorm` keyword to
-the SciML `solve` function as follows:
-```julia
-error_norm = evolved_variable_norm(semi)
-sol = solve(ode, default_algorithm(ode); internalnorm = error_norm, kwargs...)
-```
-
-For [`TemporalOperatorStandard`](@ref) and [`TemporalOperatorCapacity`](@ref), the norm
-uses the complete physical state and excludes appended passive diagnostic variables. For
-[`TemporalOperatorConstitutive`](@ref), it uses only the evolved-variable block and
-excludes the state-variable block and passive diagnostic variables. Thus, for the Richards
-equation, it restricts error control to pressure head for [`PressureHeadForm`](@ref) and
-water content for [`MixedForm`](@ref).
-"""
-function evolved_variable_norm(semi::SemidiscretizationImplicit)
-    return function (u, t)
-        u isa Number && return Trixi.ode_norm(u, t)
-        evolved_variables = evolved_variable_view(u, semi)
-        return Trixi.ode_norm(evolved_variables, t)
+        if u isa Number
+            return Trixi.ode_norm(u, t)
+        end
+        variables = block(u, semi)
+        return Trixi.ode_norm(variables, t)
     end
 end
 
@@ -151,17 +109,12 @@ function default_stepsize_controller(algorithm::OrdinaryDiffEqRosenbrock.Rodas5P
                                            qoldinit = 1.0e-4)
 end
 
-@inline function error_control_uses_evolved_variables(mapping,
-                                                      operator::TemporalOperatorConstitutive)
-    return mapping === operator.state_to_evolved
-end
-
-@inline error_control_uses_evolved_variables(mapping, operator) = false
-
 @doc raw"""
     solve_implicit(ode, algorithm=default_algorithm(ode);
                    dt, adaptive=true, abstol=1.0e-11, reltol=1.0e-7,
-                   error_control_variables=nothing,
+                   error_control_block=evolved_variable_block,
+                   internalnorm=variable_block_norm(error_control_block, ode.p),
+                   error_control_mapping=nothing,
                    kwargs...)
 
 Solve `ode` with HydroTrixi.jl's implicit time integration defaults. The initial time step
@@ -177,48 +130,43 @@ deadband holds the time step fixed when the controller proposes a time-step divi
 between `1.0` and `1.2`. These parameters are specified explicitly by
 [`default_stepsize_controller`](@ref).
 
-The defaults also use [`evolved_variable_norm`](@ref), disable saving every accepted step,
-and allow `typemax(Int)` iterations. Consistent initial states are constructed by
-[`semidiscretize`](@ref), and AMR reconstructs state variables from the transferred evolved
-variables. No additional nonlinear correction is requested; `initializealg` can be passed
-through to SciML to override its initialization method.
+The default `error_control_block = evolved_variable_block` restricts adaptive error
+control to the stored evolved-variable block and excludes passive diagnostic variables.
+Thus, it selects stored water content for [`MixedForm`](@ref) and stored pressure head
+for [`PressureHeadForm`](@ref). Use
+`error_control_block = state_variable_block` to select the stored state-variable block
+instead. The selected block also defines the default internal norm passed to
+OrdinaryDiffEq; pass `internalnorm` explicitly to override it.
 
-`error_control_variables = nothing` means no additional conversion: the existing
-`internalnorm` controls the error. Its default, [`evolved_variable_norm`](@ref), selects
-stored water content for [`MixedForm`](@ref) and stored pressure head for
-[`PressureHeadForm`](@ref). A user-supplied `internalnorm` is preserved.
-
-With an explicit function `error_control_variables(value, equations)`, apply that
-function pointwise to the physical state-variable entries of the candidate, embedded,
-and previous solutions before forming and scaling the error. Passive diagnostics are
-excluded. For example, on a pressure-head problem:
+With an explicit function `error_control_mapping(value, equations)`, apply that function
+pointwise to entries selected by `error_control_block` in the candidate, embedded, and
+previous solutions before forming and scaling the error. For example, control water
+content reconstructed from stored pressure head with:
 ```julia
-sol = solve_implicit(ode; dt = 1.0e-2, error_control_variables = water_content,
+sol = solve_implicit(ode; dt = 1.0e-2,
+                     error_control_block = state_variable_block,
+                     error_control_mapping = water_content,
                      abstol = 1.0e-8, reltol = 1.0e-5)
 ```
-The tolerances then apply to the converted quantities. Scalar tolerances are broadcast;
-array `abstol` must follow the full ODE layout, and its state-variable entries are
-selected. `reltol` must be scalar because it is also used by the Rosenbrock linear solves.
-An explicit function always requests conversion, including for [`MixedForm`](@ref):
-`error_control_variables = water_content` evaluates `water_content` on pressure head
-rather than selecting the stored water-content block. Use `nothing` to retain error
-control in the evolved variables.
+The tolerances then apply to the mapped quantities. Scalar tolerances are broadcast;
+array `abstol` must follow the full ODE layout, and entries corresponding to the selected
+block are used. `reltol` must be scalar because it is also used by the Rosenbrock linear
+solves.
 
-The converted residual is reduced with `Trixi.ode_norm` (an MPI-aware RMS norm).
-`internalnorm` remains available to OrdinaryDiffEq for its original estimator and other
-solver operations; it is not applied to the converted residual. A controller wrapper
+The mapped residual is reduced with `Trixi.ode_norm` (an MPI-aware RMS norm).
+The block norm remains available to OrdinaryDiffEq for its original estimator and other
+solver operations; it is not applied to the mapped residual. A controller wrapper
 replaces the original error estimate before step-size selection and acceptance. The
-original error scaling and norm are still computed;
-stages, Jacobians, and linear solves are not repeated. The option has no effect when
-`adaptive = false`.
+original error scaling and norm are still computed; stages, Jacobians, and linear solves
+are not repeated. `error_control_mapping` has no effect when `adaptive = false`.
 
-Converted error control supports the in-place implementations of `Rodas4`, `Rodas42`,
+Mapped error control supports the in-place implementations of `Rodas4`, `Rodas42`,
 `Rodas4P`, `Rodas4P2`, `Rodas5`, `Rodas5P`, `Rodas5Pe`, and `Rodas6P` with the default
 step limiter. It wraps an OrdinaryDiffEq controller, such as
 `OrdinaryDiffEqCore.PIController(algorithm)`; if `controller` is `nothing`, it creates
-that PI controller. Unsupported algorithms are rejected when conversion is enabled.
+that PI controller. Unsupported algorithms are rejected when mapping is enabled.
 
-Without conversion, HydroTrixi.jl's default controller is used only with `Rodas5P`.
+Without mapping, HydroTrixi.jl's default controller is used only with `Rodas5P`.
 For any other integration algorithm, OrdinaryDiffEq.jl selects its default controller
 unless `controller` is passed explicitly.
 """
@@ -234,21 +182,18 @@ function solve_implicit(ode::SciMLBase.ODEProblem{U, T, I, P},
                         force_dtmin = false,
                         failfactor = 2, # not used by Rodas5P (a linearly implicit method)
                         maxiters = typemax(Int),
-                        internalnorm = evolved_variable_norm(ode.p),
-                        error_control_variables = nothing,
+                        error_control_block = evolved_variable_block,
+                        internalnorm = variable_block_norm(error_control_block, ode.p),
+                        error_control_mapping = nothing,
                         save_everystep = false,
                         unstable_check = Trixi.mpi_isparallel() ?
                                          Trixi.ode_unstable_check :
                                          DiffEqBase.ODE_DEFAULT_UNSTABLE_CHECK,
                         kwargs...) where {U, T, I, P <: SemidiscretizationImplicit}
-    if adaptive && error_control_variables !== nothing
-        if error_control_uses_evolved_variables(error_control_variables,
-                                                ode.p.operator_temporal)
-            internalnorm = evolved_variable_norm(ode.p)
-        else
-            controller = StepsizeControllerMappedError(controller, algorithm, ode,
-                                                        error_control_variables; reltol)
-        end
+    if adaptive && error_control_mapping !== nothing
+        controller = StepsizeControllerMappedError(controller, algorithm, ode,
+                                                    error_control_block,
+                                                    error_control_mapping; reltol)
     end
     common_options = (; dt, adaptive, dtmin, dtmax, force_dtmin, failfactor,
                       maxiters, internalnorm, save_everystep, unstable_check)

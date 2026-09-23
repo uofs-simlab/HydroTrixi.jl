@@ -1,38 +1,40 @@
-# Total water storage is represented differently by each implicit form
+# The nodal water-content vector θ_k is stored directly in the mixed formulation and
+# evaluated as ϑ(ψ_k) in the pressure-head formulation.
 @inline function water_content_integral(u_ode::AbstractVector,
-                                        semi::SemidiscretizationImplicit,
-                                        ::TemporalOperatorConstitutive)
-    return first(evolved_variables_integral(u_ode, semi))
+                                        semi::SemidiscretizationImplicit)
+    mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi)
+    u = Trixi.wrap_array(u_ode, mesh, equations, solver, cache)
+    return water_content_integral(u, mesh, equations, solver, cache.cache_base,
+                                  semi.operator_temporal)
 end
 
-@inline function water_content_integral(u_ode::AbstractVector,
-                                        semi::SemidiscretizationImplicit,
-                                        ::TemporalOperatorCapacity)
-    return Trixi.integrate(water_content, u_ode, semi; normalize = false)
+# Destructure the semidiscretization so the integral can dispatch on the equations and
+# temporal operator.
+@inline function water_content_integral(u, semi::SemidiscretizationImplicit)
+    mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi)
+    return water_content_integral(u, mesh, equations, solver, cache.cache_base,
+                                  semi.operator_temporal)
 end
 
-@inline function water_content_integral(u, semi::SemidiscretizationImplicit,
+# In mixed form, Trixi.wrap_array extracts the evolved water-content vector θ_k.
+@inline function water_content_integral(u, mesh, equations::RichardsEquation1D, solver,
+                                        cache,
                                         ::TemporalOperatorConstitutive)
-    mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
     return first(Trixi.integrate(Trixi.cons2cons, u, mesh, equations, solver, cache;
                                  normalize = false))
 end
 
-@inline function water_content_integral(u, semi::SemidiscretizationImplicit,
+# In pressure-head form, evaluate ϑ(ψ_k) at the pressure-head nodes.
+@inline function water_content_integral(u, mesh, equations::RichardsEquation1D, solver,
+                                        cache,
                                         ::TemporalOperatorCapacity)
-    mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
     return Trixi.integrate(water_content, u, mesh, equations, solver, cache;
                            normalize = false)
 end
 
-@inline function Trixi.analyze(::typeof(water_content), du::AbstractVector,
-                               u_ode::AbstractVector, t, semi::SemidiscretizationImplicit)
-    return water_content_integral(u_ode, semi, semi.operator_temporal)
-end
-
 @inline function Trixi.analyze(::typeof(water_content), du, u, t,
                                semi::SemidiscretizationImplicit)
-    return water_content_integral(u, semi, semi.operator_temporal)
+    return water_content_integral(u, semi)
 end
 
 Trixi.pretty_form_ascii(::typeof(water_content)) = "water_content"
@@ -42,45 +44,54 @@ Trixi.pretty_form_utf(::typeof(water_content)) = "∫θ"
     water_content_timederivative
 
 Analysis integral for the time derivative of the total water content,
-``\mathrm{d} \int \vartheta(\psi) \,\mathrm{d}z / \mathrm{d}t``.
+```math
+\frac{\mathrm{d}}{\mathrm{d}t}
+\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
+\boldsymbol{\theta}_k(t).
+```
 
-For the mixed formulation, this integrates the derivative of the evolved variable
-``\theta``. For the pressure-head formulation, it integrates
-``c(\psi) \partial_t\psi`` using [`water_capacity`](@ref). The two expressions agree when
-the constitutive constraint ``\theta = \vartheta(\psi)`` is satisfied.
+For the mixed formulation, ``\boldsymbol{\theta}_k`` is evolved directly. For the
+pressure-head formulation,
+``\boldsymbol{\theta}_k=\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` and this quantity
+integrates ``\boldsymbol{C}_k\dot{\boldsymbol{\psi}}_k``, where
+``\boldsymbol{C}_k`` contains the nodal values of [`water_capacity`](@ref). The two
+expressions agree when the constitutive constraint
+``\boldsymbol{\theta}_k=\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` is satisfied.
 """
 function water_content_timederivative end
 
-# Storage derivatives use evolved water content or capacity-weighted pressure head rates
+# The paper denotes the nodal rate by θ̇_k in mixed form and C_k ψ̇_k in pressure-head form.
 @inline function water_content_timederivative_integral(du_ode::AbstractVector,
                                                        u_ode::AbstractVector,
-                                                       semi::SemidiscretizationImplicit,
-                                                       ::TemporalOperatorConstitutive)
-    return first(Trixi.integrate(Trixi.cons2cons, du_ode, semi; normalize = false))
-end
-
-@inline function water_content_timederivative_integral(du_ode::AbstractVector,
-                                                       u_ode::AbstractVector,
-                                                       semi::SemidiscretizationImplicit,
-                                                       operator_temporal::TemporalOperatorCapacity)
+                                                       semi::SemidiscretizationImplicit)
     mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi)
     u = Trixi.wrap_array(u_ode, mesh, equations, solver, cache)
     du = Trixi.wrap_array(du_ode, mesh, equations, solver, cache)
-    return water_content_timederivative_integral(du, u, semi, operator_temporal)
+    return water_content_timederivative_integral(du, u, mesh, equations, solver,
+                                                 cache.cache_base,
+                                                 semi.operator_temporal)
 end
 
 @inline function water_content_timederivative_integral(du, u,
-                                                       semi::SemidiscretizationImplicit,
+                                                       semi::SemidiscretizationImplicit)
+    mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi)
+    return water_content_timederivative_integral(du, u, mesh, equations, solver,
+                                                 cache.cache_base,
+                                                 semi.operator_temporal)
+end
+
+@inline function water_content_timederivative_integral(du, u, mesh,
+                                                       equations::RichardsEquation1D,
+                                                       solver, cache,
                                                        ::TemporalOperatorConstitutive)
-    mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
     return first(Trixi.integrate(Trixi.cons2cons, du, mesh, equations, solver, cache;
                                  normalize = false))
 end
 
-@inline function water_content_timederivative_integral(du, u,
-                                                       semi::SemidiscretizationImplicit,
+@inline function water_content_timederivative_integral(du, u, mesh,
+                                                       equations::RichardsEquation1D,
+                                                       solver, cache,
                                                        ::TemporalOperatorCapacity)
-    mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
     return Trixi.integrate_via_indices(u, mesh, equations, solver, cache, du;
                                        normalize = false) do u, i, element, equations,
                                                              solver, du
@@ -90,128 +101,137 @@ end
     end
 end
 
-@inline function Trixi.analyze(::typeof(water_content_timederivative),
-                               du_ode::AbstractVector, u_ode::AbstractVector, t,
-                               semi::SemidiscretizationImplicit)
-    return water_content_timederivative_integral(du_ode, u_ode, semi,
-                                                 semi.operator_temporal)
-end
-
 @inline function Trixi.analyze(::typeof(water_content_timederivative), du, u, t,
                                semi::SemidiscretizationImplicit)
-    return water_content_timederivative_integral(du, u, semi, semi.operator_temporal)
+    return water_content_timederivative_integral(du, u, semi)
 end
 
 Trixi.pretty_form_ascii(::typeof(water_content_timederivative)) = "water_content_t"
 Trixi.pretty_form_utf(::typeof(water_content_timederivative)) = "d/dt ∫θ"
 
-# Mass bias combines passive boundary fluxes with recorded initial storage
-const MASS_BIAS_ANALYSIS_CONTEXT = :HydroTrixi_mass_bias_analysis_context
-const MASS_BIAS_INITIAL_WATER_CONTENT = IdDict{Any, Any}()
-
 @doc raw"""
-    mass_bias
-    mass_bias(u_ode, semi::SemidiscretizationImplicit)
-    mass_bias(u_ode, semi::SemidiscretizationImplicit, initial_water_content)
+    mass_balance
+    mass_balance(u_ode, semi::SemidiscretizationImplicit)
 
-Return the mass balance bias
+Return the signed cumulative water mass balance
 ```math
-\epsilon_B(t_M) =
-\int_{t_0}^{t_M}
-\left(\hat{f}_K(t) - \hat{f}_0(t)\right)\,\mathrm{d}t
-- \left(M_h(t_M) - M_h(t_0)\right),
+B_h(t)=F_K(t)-F_0(t)
+-\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
+ \boldsymbol{\theta}_k(t),
 ```
-where ``\hat{f}_0`` and ``\hat{f}_K`` are the numerical fluxes at the soil surface and
-bottom of the column, respectively, and ``M_h`` is the quadrature-based discrete water
-mass.
+where ``F_0`` and ``F_K`` are the passive SFOM variables satisfying
+``\dot{F}_0=f_0^\star`` and ``\dot{F}_K=f_K^\star``, respectively, and
+``\boldsymbol{\theta}_k`` is the nodal water-content vector. Thus, this function returns
+the negative of the fully discrete invariant
+```math
+\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
+\boldsymbol{\theta}_k(t)+F_0(t)-F_K(t)
+```
+used in the accompanying paper. Its change between two times vanishes when the fully
+discrete water mass balance is satisfied.
 
 This solver flux output method diagnostic requires
 [`PassiveVariablesBoundaryFlux1D`](@ref), which advances the integrated numerical
-boundary fluxes as passive variables using the same time integrator as the physical
-state. The initial total water content is recorded when the implicit coefficients are
-initialized and is used by the analysis callback.
+boundary fluxes with the same time-integration stages, time steps, and step-acceptance
+decisions as the physical state.
+"""
+function mass_balance end
+
+function mass_balance(u_ode::AbstractVector, semi::SemidiscretizationImplicit)
+    boundary_fluxes = boundary_flux_integrals(u_ode, semi)
+    storage = water_content_integral(u_ode, semi)
+    return -boundary_fluxes.x_neg + boundary_fluxes.x_pos - storage
+end
+
+@inline function Trixi.analyze(::typeof(mass_balance), du_ode::AbstractVector,
+                               u_ode::AbstractVector, t,
+                               semi::SemidiscretizationImplicit)
+    return mass_balance(u_ode, semi)
+end
+
+Trixi.pretty_form_ascii(::typeof(mass_balance)) = "mass_balance"
+Trixi.pretty_form_utf(::typeof(mass_balance)) = "B_h"
+
+@doc raw"""
+    mass_bias(u_ode, semi::SemidiscretizationImplicit, initial_water_content)
+
+Return the water mass bias relative to an initial total water content:
+```math
+\epsilon_{\mathrm{B}}(t)=\left(F_K(t)-F_0(t)\right)
+-\left(
+\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
+\boldsymbol{\theta}_k(t)
+-
+\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
+\boldsymbol{\theta}_k(t^0)
+\right).
+```
+This method assumes the initialization ``F_0(t^0)=F_K(t^0)=0``. For complete
+saved time histories, prefer [`mass_bias_history`](@ref), which differences
+[`mass_balance`](@ref) and therefore also supports nonzero initial SFOM variables.
 """
 function mass_bias end
 
-# Leave standard passive diagnostics independent of Richards storage analysis
-function record_mass_bias_initial_storage!(u_ode::AbstractVector,
-                                           semi::SemidiscretizationImplicit,
-                                           ::TemporalOperatorStandard)
-    return nothing
-end
-
-# Record the initial Richards storage for its capacity and constitutive forms
-function record_mass_bias_initial_storage!(u_ode::AbstractVector,
-                                           semi::SemidiscretizationImplicit,
-                                           ::Union{TemporalOperatorCapacity,
-                                                   TemporalOperatorConstitutive})
-    MASS_BIAS_INITIAL_WATER_CONTENT[semi] = water_content_integral(u_ode, semi,
-                                                                   semi.operator_temporal)
-    return nothing
-end
-
-function mass_bias_initial_water_content(semi::SemidiscretizationImplicit)
-    return MASS_BIAS_INITIAL_WATER_CONTENT[semi]
-end
-
 function mass_bias(u_ode::AbstractVector, semi::SemidiscretizationImplicit,
                    initial_water_content)
-    boundary_fluxes = boundary_flux_integrals(u_ode, semi)
-    storage_change = water_content_integral(u_ode, semi, semi.operator_temporal) -
-                     initial_water_content
-    return -boundary_fluxes.x_neg + boundary_fluxes.x_pos - storage_change
-end
-
-function mass_bias(u_ode::AbstractVector, semi::SemidiscretizationImplicit)
-    return mass_bias(u_ode, semi, mass_bias_initial_water_content(semi))
-end
-
-function mass_bias_initial_water_content(sol, semi::SemidiscretizationImplicit,
-                                         initial_water_content)
-    !isnothing(initial_water_content) && return initial_water_content
-
-    recorded_water_content = get(MASS_BIAS_INITIAL_WATER_CONTENT, semi, nothing)
-    !isnothing(recorded_water_content) && return recorded_water_content
-
-    if first(sol.t) == first(sol.prob.tspan)
-        return water_content_integral(first(sol.u), semi, semi.operator_temporal)
-    end
+    return mass_balance(u_ode, semi) + initial_water_content
 end
 
 @doc raw"""
     mass_bias_history(sol; initial_water_content = nothing)
     mass_bias_history(analysis_path::AbstractString;
-                      time_column = "time", mass_bias_column = "mass_bias")
+                      time_column = "time", mass_balance_column = "mass_balance")
 
-Return the saved times and corresponding [`mass_bias`](@ref) values for `sol`.
+Return the saved times and corresponding water mass biases for `sol`.
 
 The solution must use a [`SemidiscretizationImplicit`](@ref) with
-[`PassiveVariablesBoundaryFlux1D`](@ref). If no initial water content has been recorded
-for the semidiscretization and the first saved state is not at the initial time, pass the
-initial total water content explicitly with `initial_water_content`.
+[`PassiveVariablesBoundaryFlux1D`](@ref). By default, the first saved state must be at the
+initial time ``t^0``. When it is not available, pass `initial_water_content` explicitly;
+this assumes ``F_0(t^0)=F_K(t^0)=0``. Solution
+postprocessing requires a fixed state layout; for AMR solutions, use the analysis-file
+method instead.
 
-When `analysis_path` is provided, read the time and mass-bias columns from a Trixi.jl
-analysis file written by `AnalysisCallback(save_analysis = true)`.
+When `analysis_path` is provided, read the time and signed cumulative water mass balance
+columns from an analysis file written by
+`AnalysisCallbackFullState(save_analysis = true)` and subtract the first value.
 """
 function mass_bias_history(sol; initial_water_content = nothing)
     semi = sol.prob.p
-    initial_storage = mass_bias_initial_water_content(sol, semi, initial_water_content)
-    biases = [mass_bias(u_ode, semi, initial_storage) for u_ode in sol.u]
+    state_length = length(last(sol.u))
+    if any(u_ode -> length(u_ode) != state_length, sol.u)
+        throw(ArgumentError("Saved states have different sizes. Use the analysis-file " *
+                            "method for AMR solutions."))
+    end
+
+    if !isnothing(initial_water_content)
+        biases = [mass_bias(u_ode, semi, initial_water_content) for u_ode in sol.u]
+        return collect(sol.t), biases
+    end
+
+    if first(sol.t) != first(sol.prob.tspan)
+        throw(ArgumentError("The solution does not contain the initial state. Pass " *
+                            "`initial_water_content` explicitly."))
+    end
+
+    balances = [mass_balance(u_ode, semi) for u_ode in sol.u]
+    biases = balances .- first(balances)
 
     return collect(sol.t), biases
 end
 
 function mass_bias_history(analysis_path::AbstractString; time_column = "time",
-                           mass_bias_column = "mass_bias")
+                           mass_balance_column = "mass_balance")
     times = Float64[]
-    biases = Float64[]
+    balances = Float64[]
 
     open(analysis_path, "r") do io
         # Read the Trixi.jl analysis header to locate scalar output columns
         header = nothing
         for line in eachline(io)
             stripped_line = strip(line)
-            isempty(stripped_line) && continue
+            if isempty(stripped_line)
+                continue
+            end
             header = stripped_line
             break
         end
@@ -219,41 +239,28 @@ function mass_bias_history(analysis_path::AbstractString; time_column = "time",
         header_columns = split(strip(header[2:end]))
         column_indices = Dict(column => index for (index, column) in pairs(header_columns))
         time_index = column_indices[time_column]
-        mass_bias_index = column_indices[mass_bias_column]
+        mass_balance_index = column_indices[mass_balance_column]
 
         # Parse the scalar time history from the selected columns
         for line in eachline(io)
             stripped_line = strip(line)
-            isempty(stripped_line) && continue
-            startswith(stripped_line, "#") && continue
+            if isempty(stripped_line)
+                continue
+            end
+            if startswith(stripped_line, "#")
+                continue
+            end
 
             values = split(stripped_line)
             push!(times, parse(Float64, values[time_index]))
-            push!(biases, parse(Float64, values[mass_bias_index]))
+            push!(balances, parse(Float64, values[mass_balance_index]))
         end
     end
 
     if isempty(times)
-        throw(ArgumentError("`analysis_path` does not contain mass-bias samples."))
+        throw(ArgumentError("`analysis_path` does not contain mass-balance samples."))
     end
 
+    biases = balances .- first(balances)
     return times, biases
 end
-
-# AnalysisCallback supplies the full ODE state needed for passive diagnostics
-function (analysis_callback::Trixi.AnalysisCallback)(io, du, u, u_ode, t,
-                                                     semi::SemidiscretizationImplicit)
-    return task_local_storage(MASS_BIAS_ANALYSIS_CONTEXT, (; u_ode)) do
-        invoke(analysis_callback, Tuple{Any, Any, Any, Any, Any, Any},
-               io, du, u, u_ode, t, semi)
-    end
-end
-
-@inline function Trixi.analyze(::typeof(mass_bias), du, u, t,
-                               semi::SemidiscretizationImplicit)
-    state = task_local_storage(MASS_BIAS_ANALYSIS_CONTEXT)
-    return mass_bias(state.u_ode, semi)
-end
-
-Trixi.pretty_form_ascii(::typeof(mass_bias)) = "mass_bias"
-Trixi.pretty_form_utf(::typeof(mass_bias)) = "ε_b"

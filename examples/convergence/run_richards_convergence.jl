@@ -8,17 +8,26 @@ using Dates, LinearAlgebra
 include("plot_richards_convergence.jl")
 
 const ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+const ELIXIR = joinpath(ROOT, "examples", "elixirs",
+                        "elixir_richards_manufactured_solution.jl")
 const FORMS = (("pressure_head", PressureHeadForm()), ("mixed", MixedForm()))
 const STUDIES = [(; bc, kind, N) for bc in ("DD", "DN")
                  for (kind, N) in (("space", 3), ("space", 4), ("time", 3))]
+
+# Keep the elixir's global assignments separate from the convergence driver.
+module ManufacturedSolutionElixir end
 
 study_name(bc, kind, N) = "richards_manufactured_solution_$(bc == "DD" ? "dirichlet_dirichlet" : "dirichlet_neumann")_$(kind)_N$(N)"
 
 function make_problem(bc; final_time = 120.0)
     # Default is Dirichlet-Dirichlet boundary conditions.
     base = HydrologicProblemRichardsManufacturedSolution(tspan = (0.0, final_time))
-    bc == "DD" && return base
-    bc == "DN" || error("Unknown boundary pair: $bc")
+    if bc == "DD"
+        return base
+    end
+    if bc != "DN"
+        error("Unknown boundary pair: $bc")
+    end
 
     # Modify the boundary conditions for Dirichlet-Neumann.
     boundaries = (; x_neg = base.boundary_conditions.x_neg,
@@ -31,22 +40,20 @@ end
 
 function solve_case(bc, form, level, N, dt; final_time = 120.0)
     problem = make_problem(bc; final_time)
-    mesh = TreeMesh(problem.domain...; initial_refinement_level = level, periodicity = false)
-    solver = DGSEM(polydeg = N)
-    semi = SemidiscretizationImplicit(mesh, problem, solver;
-                                     solver_parabolic = ParabolicFormulationLocalDG(), form)
-    ode = semidiscretize(semi, problem.tspan; jacobian = SparseJacobian())
-    analysis = AnalysisCallback(semi; analysis_polydeg = N)
-    algorithm = default_algorithm(ode; max_jac_age = 1)
-
     # Prescribe the grid to avoid a roundoff-sized extra step for decimal dt.
     nsteps = round(Int, final_time / dt)
-    isapprox(nsteps * dt, final_time) || error("dt must divide the final time")
+    if !isapprox(nsteps * dt, final_time)
+        error("dt must divide the final time")
+    end
     time_grid = range(0.0, final_time; length = nsteps + 1)[2:end]
-    sol = solve_implicit(ode, algorithm;
-        dt, adaptive = false, tstops = time_grid, save_everystep = false, dense = false)
+    simulation = Trixi.trixi_include(ManufacturedSolutionElixir, ELIXIR;
+                                     problem, initial_refinement_level = level,
+                                     polydeg = N, form, dt, adaptive = false,
+                                     callback = nothing,
+                                     solve_options = (; tstops = time_grid, dense = false))
+    (; sol, analysis_callback) = simulation
 
-    l2, linf = analysis(sol)
+    l2, linf = analysis_callback(sol)
     valid = SciMLBase.successful_retcode(sol) && last(sol.t) == final_time &&
             sol.stats.naccept == nsteps &&
             all(isfinite, (only(l2), only(linf)))
@@ -80,7 +87,9 @@ function run_study(study, output)
                     result.final_time, result.steps, result.l2, result.linf, p2, pinf,
                     result.retcode, status), ' '))
                 flush(data)
-                result.valid || error("Failed $name $form_name level=$level dt=$dt s; see $output")
+                if !result.valid
+                    error("Failed $name $form_name level=$level dt=$dt s; see $output")
+                end
                 previous = result
             end
         end
@@ -88,9 +97,13 @@ function run_study(study, output)
 end
 
 function run_convergence(studies = STUDIES)
-    !isempty(studies) && all(s -> s in STUDIES, studies) && allunique(studies) || error("Invalid study selection")
+    if isempty(studies) || !all(s -> s in STUDIES, studies) || !allunique(studies)
+        error("Invalid study selection")
+    end
     BLAS.set_num_threads(1)
-    Threads.nthreads() == 1 || error("Run with JULIA_NUM_THREADS=1")
+    if Threads.nthreads() != 1
+        error("Run with JULIA_NUM_THREADS=1")
+    end
 
     # Give each run its own directory, preserving earlier and partial results.
     id = Dates.format(now(UTC), "yyyymmddTHHMMSSsssZ")
@@ -111,7 +124,9 @@ end
 end # module
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    length(ARGS) in (0, 3) || error("Usage: julia --project=run $(@__FILE__) [DD|DN space|time N]")
+    if !(length(ARGS) in (0, 3))
+        error("Usage: julia --project=run $(@__FILE__) [DD|DN space|time N]")
+    end
     studies = isempty(ARGS) ? RichardsConvergence.STUDIES :
               [(bc = ARGS[1], kind = ARGS[2], N = parse(Int, ARGS[3]))]
     RichardsConvergence.run_convergence(studies)

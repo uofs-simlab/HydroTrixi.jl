@@ -9,16 +9,16 @@ diffusivity = 0.5
 equations = Trixi.LinearDiffusionEquation1D(diffusivity)
 
 # Spatial discretization
+polydeg = 3
 mesh = TreeMesh((0.0,), (1.0,), initial_refinement_level = 3, periodicity = false)
-solver = DGSEM(polydeg = 3)
+solver = DGSEM(; polydeg)
 
 exact_solution(x, t) = exp(-diffusivity * pi^2 * t) * sinpi(x[1])
 initial_condition(x, t, equations) = SVector(exact_solution(x, t))
 zero_dirichlet(x, t, equations) = SVector(0.0)
 
 # Set this factor to zero to omit the additional divergence-flux penalty
-penalty_factor = 0
-boundary_condition = BoundaryConditionDirichletPenalty(zero_dirichlet; penalty_factor)
+boundary_condition = BoundaryConditionDirichletPenalty(zero_dirichlet; penalty_factor = 0)
 boundary_conditions = (; x_neg = boundary_condition, x_pos = boundary_condition)
 
 # Construct an identity-mass-matrix representation for explicit and implicit solvers
@@ -34,14 +34,12 @@ tspan = (0.0, 0.25)
 ode = semidiscretize(semi, tspan; jacobian = DenseJacobian())
 algorithm = default_algorithm(ode)
 
-summary_callback = SummaryCallback()
-
 analysis_interval = 1000
-analysis_callback = AnalysisCallback(semi, interval = analysis_interval)
+analysis_callback = AnalysisCallback(semi; interval = analysis_interval,
+                                     analysis_polydeg = polydeg)
 
-alive_callback = AliveCallback(analysis_interval = analysis_interval)
-
-callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
+callbacks = CallbackSet(SummaryCallback(), analysis_callback,
+                        AliveCallback(analysis_interval = analysis_interval))
 
 ###############################################################################
 # run the simulation

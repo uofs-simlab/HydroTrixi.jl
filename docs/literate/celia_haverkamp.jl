@@ -74,17 +74,16 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # `amr = true` for mesh adaptivity based on water content.
 #
 # The mixed state contains both water content and pressure head, while the pressure-head
-# form contains only pressure head. [`evolved_variable_norm`](@ref), the default used by
-# [`solve_implicit`](@ref), restricts adaptive error control to water content in the mixed
-# form and pressure head in the pressure-head form. It excludes the algebraic pressure
-# head and any passive diagnostic variables in the mixed form.
+# form contains only pressure head. The default
+# `error_control_block = evolved_variable_block` restricts adaptive error control to water
+# content in the mixed form and pressure head in the pressure-head form. It excludes the
+# algebraic pressure head and any passive diagnostic variables in the mixed form.
 
 ode = semidiscretize(semi, problem.tspan)
-internalnorm = evolved_variable_norm(semi)
 
 sol = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
-                     internalnorm = internalnorm, saveat = 0.0:6.0:360.0,
-                     save_everystep = false, maxiters = typemax(Int))
+                     error_control_block = evolved_variable_block,
+                     saveat = 0.0:6.0:360.0)
 
 println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) saved states.")
 

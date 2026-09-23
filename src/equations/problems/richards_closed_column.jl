@@ -2,7 +2,7 @@
 #! format: noindent
 
 @doc raw"""
-    HydrologicProblemRichardsClosedColumn(; soil_model, domain, tspan, base_head, amplitude)
+    HydrologicProblemRichardsClosedColumn(; constitutive_model, domain, tspan, base_head, amplitude)
 
 Return a one-dimensional Richards-equation redistribution problem on a closed column with
 homogeneous Neumann boundary conditions at both ends. The prescribed numerical boundary
@@ -28,7 +28,7 @@ remain zero for all time due to the homogeneous Neumann boundary conditions.
 The returned problem setup contains the fields `equations`, `state_to_evolved`,
 `evolved_to_state`, `initial_condition`, `boundary_conditions`, `domain`, and `tspan`.
 """
-function HydrologicProblemRichardsClosedColumn(; soil_model = default_soil_model(),
+function HydrologicProblemRichardsClosedColumn(; constitutive_model = default_constitutive_model(),
                                                domain = ((0.0,), (0.4,)),
                                                tspan = (0.0, 360.0), base_head = -1.0,
                                                amplitude = 0.05)
@@ -40,7 +40,7 @@ function HydrologicProblemRichardsClosedColumn(; soil_model = default_soil_model
         throw(ArgumentError("Expected a positive domain length."))
     end
 
-    equations = RichardsEquation1D(soil_model = soil_model)
+    equations = RichardsEquation1D(constitutive_model = constitutive_model)
     state_to_evolved = water_content
     evolved_to_state = pressure_head_from_water_content
 

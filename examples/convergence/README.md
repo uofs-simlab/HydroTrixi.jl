@@ -107,7 +107,10 @@ Every study runs both formulations on a column of length $L=0.2\,\mathrm{m}$
 until $t=120\,\mathrm{s}$, using Float64, DGSEM/LDG and Rodas5P/KLU. Sparse
 forward AD supplies a fresh Jacobian each step. Time steps are fixed; explicit
 time stops prevent extra steps from roundoff. The mesh is not adapted during a
-solve.
+solve. The driver obtains each problem and semidiscretization from
+`examples/elixirs/elixir_richards_manufactured_solution.jl`, with study-specific
+parameters and fixed-step solve controls supplied as elixir overrides; it retains
+control of validation and result output.
 
 For a uniform mesh with $K=2^l$ elements, the nominal mesh size is
 

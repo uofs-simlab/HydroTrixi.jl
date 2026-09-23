@@ -9,10 +9,10 @@ function plot_data_1d(u_ode, semi; component = 1)
     if semi isa HydroTrixi.SemidiscretizationImplicit
         nstate_variables = Trixi.nvariables(semi.semi_base)
         if component <= nstate_variables
-            data = HydroTrixi.evolved_variable_view(u_ode, semi)
+            data = HydroTrixi.evolved_variable_block(u_ode, semi)
             local_component = component
         else
-            data = HydroTrixi.state_variable_view(u_ode, semi)
+            data = HydroTrixi.state_variable_block(u_ode, semi)
             local_component = component - nstate_variables
         end
         pd = Trixi.PlotData1D(data, semi.semi_base; solution_variables = Trixi.cons2cons)
@@ -63,7 +63,9 @@ function solution_axis(fig; xlabel, ylabel, xlabelfont = HydroTrixi.DEFAULT_PLOT
               ylabelfont = ylabelfont, titlefont = titlefont,
               xticklabelfont = xticklabelfont, yticklabelfont = yticklabelfont,
               xscale = xscale, yscale = yscale,)
-    isnothing(xticks) || (ax.xticks = xticks)
+    if !isnothing(xticks)
+        ax.xticks = xticks
+    end
     apply_axis_limits!(ax; xlims = xlims, ylims = ylims)
 
     return ax
@@ -133,7 +135,9 @@ function HydroTrixi.plot_solution_1d(sol; output_path = joinpath(pwd(), "solutio
                 labelsize = legendfontsize, show_legend = show_exact)
 
     outdir = dirname(output_path)
-    outdir == "" || mkpath(outdir)
+    if outdir != ""
+        mkpath(outdir)
+    end
     save(output_path, fig; px_per_unit = 1)
 
     return fig

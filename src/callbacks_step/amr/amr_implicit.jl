@@ -232,7 +232,7 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
     end
 
     # Evaluate the controller on the physical state represented on the current mesh
-    u_state = Trixi.wrap_array(state_variable_view(u_ode, semi), mesh, equations, dg, cache)
+    u_state = Trixi.wrap_array(state_variable_block(u_ode, semi), mesh, equations, dg, cache)
     lambda = amr_callback.controller(u_state, mesh, equations, dg, cache;
                                      t = t, iter = iter)
     leaf_cell_ids = Trixi.leaf_cells(mesh.tree)
@@ -317,13 +317,13 @@ end
 function transferred_variables_for_amr(u_ode, semi::SemidiscretizationImplicit,
                                        ::Union{TemporalOperatorStandard,
                                                TemporalOperatorConstitutive})
-    return collect(evolved_variable_view(u_ode, semi))
+    return collect(evolved_variable_block(u_ode, semi))
 end
 
 # Convert a capacity-form state to its configured AMR transfer variable
 function transferred_variables_for_amr(u_ode, semi::SemidiscretizationImplicit,
                                        operator_temporal::TemporalOperatorCapacity)
-    transferred_ode = collect(state_variable_view(u_ode, semi))
+    transferred_ode = collect(state_variable_block(u_ode, semi))
     equations = semi.semi_base.equations
     transfer_variables = operator_temporal.transfer_variables
 
@@ -368,9 +368,9 @@ function resize_after_amr!(u_ode, transferred_ode, passive_ode,
                            semi::SemidiscretizationImplicit, ::TemporalOperatorConstitutive)
     # Passive scalar variables are global diagnostics and are not adapted
     resize!(u_ode, 2 * length(transferred_ode) + length(passive_ode))
-    evolved_variable = evolved_variable_view(u_ode, semi)
+    evolved_variable = evolved_variable_block(u_ode, semi)
     evolved_variable .= transferred_ode
-    state_variable = state_variable_view(u_ode, semi)
+    state_variable = state_variable_block(u_ode, semi)
     equations = semi.semi_base.equations
     evolved_to_state = semi.operator_temporal.evolved_to_state
 

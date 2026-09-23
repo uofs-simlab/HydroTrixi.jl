@@ -35,21 +35,21 @@ end
 # Source term corresponding to the manufactured pressure head
 @inline function source_terms_richards_manufactured_solution(u, gradients, x, t,
                                                              equations)
-    soil_model = equations.soil_model
+    constitutive_model = equations.constitutive_model
 
     psi, psi_t, psi_z, psi_zz = richards_manufactured_profile(x, t)
-    conductivity = hydraulic_conductivity(psi, soil_model)
+    conductivity = hydraulic_conductivity(psi, constitutive_model)
 
     # Differentiate the Haverkamp conductivity for the manufactured source term
     if psi >= zero(psi)
         conductivity_derivative = zero(psi)
     else
         abs_psi = abs(psi)
-        scaled_abs_psi = soil_model.b * abs_psi
-        conductivity_denominator = one(psi) + scaled_abs_psi^soil_model.gamma
-        conductivity_derivative = soil_model.saturated_hydraulic_conductivity *
-                                  soil_model.b * soil_model.gamma *
-                                  scaled_abs_psi^(soil_model.gamma - 1) /
+        scaled_abs_psi = constitutive_model.b * abs_psi
+        conductivity_denominator = one(psi) + scaled_abs_psi^constitutive_model.gamma
+        conductivity_derivative = constitutive_model.saturated_hydraulic_conductivity *
+                                  constitutive_model.b * constitutive_model.gamma *
+                                  scaled_abs_psi^(constitutive_model.gamma - 1) /
                                   conductivity_denominator^2
     end
     flux_derivative = conductivity_derivative * psi_z * (psi_z - 1) +
@@ -60,7 +60,7 @@ end
 
 @doc raw"""
     HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
-                                                    soil_model = default_soil_model(),
+                                                    constitutive_model = default_constitutive_model(),
                                                     penalty_factor = 1)
 
 Return a one-dimensional manufactured-solution problem for the Richards equation. The
@@ -95,9 +95,9 @@ mixed and pressure-head forms of the Richards equation.
   [arXiv:2105.05224](https://arxiv.org/abs/2105.05224)
 """
 function HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
-                                                       soil_model = default_soil_model(),
+                                                       constitutive_model = default_constitutive_model(),
                                                        penalty_factor = 1)
-    equations = RichardsEquation1D(soil_model = soil_model)
+    equations = RichardsEquation1D(constitutive_model = constitutive_model)
     state_to_evolved = water_content
     evolved_to_state = pressure_head_from_water_content
     boundary_condition = BoundaryConditionDirichletPenalty(richards_manufactured_solution;

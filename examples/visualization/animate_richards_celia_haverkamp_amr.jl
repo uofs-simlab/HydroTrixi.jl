@@ -35,7 +35,7 @@ animate_solution_1d(ode; callback = callbacks, dt = 1.0e-2, adaptive = true,
                     ylims = (-0.65, -0.15), show_element_boundaries = true,
                     output_path = animation_path, framerate = 30)
 plot_mass_bias(analysis_path; output_path = mass_bias_path, xlabel = L"$t$ (s)",
-               ylabel = L"$\epsilon_b$ (m)", xticks = 0.0:60.0:final_time)
+               ylabel = L"$\epsilon_{\mathrm{B}}$ (m)", xticks = 0.0:60.0:final_time)
 
 println("Saved Celia Haverkamp $(form_name) AMR animation to: $(animation_path)")
 println("Saved Celia Haverkamp $(form_name) AMR mass-bias plot to: $(mass_bias_path)")

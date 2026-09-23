@@ -88,19 +88,25 @@ function plot_study(path, rows, temporal, N, output_dir)
 end
 
 function plot_convergence(directories...)
-    isempty(directories) && error("Supply at least one saved run directory")
+    if isempty(directories)
+        error("Supply at least one saved run directory")
+    end
     tables = []
     for directory in directories
         data = joinpath(abspath(directory), "data")
         for path in sort(readdir(data; join = true))
-            endswith(path, ".dat") || continue
+            if !endswith(path, ".dat")
+                continue
+            end
             rows = read_table(path)
             temporal = occursin("_time_", basename(path))
             N = Int(first(rows).N)
             push!(tables, (; path, rows, temporal, N))
         end
     end
-    !isempty(tables) && allunique(basename(t.path) for t in tables) || error("Missing or duplicate studies")
+    if isempty(tables) || !allunique(basename(t.path) for t in tables)
+        error("Missing or duplicate studies")
+    end
 
     id = Dates.format(now(UTC), "yyyymmddTHHMMSSsssZ")
     output_dir = joinpath(abspath(first(directories)), "figures", id)
@@ -115,6 +121,8 @@ end
 end # module
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    isempty(ARGS) && error("Usage: julia --project=run $(@__FILE__) RUN_DIRECTORY [RUN_DIRECTORY ...]")
+    if isempty(ARGS)
+        error("Usage: julia --project=run $(@__FILE__) RUN_DIRECTORY [RUN_DIRECTORY ...]")
+    end
     RichardsConvergencePlots.plot_convergence(ARGS...)
 end

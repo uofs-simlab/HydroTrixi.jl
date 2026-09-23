@@ -15,7 +15,7 @@ Abstract supertype for passive variable configurations used for diagnostics by
 [`SemidiscretizationImplicit`](@ref). Passive variables refer to additional scalar
 variables appended to the physical ODE or DAE state that are integrated by the time
 integrator but do not affect the physical residual. For example, a passive variable can
-store the time-integrated numerical flux at a boundary for diagnostic purposes (see
+store a cumulative numerical boundary flux for diagnostic purposes (see
 [`PassiveVariablesBoundaryFlux1D`](@ref)).
 """
 abstract type AbstractPassiveVariables end
@@ -31,13 +31,18 @@ struct NoPassiveVariables <: AbstractPassiveVariables end
 @doc raw"""
     PassiveVariablesBoundaryFlux1D()
 
-Append two passive scalar variables that store the time-integrated numerical boundary
-fluxes at the negative and positive boundaries of a one-dimensional scalar problem,
-following the solver flux output method (SFOM) proposed by Ireson et al. (2023). For a
-Richards column on ``[0,L]``, measuring positive downwards, the stored values are
-``\int_{t_0}^t \hat{f}_0(\tau)\,\mathrm{d}\tau`` and
-``\int_{t_0}^t \hat{f}_K(\tau)\,\mathrm{d}\tau``, where ``\hat{f}_0`` and ``\hat{f}_K`` are
-the numerical fluxes at the top and bottom ends of the column.
+Append two passive scalar variables that store the cumulative numerical boundary fluxes
+at the negative and positive boundaries of a one-dimensional scalar problem, following
+the solver flux output method (SFOM) proposed by Ireson et al. (2023). For a Richards
+column on ``[0,L]``, measuring depth positive downwards, denote these variables by
+``F_0`` and ``F_K``, satisfying
+```math
+\dot{F}_0(t)=f_0^\star(t), \qquad
+\dot{F}_K(t)=f_K^\star(t), \qquad
+F_0(t^0)=F_K(t^0)=0,
+```
+where ``f_0^\star`` and ``f_K^\star`` are the numerical fluxes at the soil surface and
+bottom of the column, respectively.
 
 # References
 - Ireson, A. M., Spiteri, R. J., Clark, M. P., Mathias, S. A. (2023).
@@ -284,7 +289,9 @@ end
 # Return a view of passive diagnostic variables appended to the ODE state
 @inline function passive_variable_view(u_ode, semi::SemidiscretizationImplicit)
     n_passive = passive_variable_count(semi)
-    n_passive == 0 && return @view(u_ode[1:0])
+    if n_passive == 0
+        return @view(u_ode[1:0])
+    end
     return @view(u_ode[(length(u_ode) - n_passive + 1):length(u_ode)])
 end
 
@@ -299,41 +306,63 @@ function boundary_flux_integrals(u_ode, semi::SemidiscretizationImplicit)
     return (; x_neg = passive_values[1], x_pos = passive_values[2])
 end
 
-# Standard and capacity operators use one stored vector for both variable roles
-@inline function evolved_variable_view(u_physical,
-                                       ::Union{TemporalOperatorStandard,
-                                               TemporalOperatorCapacity})
+@doc raw"""
+    evolved_variable_block(u_physical, operator)
+    evolved_variable_block(u_ode, semi::SemidiscretizationImplicit)
+
+Return the block containing the evolved variables. For [`TemporalOperatorStandard`](@ref)
+and [`TemporalOperatorCapacity`](@ref), this is the complete physical state. For
+[`TemporalOperatorConstitutive`](@ref), this is the first half of the physical state.
+
+The returned block aliases its input and must not be assumed to be an independent copy.
+The `semi` method also excludes appended passive diagnostic variables.
+"""
+@inline function evolved_variable_block(u_physical,
+                                        ::Union{TemporalOperatorStandard,
+                                                TemporalOperatorCapacity})
     return u_physical
 end
 
-# Standard and capacity operators supply the stored vector to the spatial operator
-@inline function state_variable_view(u_physical,
-                                     ::Union{TemporalOperatorStandard,
-                                             TemporalOperatorCapacity})
+@doc raw"""
+    state_variable_block(u_physical, operator)
+    state_variable_block(u_ode, semi::SemidiscretizationImplicit)
+
+Return the block containing the state variables supplied to the spatial operator. For
+[`TemporalOperatorStandard`](@ref) and [`TemporalOperatorCapacity`](@ref), this is the
+complete physical state. For [`TemporalOperatorConstitutive`](@ref), this is the second
+half of the physical state.
+
+The returned block aliases its input and must not be assumed to be an independent copy.
+The `semi` method also excludes appended passive diagnostic variables.
+"""
+@inline function state_variable_block(u_physical,
+                                      ::Union{TemporalOperatorStandard,
+                                              TemporalOperatorCapacity})
     return u_physical
 end
 
-@inline function evolved_variable_view(u_physical, ::TemporalOperatorConstitutive)
+@inline function evolved_variable_block(u_physical, ::TemporalOperatorConstitutive)
     return @view(u_physical[1:(length(u_physical) ÷ 2)])
 end
 
-@inline function state_variable_view(u_physical, ::TemporalOperatorConstitutive)
+@inline function state_variable_block(u_physical, ::TemporalOperatorConstitutive)
     return @view(u_physical[(length(u_physical) ÷ 2 + 1):end])
 end
 
-@inline function evolved_variable_view(u_ode, semi::SemidiscretizationImplicit)
-    return evolved_variable_view(physical_variable_view(u_ode, semi),
-                                 semi.operator_temporal)
+@inline function evolved_variable_block(u_ode, semi::SemidiscretizationImplicit)
+    return evolved_variable_block(physical_variable_view(u_ode, semi),
+                                  semi.operator_temporal)
 end
 
-@inline function state_variable_view(u_ode, semi::SemidiscretizationImplicit)
-    return state_variable_view(physical_variable_view(u_ode, semi), semi.operator_temporal)
+@inline function state_variable_block(u_ode, semi::SemidiscretizationImplicit)
+    return state_variable_block(physical_variable_view(u_ode, semi),
+                                semi.operator_temporal)
 end
 
 # Error analysis compares u for all temporal formulations
 function Trixi.calc_error_norms(func, u_ode, t, analyzer,
                                 semi::SemidiscretizationImplicit, cache_analysis)
-    state_variable = state_variable_view(u_ode, semi)
+    state_variable = state_variable_block(u_ode, semi)
     return Trixi.calc_error_norms(func, state_variable, t, analyzer, semi.semi_base,
                                   cache_analysis)
 end
@@ -345,9 +374,7 @@ end
                                                        <:Union{TemporalOperatorStandard,
                                                                TemporalOperatorCapacity}})
     u_physical = physical_variable_view(u_ode, cache)
-    return invoke(Trixi.wrap_array,
-                  Tuple{AbstractVector, Trixi.AbstractMesh, Any, Trixi.DGSEM, Any},
-                  u_physical, mesh, equations, dg, cache.cache_base)
+    return Trixi.wrap_array(u_physical, mesh, equations, dg, cache.cache_base)
 end
 
 # Constitutive analysis uses the evolved block as the conserved variable
@@ -355,11 +382,9 @@ end
                                   equations, dg::Trixi.DGSEM,
                                   cache::CacheImplicit{<:Any,
                                                        <:TemporalOperatorConstitutive})
-    evolved_variable = evolved_variable_view(physical_variable_view(u_ode, cache),
-                                             cache.operator_temporal)
-    return invoke(Trixi.wrap_array,
-                  Tuple{AbstractVector, Trixi.AbstractMesh, Any, Trixi.DGSEM, Any},
-                  evolved_variable, mesh, equations, dg, cache.cache_base)
+    evolved_variable = evolved_variable_block(physical_variable_view(u_ode, cache),
+                                              cache.operator_temporal)
+    return Trixi.wrap_array(evolved_variable, mesh, equations, dg, cache.cache_base)
 end
 
 # Default operator hooks correspond to the standard semidiscrete form `∂_t u = R(u, t)`.
@@ -400,10 +425,10 @@ end
 
 function rhs_implicit!(du_ode, u_ode, operator_temporal::TemporalOperatorConstitutive,
                        semi_base, t)
-    evolved_variable = evolved_variable_view(u_ode, operator_temporal)
-    state_variable = state_variable_view(u_ode, operator_temporal)
-    evolved_variable_rhs = evolved_variable_view(du_ode, operator_temporal)
-    state_variable_rhs = state_variable_view(du_ode, operator_temporal)
+    evolved_variable = evolved_variable_block(u_ode, operator_temporal)
+    state_variable = state_variable_block(u_ode, operator_temporal)
+    evolved_variable_rhs = evolved_variable_block(du_ode, operator_temporal)
+    state_variable_rhs = state_variable_block(du_ode, operator_temporal)
 
     # First block of du_ode: R(u_state, t)
     Trixi.default_rhs(semi_base)(evolved_variable_rhs, state_variable, semi_base, t)
@@ -469,7 +494,9 @@ function mass_matrix(u_ode, semi::SemidiscretizationImplicit)
     u_physical = physical_variable_view(u_ode, semi)
     physical_mass_matrix = mass_matrix(u_physical, semi.operator_temporal, semi.semi_base)
     n_passive = passive_variable_count(semi)
-    n_passive == 0 && return physical_mass_matrix
+    if n_passive == 0
+        return physical_mass_matrix
+    end
 
     # Passive scalar variables are differential variables
     passive_diagonal = ones(eltype(u_ode), n_passive)
@@ -520,8 +547,8 @@ end
 function implicit_physical_coefficients!(u_physical, t,
                                          semi_base,
                                          operator_temporal::TemporalOperatorConstitutive)
-    evolved_variable = evolved_variable_view(u_physical, operator_temporal)
-    state_variable = state_variable_view(u_physical, operator_temporal)
+    evolved_variable = evolved_variable_block(u_physical, operator_temporal)
+    state_variable = state_variable_block(u_physical, operator_temporal)
     Trixi.compute_coefficients!(state_variable, t, semi_base)
     equations = semi_base.equations
     state_to_evolved = operator_temporal.state_to_evolved
@@ -544,7 +571,6 @@ function Trixi.compute_coefficients(t, semi::SemidiscretizationImplicit)
     coefficients_passive = passive_initial_values(semi.passive_variables, semi.semi_base, t,
                                                   eltype(coefficients_physical))
     coefficients_ode = vcat(coefficients_physical, coefficients_passive)
-    record_mass_bias_initial_storage!(coefficients_ode, semi, semi.operator_temporal)
     return coefficients_ode
 end
 
@@ -557,7 +583,6 @@ function Trixi.compute_coefficients!(u_ode, t, semi::SemidiscretizationImplicit)
         passive_values = passive_initial_values(semi.passive_variables, semi.semi_base,
                                                 t, eltype(u_ode))
         passive_variable_view(u_ode, semi) .= passive_values
-        record_mass_bias_initial_storage!(u_ode, semi, semi.operator_temporal)
     end
     return nothing
 end

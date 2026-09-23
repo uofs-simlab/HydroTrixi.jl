@@ -42,11 +42,11 @@ The returned problem setup contains the fields `equations`, `state_to_evolved`,
   [DOI: 10.5194/gmd-16-659-2023](https://doi.org/10.5194/gmd-16-659-2023)
 """
 function HydrologicProblemCeliaHaverkamp(; tspan = (0.0, 360.0), penalty_factor = 1)
-    soil_model = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
+    constitutive_model = Haverkamp(saturated_hydraulic_conductivity = 9.44e-5,
                            a = 2.7073950541818448, beta = 3.96,
                            b = 5.2408447406427436, gamma = 4.74,
                            theta_s = 0.287, theta_r = 0.075)
-    equations = RichardsEquation1D(soil_model = soil_model)
+    equations = RichardsEquation1D(constitutive_model = constitutive_model)
     state_to_evolved = water_content
     evolved_to_state = pressure_head_from_water_content
     initial_condition(x, t, equations) = Trixi.SVector(-0.615)
