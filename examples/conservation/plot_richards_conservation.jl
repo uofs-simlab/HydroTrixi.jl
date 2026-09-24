@@ -16,11 +16,15 @@ const RELTOLS = ((value = 1.0e-5, tag = "1e-5",
                   label = rich(rich("rtol", font = RTOL_FONT), " = 10",
                                superscript("-9"))))
 const STUDIES = ((name = "richards_celia_haverkamp_mixed", final_time = 360.0),
+                 (name = "richards_celia_haverkamp_mixed_pressure_head_transfer",
+                  final_time = 360.0),
                  (name = "richards_celia_haverkamp_pressure_head_pressure_head_transfer",
                   final_time = 360.0),
                  (name = "richards_celia_haverkamp_pressure_head_water_content_transfer",
                   final_time = 360.0),
                  (name = "richards_celia_new_mexico_mixed", final_time = 86_400.0),
+                 (name = "richards_celia_new_mexico_mixed_pressure_head_transfer",
+                  final_time = 86_400.0),
                  (name = "richards_celia_new_mexico_pressure_head_pressure_head_transfer",
                   final_time = 86_400.0),
                  (name = "richards_celia_new_mexico_pressure_head_water_content_transfer",
@@ -101,7 +105,7 @@ function plot_study(table, output_directory, bias_axis)
     end
     tick_labels = [@sprintf("%.0f", time) for time in time_ticks]
     legend_position = if endswith(table.name, "_mixed")
-        (:left, :top)
+        (:right, :top)
     else
         (:right, :bottom)
     end

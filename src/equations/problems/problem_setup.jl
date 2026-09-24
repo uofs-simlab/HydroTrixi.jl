@@ -118,7 +118,7 @@ end
 abstract type AbstractImplicitForm end
 
 @doc raw"""
-    MixedForm()
+    MixedForm(; transfer_state = false)
 
 Select the mixed form of the Richards equation in
 [`SemidiscretizationImplicit`](@ref). The global water-content vector
@@ -128,8 +128,14 @@ Select the mixed form of the Richards equation in
 \boldsymbol{\Theta} = \boldsymbol{\vartheta}(\boldsymbol{\Psi}).
 ```
 Consequently, the discrete water content is a linear function of the evolved state.
+With `transfer_state = true`, adaptive mesh refinement projects pressure head and
+recomputes water content from the projected values. The default transfers water content.
 """
-struct MixedForm <: AbstractImplicitForm end
+struct MixedForm <: AbstractImplicitForm
+    transfer_state::Bool
+end
+
+MixedForm(; transfer_state = false) = MixedForm(transfer_state)
 
 @doc raw"""
     PressureHeadForm()
@@ -162,11 +168,12 @@ function PressureHeadForm(; transfer_variables = pressure_head)
 end
 
 # Problem forms select the temporal operator used by the implicit semidiscretization
-function implicit_temporal_operator(::MixedForm, hydrologic_problem, capacity_function)
+function implicit_temporal_operator(form::MixedForm, hydrologic_problem, capacity_function)
     state_to_evolved = hydrologic_problem.state_to_evolved
     evolved_to_state = hydrologic_problem.evolved_to_state
     return TemporalOperatorConstitutive(state_to_evolved;
-                                        evolved_to_state = evolved_to_state)
+                                        evolved_to_state = evolved_to_state,
+                                        transfer_state = form.transfer_state)
 end
 
 # Select a problem-provided inverse only when the configured transfer map matches

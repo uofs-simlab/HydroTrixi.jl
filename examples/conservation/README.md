@@ -13,7 +13,7 @@ JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 julia --threads=1 --project=run \
   examples/conservation/run_richards_conservation.jl
 ```
 
-This runs 18 simulations and creates six PDF figures. To run one three-tolerance
+This runs 24 simulations and creates eight PDF figures. To run one three-tolerance
 study, pass its benchmark and case:
 
 ```sh
@@ -22,7 +22,8 @@ JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 julia --threads=1 --project=run \
 ```
 
 Benchmarks are `haverkamp` and `new_mexico`. Cases are `mixed`,
-`pressure_head`, and `pressure_head_water_content_transfer`.
+`mixed_pressure_head_transfer`, `pressure_head`, and
+`pressure_head_water_content_transfer`.
 
 To redraw figures without solving again, pass one or more saved run directories:
 
@@ -45,9 +46,8 @@ coarsen/refine thresholds 0.003/0.03. Initial AMR only refines.
 
 Time stepping starts from 0.01 s without a positive minimum-step floor and
 controls water-content error using `abstol = 1e-11` and
-`reltol = 1e-5, 1e-7, 1e-9`. The mixed form transfers water content under AMR.
-The pressure-head form is run once transferring pressure head and once
-transferring water content.
+`reltol = 1e-5, 1e-7, 1e-9`. Each formulation is run once transferring water
+content and once transferring pressure head under AMR.
 
 Mass bias is recorded after every accepted step. Figures show its absolute
 magnitude on common logarithmic limits; the saved tables retain its sign.

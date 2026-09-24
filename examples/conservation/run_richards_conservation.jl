@@ -1,4 +1,4 @@
-# Run all six conservation studies or one selected study; see README.md.
+# Run all eight conservation studies or one selected study; see README.md.
 
 module RichardsConservation
 
@@ -19,6 +19,8 @@ const BENCHMARKS = (
 )
 const CASES = (
     (name = "mixed", suffix = "mixed", form = MixedForm()),
+    (name = "mixed_pressure_head_transfer", suffix = "mixed_pressure_head_transfer",
+     form = MixedForm(; transfer_state = true)),
     (name = "pressure_head", suffix = "pressure_head_pressure_head_transfer",
      form = PressureHeadForm()),
     (name = "pressure_head_water_content_transfer",
@@ -185,7 +187,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
     if !(length(ARGS) in (0, 2))
         error("Usage: julia --project=run $(@__FILE__) " *
               "[haverkamp|new_mexico " *
-              "mixed|pressure_head|pressure_head_water_content_transfer]")
+              "mixed|mixed_pressure_head_transfer|pressure_head|" *
+              "pressure_head_water_content_transfer]")
     end
     studies = if isempty(ARGS)
         RichardsConservation.STUDIES

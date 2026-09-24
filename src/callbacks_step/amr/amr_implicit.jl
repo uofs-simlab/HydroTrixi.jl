@@ -313,10 +313,17 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
     return has_changed
 end
 
-# Transfer evolved variables directly for standard and constitutive operators
+# Transfer the physical variable selected by the temporal operator
 function transferred_variables_for_amr(u_ode, semi::SemidiscretizationImplicit,
-                                       ::Union{TemporalOperatorStandard,
-                                               TemporalOperatorConstitutive})
+                                       ::TemporalOperatorStandard)
+    return collect(evolved_variable_block(u_ode, semi))
+end
+
+function transferred_variables_for_amr(u_ode, semi::SemidiscretizationImplicit,
+                                       operator_temporal::TemporalOperatorConstitutive)
+    if operator_temporal.transfer_state
+        return collect(state_variable_block(u_ode, semi))
+    end
     return collect(evolved_variable_block(u_ode, semi))
 end
 
@@ -363,19 +370,27 @@ function resize_after_amr!(u_ode, transferred_ode, passive_ode,
     return nothing
 end
 
-# Rebuild both constitutive blocks from the adapted evolved variables
+# Rebuild both constitutive blocks from the adapted transfer variable
 function resize_after_amr!(u_ode, transferred_ode, passive_ode,
                            semi::SemidiscretizationImplicit, ::TemporalOperatorConstitutive)
     # Passive scalar variables are global diagnostics and are not adapted
     resize!(u_ode, 2 * length(transferred_ode) + length(passive_ode))
     evolved_variable = evolved_variable_block(u_ode, semi)
-    evolved_variable .= transferred_ode
     state_variable = state_variable_block(u_ode, semi)
     equations = semi.semi_base.equations
-    evolved_to_state = semi.operator_temporal.evolved_to_state
-
-    @inbounds for i in eachindex(state_variable, evolved_variable)
-        state_variable[i] = evolved_to_state(evolved_variable[i], equations)
+    operator_temporal = semi.operator_temporal
+    if operator_temporal.transfer_state
+        state_variable .= transferred_ode
+        state_to_evolved = operator_temporal.state_to_evolved
+        @inbounds for i in eachindex(evolved_variable, state_variable)
+            evolved_variable[i] = state_to_evolved(state_variable[i], equations)
+        end
+    else
+        evolved_variable .= transferred_ode
+        evolved_to_state = operator_temporal.evolved_to_state
+        @inbounds for i in eachindex(state_variable, evolved_variable)
+            state_variable[i] = evolved_to_state(evolved_variable[i], equations)
+        end
     end
 
     passive_variable_view(u_ode, semi) .= passive_ode

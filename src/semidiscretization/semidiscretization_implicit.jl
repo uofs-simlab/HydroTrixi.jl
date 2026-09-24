@@ -121,7 +121,8 @@ identity.
 struct TemporalOperatorStandard <: AbstractTemporalOperator end
 
 @doc raw"""
-    TemporalOperatorConstitutive(state_to_evolved; evolved_to_state = nothing)
+    TemporalOperatorConstitutive(state_to_evolved; evolved_to_state = nothing,
+                                 transfer_state = false)
 
 Temporal operator for a [`SemidiscretizationImplicit`](@ref) that takes the form
 ```math
@@ -140,9 +141,10 @@ Temporal operator for a [`SemidiscretizationImplicit`](@ref) that takes the form
 Here, ``\boldsymbol{\mathcal{R}}`` is the spatial operator, and
 ``\boldsymbol{\vartheta}`` is `state_to_evolved`, the generic constitutive map. Thus,
 ``\boldsymbol{y}`` contains distinct blocks ordered as evolved variables followed by
-state variables. Passive variables, when present, are appended after both blocks. The
-optional `evolved_to_state` inverse is required by adaptive mesh refinement to
-reconstruct the state variables after transferring the evolved block.
+state variables. Passive variables, when present, are appended after both blocks. By
+default, adaptive mesh refinement transfers the evolved block and reconstructs the state
+block with `evolved_to_state`. With `transfer_state = true`, it transfers the state block
+and reconstructs the evolved block with `state_to_evolved`.
 
 For the mixed Richards formulation, these generic blocks are
 ``\boldsymbol{u}_{\mathrm{evolved}}=\boldsymbol{\Theta}`` and
@@ -154,10 +156,13 @@ struct TemporalOperatorConstitutive{StateToEvolved, EvolvedToState} <:
        AbstractTemporalOperator
     state_to_evolved::StateToEvolved
     evolved_to_state::EvolvedToState
+    transfer_state::Bool
 end
 
-function TemporalOperatorConstitutive(state_to_evolved; evolved_to_state = nothing)
-    return TemporalOperatorConstitutive(state_to_evolved, evolved_to_state)
+function TemporalOperatorConstitutive(state_to_evolved; evolved_to_state = nothing,
+                                      transfer_state = false)
+    return TemporalOperatorConstitutive(state_to_evolved, evolved_to_state,
+                                        transfer_state)
 end
 
 @doc raw"""
