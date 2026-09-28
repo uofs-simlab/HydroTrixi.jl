@@ -8,63 +8,89 @@ using Dates, LinearAlgebra
 include("plot_richards_conservation.jl")
 
 const ROOT = normpath(joinpath(@__DIR__, "..", ".."))
-const BENCHMARKS = (
-    (name = "haverkamp", prefix = "richards_celia_haverkamp", final_time = 360.0,
-     elixir = joinpath(ROOT, "examples", "elixirs",
-                      "elixir_richards_celia_haverkamp.jl")),
-    (name = "new_mexico", prefix = "richards_celia_new_mexico",
-     final_time = 86_400.0,
-     elixir = joinpath(ROOT, "examples", "elixirs",
-                      "elixir_richards_celia_new_mexico.jl")),
-)
+const BENCHMARKS = RichardsConservationPlots.BENCHMARKS
 const CASES = (
-    (name = "mixed", suffix = "mixed", form = MixedForm()),
-    (name = "mixed_pressure_head_transfer", suffix = "mixed_pressure_head_transfer",
-     form = MixedForm(; transfer_state = true)),
-    (name = "pressure_head", suffix = "pressure_head_pressure_head_transfer",
-     form = PressureHeadForm()),
+    (name = "mixed", overrides = (;)),
+    (name = "mixed_pressure_head_transfer",
+     overrides = (; form = MixedForm(; transfer_state = true))),
+    (name = "pressure_head", overrides = (; form = PressureHeadForm(),
+                                          error_control_block = state_variable_block,
+                                          error_control_mapping = water_content)),
     (name = "pressure_head_water_content_transfer",
-     suffix = "pressure_head_water_content_transfer",
-     form = PressureHeadForm(; transfer_variables = water_content)),
+     overrides = (; form = PressureHeadForm(; transfer_variables = water_content),
+                   error_control_block = state_variable_block,
+                   error_control_mapping = water_content)),
 )
 const RELTOLS = RichardsConservationPlots.RELTOLS
 const STUDIES = [(benchmark = benchmark.name, case = case.name)
                  for benchmark in BENCHMARKS for case in CASES]
 
-# Keep the elixirs' global assignments separate from the conservation driver. Predeclare
-# the bindings read by compiled driver functions before `trixi_include` assigns them.
+# Keep the elixirs' global assignments separate from the conservation driver.
 module InfiltrationElixir
-ode = nothing
-amr_callback = nothing
-analysis_callback = nothing
-end
-
-function select_config(configs, name)
-    index = findfirst(config -> config.name == name, configs)
-    if isnothing(index)
-        error("Unknown conservation-study option: $name")
-    end
-    return configs[index]
+result = nothing
 end
 
 function study_name(study)
-    benchmark = select_config(BENCHMARKS, study.benchmark)
-    case = select_config(CASES, study.case)
-    return "$(benchmark.prefix)_$(case.suffix)"
+    data_case = if study.case == "pressure_head"
+        "pressure_head_pressure_head_transfer"
+    else
+        study.case
+    end
+    return RichardsConservationPlots.data_stem(study.benchmark, data_case)
 end
 
-function read_analysis(path)
-    lines = filter(line -> !isempty(strip(line)), readlines(path))
-    if isempty(lines) || !startswith(strip(first(lines)), "#")
-        error("Invalid analysis table: $path")
+function save_snapshots(result, study, tolerance, snapshot_directory, final_time)
+    component = startswith(study.case, "pressure_head") ? 1 : 2
+    for (stage, time) in ((:half, final_time / 2), (:full, final_time))
+        index = findfirst(==(time), result.sol.t)
+        x, y, mesh_vertices_x =
+            RichardsConservationPlots.VISUALIZATION.solution_frame_data_1d(
+                result.sol, index, result.mesh_history; component)
+        path = joinpath(snapshot_directory,
+                        RichardsConservationPlots.snapshot_filename(study_name(study),
+                                                                     tolerance, stage))
+        open(path, "w") do io
+            println(io, "#time_s depth_m pressure_head_m mesh_edge_m")
+            for i in eachindex(x)
+                mesh_edge = i <= length(mesh_vertices_x) ? mesh_vertices_x[i] : NaN
+                println(io, join((time, x[i], y[i], mesh_edge), ' '))
+            end
+        end
     end
-    columns = split(strip(first(lines))[2:end])
-    indices = Dict(column => index for (index, column) in pairs(columns))
-    required = ("timestep", "time", "dt", "mass_balance")
-    if !all(haskey(indices, column) for column in required)
-        error("Missing columns in analysis table: $path")
+    return nothing
+end
+
+function solve_case(study, tolerance, data_directory, snapshot_directory)
+    case = first(config for config in CASES if config.name == study.case)
+    name = study_name(study)
+    partial_path = joinpath(data_directory,
+                            ".$(name)_rtol$(tolerance.tag).partial")
+    final_path = joinpath(data_directory,
+                          RichardsConservationPlots.data_filename(name, tolerance))
+    elixir = joinpath(ROOT, "examples", "elixirs",
+                      "elixir_richards_celia_$(study.benchmark).jl")
+    final_time = first(benchmark.final_time for benchmark in BENCHMARKS
+                       if benchmark.name == study.benchmark)
+
+    amr_options = study.benchmark == "haverkamp" ? (; amr = true) : (;)
+    redirect_stdout(devnull) do
+        Trixi.trixi_include(InfiltrationElixir, elixir;
+                            amr_options..., case.overrides..., reltol = tolerance.value,
+                            analysis_interval = 1, save_analysis = true,
+                            output_directory = data_directory,
+                            analysis_filename = basename(partial_path),
+                            dense = false, saveat = [final_time / 2, final_time],
+                            save_mesh_history = true)
+    end
+    result = InfiltrationElixir.result
+    sol = result.sol
+    if !SciMLBase.successful_retcode(sol)
+        error("Conservation solve failed; partial data retained at $partial_path")
     end
 
+    lines = filter(line -> !isempty(strip(line)), readlines(partial_path))
+    columns = split(strip(first(lines))[2:end])
+    indices = Dict(column => index for (index, column) in pairs(columns))
     rows = map(lines[2:end]) do line
         values = split(line)
         (; step = parse(Int, values[indices["timestep"]]),
@@ -72,109 +98,33 @@ function read_analysis(path)
          dt = parse(Float64, values[indices["dt"]]),
          balance = parse(Float64, values[indices["mass_balance"]]))
     end
-    if isempty(rows)
-        error("Analysis table contains no samples: $path")
-    end
     initial_balance = first(rows).balance
-    return [(; row.step, row.time, row.dt, bias = row.balance - initial_balance)
-            for row in rows]
-end
-
-function validate_result(sol, rows, final_time, partial_path)
-    accepted_steps = sol.stats.naccept
-    valid = SciMLBase.successful_retcode(sol) && last(sol.t) == final_time &&
-            length(rows) == accepted_steps + 1 &&
-            getproperty.(rows, :step) == collect(0:accepted_steps) &&
-            last(rows).time == final_time &&
-            all(row -> all(isfinite, (row.time, row.dt, row.bias)), rows)
-    if !valid
-        error("Invalid conservation result; partial data retained at $partial_path")
-    end
-    return nothing
-end
-
-function write_mass_bias_table(path, rows)
-    open(path, "w") do io
+    open(final_path, "w") do io
         println(io, "#accepted_step time_s dt_s mass_bias_m")
         for row in rows
-            println(io, join((row.step, row.time, row.dt, row.bias), ' '))
+            println(io, join((row.step, row.time, row.dt,
+                              row.balance - initial_balance), ' '))
         end
     end
-    return path
-end
-
-function solve_case(study, tolerance, data_directory)
-    benchmark = select_config(BENCHMARKS, study.benchmark)
-    case = select_config(CASES, study.case)
-    name = study_name(study)
-    partial_path = joinpath(data_directory,
-                            ".$(name)_rtol$(tolerance.tag).partial")
-    final_path = joinpath(data_directory,
-                          RichardsConservationPlots.data_filename(name, tolerance))
-
-    Trixi.trixi_include(InfiltrationElixir, benchmark.elixir;
-                        tspan = (0.0, benchmark.final_time), polydeg = 3,
-                        initial_refinement_level = 6, form = case.form,
-                        amr = true, amr_interval = 10, base_level = 2,
-                        coarsen_threshold = 0.003, max_level = 10,
-                        refine_threshold = 0.03, adapt_initial_condition = true,
-                        adapt_initial_condition_only_refine = true,
-                        analysis_interval = 1, save_analysis = true,
-                        output_directory = data_directory,
-                        analysis_filename = basename(partial_path),
-                        run_simulation = false)
-
-    ode = InfiltrationElixir.ode
-    callbacks = CallbackSet(InfiltrationElixir.amr_callback,
-                            InfiltrationElixir.analysis_callback)
-    pressure_head_form = case.form isa PressureHeadForm
-    error_control_block, error_control_mapping = if pressure_head_form
-        (state_variable_block, water_content)
-    else
-        (evolved_variable_block, nothing)
-    end
-    sol = redirect_stdout(devnull) do
-        solve_implicit(ode; dt = 1.0e-2, dtmin = 0.0, adaptive = true,
-                       reltol = tolerance.value, abstol = 1.0e-11,
-                       saveat = Float64[], dense = false,
-                       error_control_block, error_control_mapping,
-                       isoutofdomain = pressure_head_out_of_domain,
-                       callback = callbacks)
-    end
-
-    rows = read_analysis(partial_path)
-    validate_result(sol, rows, benchmark.final_time, partial_path)
-    write_mass_bias_table(final_path, rows)
     rm(partial_path)
+    save_snapshots(result, study, tolerance, snapshot_directory, final_time)
     return final_path
 end
 
-function run_study(study, output)
-    for tolerance in RELTOLS
-        println("Running $(study_name(study)) with reltol=$(tolerance.tag)")
-        solve_case(study, tolerance, joinpath(output, "data"))
-    end
-    return nothing
-end
-
 function run_conservation(studies = STUDIES)
-    if isempty(studies) || !all(study -> study in STUDIES, studies) ||
-       !allunique(studies)
-        error("Invalid study selection")
-    end
     BLAS.set_num_threads(1)
-    if Threads.nthreads() != 1
-        error("Run with JULIA_NUM_THREADS=1")
-    end
 
     id = Dates.format(now(UTC), "yyyymmddTHHMMSSsssZ")
     output = joinpath(ROOT, "plots", "richards_conservation", id)
     mkpath(dirname(output))
     mkdir(output)
     mkdir(joinpath(output, "data"))
+    mkdir(joinpath(output, "snapshots"))
 
-    for study in studies
-        run_study(study, output)
+    for study in studies, tolerance in RELTOLS
+        println("Running $(study_name(study)) with reltol=$(tolerance.tag)")
+        solve_case(study, tolerance, joinpath(output, "data"),
+                   joinpath(output, "snapshots"))
     end
     RichardsConservationPlots.plot_conservation(output)
     println("Results: $output")

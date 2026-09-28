@@ -8,6 +8,7 @@ using Trixi
 # Simulation and visualization options
 form = MixedForm()
 final_time = 360.0
+frame_times = range(0.0, final_time; length = 181)
 
 pressure_head_form = form isa PressureHeadForm
 form_name = pressure_head_form ? "pressure_head" : "mixed"
@@ -22,20 +23,22 @@ Trixi.trixi_include(@__MODULE__,
                     joinpath(dirname(@__DIR__), "elixirs",
                              "elixir_richards_celia_haverkamp.jl");
                     tspan = (0.0, final_time), form = form, amr = true,
-                    run_simulation = false, save_analysis = true,
+                    saveat = frame_times, save_mesh_history = true,
+                    save_analysis = true,
                     output_directory = plots_dir, analysis_filename = analysis_filename)
 
 animation_path = joinpath(plots_dir, "$(result_prefix).mp4")
 mass_bias_path = joinpath(plots_dir, "$(result_prefix)_mass_bias.pdf")
 
-animate_solution_1d(ode; callback = callbacks, dt = 1.0e-2, adaptive = true,
-                    reltol = 1.0e-7, abstol = 1.0e-11,
-                    saveat = range(0.0, final_time; length = 181),
+animate_solution_1d(result;
                     component = component, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
                     ylims = (-0.65, -0.15), show_element_boundaries = true,
                     output_path = animation_path, framerate = 30)
-plot_mass_bias(analysis_path; output_path = mass_bias_path, xlabel = L"$t$ (s)",
-               ylabel = L"$\epsilon_{\mathrm{B}}$ (m)", xticks = 0.0:60.0:final_time)
+time_ticks = collect(0.0:60.0:final_time)
+plot_mass_bias_magnitude(analysis_path; output_path = mass_bias_path,
+                         yscale = identity,
+                         xticks = (time_ticks, string.(Int.(time_ticks))),
+                         xlims = (0.0, final_time))
 
 println("Saved Celia Haverkamp $(form_name) AMR animation to: $(animation_path)")
 println("Saved Celia Haverkamp $(form_name) AMR mass-bias plot to: $(mass_bias_path)")

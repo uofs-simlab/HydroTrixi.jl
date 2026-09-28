@@ -58,8 +58,11 @@ end
 # run the simulation
 
 run_simulation = true
+saveat = Float64[]
+save_mesh_history = false
 
 if run_simulation
-    sol = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
-                         saveat = Float64[], callback = callbacks)
+    result = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
+                            saveat, save_mesh_history, callback = callbacks)
+    sol = result.sol
 end

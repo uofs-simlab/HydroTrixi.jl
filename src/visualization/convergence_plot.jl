@@ -93,7 +93,8 @@ function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVect
                                         legendfont = HydroTrixi.DEFAULT_PLOT_FONT,
                                         legend_position = (:right, :top), xlims = nothing,
                                         ylims = nothing, xscale = log10, yscale = log10,
-                                        xticks = :doubling, triangle_order = nothing,
+                                        xticks = :doubling, yticks = nothing,
+                                        triangle_order = nothing,
                                         triangle_slope = :negative,
                                         triangle_gap_factor = 1.5,)
     HydroTrixi.set_serif_tex_theme!(font = font)
@@ -110,7 +111,8 @@ function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVect
     ax = solution_axis(fig; xlabel = xlabel, ylabel = ylabel, xlabelfont = xlabelfont,
                        ylabelfont = ylabelfont, xticklabelfont = xticklabelfont,
                        yticklabelfont = yticklabelfont, xscale = xscale,
-                       yscale = yscale, xticks = xticks, xlims = xlims, ylims = ylims)
+                       yscale = yscale, xticks = xticks, yticks = yticks,
+                       xlims = xlims, ylims = ylims)
 
     ax.xminorgridvisible = false
     ax.xminorticksvisible = false

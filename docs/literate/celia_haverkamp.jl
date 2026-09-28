@@ -81,11 +81,18 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 
 ode = semidiscretize(semi, problem.tspan)
 
-sol = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
-                     error_control_block = evolved_variable_block,
-                     saveat = 0.0:6.0:360.0)
+result = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
+                        error_control_block = evolved_variable_block,
+                        saveat = 0.0:6.0:360.0)
+sol = result.sol
 
 println("Solved Richards problem to t = $(sol.t[end]) with $(length(sol.t)) saved states.")
+
+# `result.mesh_history` is `nothing` by default. For an adaptive mesh, pass
+# `save_mesh_history = true` to pair every saved state with its mesh. Recording
+# stores only element boundaries and reuses them while the layout stays unchanged.
+# Without `saveat`, this solver normally saves the initial and final states;
+# `save_everystep = true` requests a state and mesh for each accepted step.
 
 # ## Plot the final pressure head profile
 #
@@ -112,7 +119,7 @@ using LaTeXStrings
 
 plot_path = joinpath(asset_dir, "richards_celia_haverkamp_pressure_head.png")
 
-_ = plot_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+_ = plot_solution_1d(result; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
                      ylims = (-0.65, -0.15), output_path = plot_path)
 
 println("Saved final-time plot to $(plot_path)")
@@ -126,7 +133,7 @@ println("Saved final-time plot to $(plot_path)")
 
 animation_path = joinpath(asset_dir, "richards_celia_haverkamp_pressure_head.gif")
 
-_ = animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+_ = animate_solution_1d(result; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
                         ylims = (-0.65, -0.15), output_path = animation_path,
                         framerate = 20)
 

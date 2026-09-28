@@ -49,8 +49,7 @@ if amr
                                             max_level = 10,
                                             refine_threshold = 0.03)
     amr_callback = AMRCallback(semi, amr_controller; interval = amr_interval,
-                               adapt_initial_condition = true,
-                               adapt_initial_condition_only_refine = true)
+                               adapt_initial_condition = false)
     callbacks = CallbackSet(summary_callback, amr_callback, analysis_callback,
                             alive_callback)
 else
@@ -61,14 +60,23 @@ end
 # run the simulation
 
 run_simulation = true
+saveat = Float64[]
+save_everystep = false
+save_start = save_everystep || saveat isa Number || isempty(saveat) ||
+             first(ode.tspan) in saveat
+save_end = save_everystep || saveat isa Number || isempty(saveat) ||
+           last(ode.tspan) in saveat
+save_mesh_history = false
 
 if run_simulation
-    # The mixed form controls error directly in its stored water-content block.
-    sol = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
-                         reltol = 1.0e-7, abstol = 1.0e-11,
-                         saveat = Float64[],
-                         error_control_block = evolved_variable_block,
-                         error_control_mapping = nothing,
-                         isoutofdomain = pressure_head_out_of_domain,
-                         callback = callbacks)
+    # By default, the mixed form controls error in its stored water-content block.
+    result = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
+                            reltol = 1.0e-7, abstol = 1.0e-11,
+                            saveat, save_everystep, save_start, save_end,
+                            save_mesh_history, dense = true,
+                            error_control_block = evolved_variable_block,
+                            error_control_mapping = nothing,
+                            isoutofdomain = pressure_head_out_of_domain,
+                            callback = callbacks)
+    sol = result.sol
 end

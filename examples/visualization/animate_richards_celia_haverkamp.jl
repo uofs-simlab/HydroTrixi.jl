@@ -21,9 +21,10 @@ mass_bias_path = joinpath(plots_dir, "richards_celia_haverkamp_mass_bias.pdf")
 animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
                     ylims = (-0.65, -0.15), output_path = animation_path, framerate = 30)
 
-plot_mass_bias(sol; output_path = mass_bias_path, xlabel = L"$t$ (s)",
-               ylabel = L"$\epsilon_{\mathrm{B}}$ (m)",
-               xticks = range(0.0, final_time; length = 7))
+time_ticks = collect(range(0.0, final_time; length = 7))
+plot_mass_bias_magnitude(sol; output_path = mass_bias_path, yscale = identity,
+                         xticks = (time_ticks, string.(Int.(time_ticks))),
+                         xlims = (0.0, final_time))
 
 println("Saved Celia Haverkamp pressure-head animation to: $(animation_path)")
 println("Saved Celia Haverkamp mass-bias plot to: $(mass_bias_path)")

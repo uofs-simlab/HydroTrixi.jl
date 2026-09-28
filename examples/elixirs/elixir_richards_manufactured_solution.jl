@@ -36,11 +36,12 @@ run_simulation = true
 solve_options = NamedTuple()
 
 if run_simulation
-    sol = solve_implicit(ode, algorithm; dt = 1.0e-2, adaptive = true,
-                         reltol = 1.0e-9, abstol = 1.0e-11,
-                         saveat = Float64[], callback = callbacks,
-                         error_control_block = evolved_variable_block,
-                         error_control_mapping = nothing,
-                         solve_options...)
+    result = solve_implicit(ode, algorithm; dt = 1.0e-2, adaptive = true,
+                            reltol = 1.0e-9, abstol = 1.0e-11,
+                            saveat = Float64[], callback = callbacks,
+                            error_control_block = evolved_variable_block,
+                            error_control_mapping = nothing,
+                            solve_options...)
+    sol = result.sol
     (; sol, analysis_callback)
 end

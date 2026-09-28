@@ -64,11 +64,14 @@ function plot_study(path, rows, temporal, N, output_dir)
     ticks = first(groups).x
     tick_spec = temporal ? (ticks, [@sprintf("%.3g", x) for x in ticks]) :
                           (SPATIAL_X_TICKS, string.(SPATIAL_X_TICKS))
+    error_exponents = ceil(Int, log10(first(ERROR_LIMITS))):floor(Int, log10(last(ERROR_LIMITS)))
+    yticks = (10.0 .^ error_exponents,
+              [LaTeXString("10^{$p}") for p in error_exponents])
     output_path = joinpath(output_dir, replace(basename(path), ".dat" => ".pdf"))
     fig = plot_convergence_1d(groups; output_path, size = FIGURE_SIZE,
         xlabel = temporal ? L"$\Delta t$ (s)" : L"$\Delta z$ (m)",
         ylabel = "Pressure-head error (m)",
-        xticks = tick_spec, xlims = temporal ? nothing : SPATIAL_X_LIMITS,
+        xticks = tick_spec, yticks, xlims = temporal ? nothing : SPATIAL_X_LIMITS,
         ylims = ERROR_LIMITS, legend_position = (:left, :top))
     ax = fig.content[1]
 
@@ -78,10 +81,6 @@ function plot_study(path, rows, temporal, N, output_dir)
         draw_reference_triangle!(ax, groups, 5; position = :above,
                                  gap_factor = TEMPORAL_TRIANGLE_GAP)
     end
-
-    # Label each decade on the error axis.
-    error_exponents = ceil(Int, log10(first(ERROR_LIMITS))):floor(Int, log10(last(ERROR_LIMITS)))
-    ax.yticks = (10.0 .^ error_exponents, [LaTeXString("10^{$p}") for p in error_exponents])
 
     save(output_path, fig)
     return output_path

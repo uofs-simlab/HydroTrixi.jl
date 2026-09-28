@@ -82,6 +82,7 @@ IndicatorTotalVariation
 default_algorithm
 default_stepsize_controller
 solve_implicit
+ImplicitSolveResult
 pressure_head_out_of_domain
 ```
 
@@ -101,5 +102,6 @@ compute_eoc
 plot_solution_1d
 animate_solution_1d
 plot_convergence_1d
-plot_mass_bias
+plot_mass_bias_magnitude
+mass_bias_magnitude_axis
 ```

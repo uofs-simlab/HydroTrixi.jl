@@ -64,6 +64,7 @@ export pressure_head_from_water_content
 export default_algorithm
 export default_stepsize_controller
 export solve_implicit
+export ImplicitSolveResult
 export pressure_head_out_of_domain
 export ControllerTwoThreshold
 export IndicatorTotalVariation

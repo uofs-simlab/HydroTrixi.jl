@@ -72,6 +72,9 @@ end
                         l2=[0.05128549457329617], linf=[0.41441386613429104])
 
     @test SciMLBase.successful_retcode(sol)
+    @test result isa ImplicitSolveResult
+    @test result.sol === sol
+    @test isnothing(result.mesh_history)
     @test sol.stats.naccept == 83
     @test sol.stats.nreject > 0
     mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
@@ -84,6 +87,62 @@ end
     @test all(iszero, amr_indicator(u, mesh, equations, dg, cache))
     u[1] += eps()
     @test all(isfinite, amr_indicator(u, mesh, equations, dg, cache))
+end
+
+@trixi_testset "elixir_richards_celia_haverkamp.jl saved AMR meshes" begin
+    elixir = joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_celia_haverkamp.jl")
+    @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr=true, amr_interval=1, base_level=1, max_level=4,
+                        save_mesh_history=true,
+                        saveat=0.0:0.25:1.0, dense=false,
+                        l2=[0.05128549457329617], linf=[0.41441386613429104])
+    @test result.sol === sol
+    @test sol.t == collect(0.0:0.25:1.0)
+    @test length(result.mesh_history) == length(sol.u)
+    @test length(first(result.mesh_history)) == 5
+    @test length(last(result.mesh_history)) == 6
+    @test result.mesh_history[2] === result.mesh_history[3]
+
+    @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr=true, amr_interval=1, base_level=1, max_level=4,
+                        save_mesh_history=true,
+                        l2=[0.05128549457329617], linf=[0.41441386613429104])
+    @test length(sol.u) == 2
+    @test length(result.mesh_history) == 2
+    @test length(first(result.mesh_history)) == 5
+    @test length(last(result.mesh_history)) == 6
+
+    @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr=true, amr_interval=1, base_level=1, max_level=4,
+                        save_mesh_history=true,
+                        save_everystep=true,
+                        l2=[0.05128549457329617], linf=[0.41441386613429104])
+    @test length(sol.u) == sol.stats.naccept + 1
+    @test length(result.mesh_history) == length(sol.u)
+    @test length(first(result.mesh_history)) == 5
+    @test length(last(result.mesh_history)) == 6
+
+    @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr=true, amr_interval=1, base_level=1, max_level=4,
+                        save_mesh_history=true,
+                        save_start=false)
+    @test length(sol.u) == 1
+    @test length(result.mesh_history) == 1
+    @test length(only(result.mesh_history)) == 6
+
+    @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr=true, amr_interval=1, base_level=1, max_level=4,
+                        save_mesh_history=true,
+                        save_end=false)
+    @test length(sol.u) == 1
+    @test length(result.mesh_history) == 1
+    @test length(only(result.mesh_history)) == 5
+
+    @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr=false, save_mesh_history=true,
+                        saveat=0.0:0.25:1.0, dense=false)
+    @test length(result.mesh_history) == length(sol.u)
+    @test all(mesh -> mesh === first(result.mesh_history), result.mesh_history)
 end
 
 @trixi_testset "elixir_richards_celia_haverkamp.jl normalized saturation indicator" begin
@@ -255,7 +314,7 @@ end
                                               step_limiter = (u, integrator, p, t) -> nothing)
     # Fixed stepping does not evaluate the optional mapping.
     mapping_calls[] = 0
-    fixed = solve_implicit(ode; options..., adaptive = false)
+    fixed = solve_implicit(ode; options..., adaptive = false).sol
     @test SciMLBase.successful_retcode(fixed)
     @test mapping_calls[] == 0
 end
