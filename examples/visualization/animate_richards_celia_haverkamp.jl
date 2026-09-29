@@ -18,7 +18,8 @@ plots_dir = mkpath(joinpath(dirname(dirname(@__DIR__)), "plots"))
 animation_path = joinpath(plots_dir, "richards_celia_haverkamp_pressure_head.mp4")
 mass_bias_path = joinpath(plots_dir, "richards_celia_haverkamp_mass_bias.pdf")
 
-animate_solution_1d(sol; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+animate_solution_1d(sol; component = 2, xlabel = "Distance below surface (m)",
+                    ylabel = "Pressure head (m)",
                     ylims = (-0.65, -0.15), output_path = animation_path, framerate = 30)
 
 time_ticks = collect(range(0.0, final_time; length = 7))

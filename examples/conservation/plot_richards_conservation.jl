@@ -160,7 +160,8 @@ function plot_study(table, output_directory, bias_axis)
                              xlims = (0.0, table.final_time),
                              ylims = bias_axis.limits)
     step_path = joinpath(output_directory, "$(table.name)_time_steps.pdf")
-    plot_time_steps(paths, step_path; labels, colors, linestyles, legend_position,
+    plot_time_steps(paths, step_path; labels, colors, linestyles,
+                    legend_position = (:left, :top),
                     xticks = (time_ticks, tick_labels),
                     xlims = (0.0, table.final_time))
     return [bias_path, step_path]
@@ -186,8 +187,9 @@ function plot_snapshots(table, output_directory)
                 mesh_vertices_x = filter(isfinite, values[:, 4])
                 output_path = joinpath(output_directory, pdf_filename)
                 VISUALIZATION.save_solution_plot_1d(x, y, mesh_vertices_x, t;
-                                                    output_path, xlabel = L"$z$ (m)",
-                                                    ylabel = L"$\psi$ (m)",
+                                                    output_path,
+                                                    xlabel = "Distance below surface (m)",
+                                                    ylabel = "Pressure head (m)",
                                                     ylims = table.solution_ylims,
                                                     show_element_boundaries = true)
                 push!(output_paths, output_path)

@@ -11,6 +11,7 @@ const DEFAULT_CONVERGENCE_FIGSIZE = (500, 350)
 Plot a one-dimensional solution profile, save it to `output_path`, and return the
 `CairoMakie.Figure`. With an `ImplicitSolveResult`, `index` selects a saved state;
 plotting an earlier state requires recorded mesh history.
+The horizontal limits default to the column's left and right boundaries.
 Set `show_element_boundaries = true` to draw the mesh guides used in animations.
 
 This method is provided by `HydroTrixiVisualizationExt` and becomes available when

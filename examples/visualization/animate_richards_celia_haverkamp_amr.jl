@@ -31,7 +31,8 @@ animation_path = joinpath(plots_dir, "$(result_prefix).mp4")
 mass_bias_path = joinpath(plots_dir, "$(result_prefix)_mass_bias.pdf")
 
 animate_solution_1d(result;
-                    component = component, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+                    component = component, xlabel = "Distance below surface (m)",
+                    ylabel = "Pressure head (m)",
                     ylims = (-0.65, -0.15), show_element_boundaries = true,
                     output_path = animation_path, framerate = 30)
 time_ticks = collect(0.0:60.0:final_time)

@@ -119,7 +119,8 @@ using LaTeXStrings
 
 plot_path = joinpath(asset_dir, "richards_celia_haverkamp_pressure_head.png")
 
-_ = plot_solution_1d(result; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+_ = plot_solution_1d(result; component = 2, xlabel = "Distance below surface (m)",
+                     ylabel = "Pressure head (m)",
                      ylims = (-0.65, -0.15), output_path = plot_path)
 
 println("Saved final-time plot to $(plot_path)")
@@ -133,7 +134,8 @@ println("Saved final-time plot to $(plot_path)")
 
 animation_path = joinpath(asset_dir, "richards_celia_haverkamp_pressure_head.gif")
 
-_ = animate_solution_1d(result; component = 2, xlabel = L"$z$ (m)", ylabel = L"$\psi$ (m)",
+_ = animate_solution_1d(result; component = 2, xlabel = "Distance below surface (m)",
+                        ylabel = "Pressure head (m)",
                         ylims = (-0.65, -0.15), output_path = animation_path,
                         framerate = 20)
 

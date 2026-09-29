@@ -12,6 +12,7 @@ indices are rendered.
 Set `component` to choose the plotted variable. Optional keyword arguments control axis
 labels and limits, figure size, fonts, line and marker styling, node markers, element
 boundary guides, exact-solution overlays, and the output `framerate`.
+The horizontal limits default to the column's left and right boundaries.
 
 `exact_solution`, when supplied, is called as `exact_solution(Trixi.SVector(x), t)`.
 """

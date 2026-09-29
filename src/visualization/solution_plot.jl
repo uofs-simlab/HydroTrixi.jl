@@ -157,6 +157,13 @@ function initialize_solution_plot_1d(x, y, mesh_vertices_x, t;
     show_exact = !isnothing(exact_solution)
     points_obs = Observable(solution_points_1d(x, y))
     mesh_vertices_x_obs = Observable(mesh_vertices_x)
+    if isnothing(xlims)
+        if isempty(mesh_vertices_x)
+            xlims = extrema(filter(isfinite, x))
+        else
+            xlims = extrema(mesh_vertices_x)
+        end
+    end
 
     fig = Figure(size = size, fontsize = fontsize)
     ax = solution_axis(fig; xlabel = xlabel, ylabel = ylabel, xlabelfont = xlabelfont,
