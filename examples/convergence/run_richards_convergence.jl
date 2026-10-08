@@ -46,7 +46,7 @@ function solve_case(bc, form, level, N, dt)
             steps = sol.stats.naccept, retcode = string(sol.retcode), valid)
 end
 
-function run_convergence(studies = STUDIES)
+function run_convergence(studies = STUDIES; output_directory = nothing)
     if !all(study -> study in STUDIES, studies)
         error("Unknown convergence study")
     end
@@ -54,7 +54,9 @@ function run_convergence(studies = STUDIES)
 
     # Give each run its own directory, preserving earlier and partial results.
     id = Dates.format(now(UTC), "yyyymmddTHHMMSSsssZ")
-    output = joinpath(ROOT, "plots", "richards_convergence", id)
+    output = isnothing(output_directory) ?
+             joinpath(ROOT, "plots", "richards_convergence", id) :
+             abspath(output_directory)
     mkpath(dirname(output))
     mkdir(output)
     mkdir(joinpath(output, "data"))

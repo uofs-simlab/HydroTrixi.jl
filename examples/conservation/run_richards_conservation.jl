@@ -111,11 +111,13 @@ function solve_case(study, tolerance, data_directory, snapshot_directory)
     return final_path
 end
 
-function run_conservation(studies = STUDIES)
+function run_conservation(studies = STUDIES; output_directory = nothing)
     BLAS.set_num_threads(1)
 
     id = Dates.format(now(UTC), "yyyymmddTHHMMSSsssZ")
-    output = joinpath(ROOT, "plots", "richards_conservation", id)
+    output = isnothing(output_directory) ?
+             joinpath(ROOT, "plots", "richards_conservation", id) :
+             abspath(output_directory)
     mkpath(dirname(output))
     mkdir(output)
     mkdir(joinpath(output, "data"))

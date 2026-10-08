@@ -377,9 +377,9 @@ end
         callback = DiscreteCallback(condition, affect!;
                                     save_positions = (false, false))
 
+        # Use the same time grid for dense and sparse Jacobian runs
         solution = solve(ode, algorithm;
-                         dt = 1.0e-2, adaptive = true, reltol = 1.0e-7,
-                         abstol = 1.0e-11, saveat = Float64[],
+                         dt = 1.0e-2, adaptive = false, saveat = Float64[],
                          Trixi.ode_default_options()...,
                          callback = callback,
                          tstops = adaptation_times)
@@ -396,7 +396,7 @@ end
                 # Bound the dense Jacobian size while exercising normalized AMR.
                 Trixi.trixi_include(@__MODULE__, elixir;
                                     form = form, jacobian = jacobian_strategy, amr = true,
-                                    max_level = 6,
+                                    initial_refinement_level = 2, max_level = 6,
                                     run_simulation = false)
                 solve_scheduled_amr(ode, semi, mesh, amr_callback, adaptation_times)
             end

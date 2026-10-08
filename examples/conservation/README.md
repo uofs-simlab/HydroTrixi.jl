@@ -35,6 +35,10 @@ julia --project=run examples/conservation/plot_richards_conservation.jl \
 ```
 
 Results are written to a new `plots/richards_conservation/RUN_ID/` directory.
+In a persistent REPL, use
+`RichardsConservation.run_conservation(; output_directory = "final/conservation")`
+after including the runner to choose a fresh output directory. Existing directories
+are never overwritten.
 The `data/` directory contains accepted-step histories. The `snapshots/`
 directory contains plot-ready numerical pressure-head and mesh-edge tables at
 exactly half-time and full-time. Timestamped subdirectories of `figures/`

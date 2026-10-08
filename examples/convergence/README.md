@@ -53,6 +53,9 @@ include("examples/convergence/run_richards_convergence.jl")
 # All six studies
 RichardsConvergence.run_convergence()
 
+# Choose a fresh output directory (existing directories are never overwritten)
+RichardsConvergence.run_convergence(; output_directory = "final/convergence")
+
 # One study
 RichardsConvergence.run_convergence([(bc = "DN", kind = "space", N = 4)])
 ```
