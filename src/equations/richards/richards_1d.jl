@@ -49,12 +49,13 @@ end
     pressure_head(u)
     pressure_head(u, equations::RichardsEquation1D)
 
-Return the pressure head ``\psi`` stored in state `u`.
+Return the pressure head ``\psi`` from a local spatial state `u`.
 
 For scalar states, `u` is returned directly. For vector-like states, the first component is
-interpreted as pressure head. For example, the mixed formulation stores pressure head in the
-first component and water content in the second component, so `pressure_head(u)` returns the
-first component.
+interpreted as pressure head. The mixed formulation orders the global solver state as
+``\boldsymbol{y}=(\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}``, with water
+content first and pressure head second. Use [`state_variable_block`](@ref) to obtain the
+pressure-head block of a complete implicit solver vector before selecting a nodal state.
 """
 @inline pressure_head(psi::Number) = psi
 @inline pressure_head(u) = u[1]

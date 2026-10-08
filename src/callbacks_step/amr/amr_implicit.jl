@@ -227,14 +227,23 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
     semi_base = semi.semi_base
     mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi_base)
 
+    # AMR resizes the owned boundary cache or the native parabolic storage.
+    cache_parabolic = if isnothing(semi.cache_parabolic)
+        semi_base.cache_parabolic
+    else
+        semi.cache_parabolic
+    end
+
     if Trixi.mpi_isparallel()
         error("MPI AMR has not been verified for `SemidiscretizationImplicit`.")
     end
 
     # Evaluate the controller on the physical state represented on the current mesh
-    u_state = Trixi.wrap_array(state_variable_block(u_ode, semi), mesh, equations, dg, cache)
-    lambda = amr_callback.controller(u_state, mesh, equations, dg, cache;
-                                     t = t, iter = iter)
+    lambda = GC.@preserve u_ode begin
+        u_state = wrap_array_implicit(state_variable_block(u_ode, semi), mesh, equations,
+                                       dg, cache)
+        amr_callback.controller(u_state, mesh, equations, dg, cache; t = t, iter = iter)
+    end
     leaf_cell_ids = Trixi.leaf_cells(mesh.tree)
 
     @boundscheck begin
@@ -267,7 +276,7 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
         refined_original_cells = Trixi.refine!(mesh.tree, to_refine)
         elements_to_refine = findall(in(refined_original_cells), cache.elements.cell_ids)
         Trixi.refine!(transferred_ode, amr_callback.adaptor, mesh, equations, dg,
-                      cache, semi_base.cache_parabolic, elements_to_refine, nothing)
+                      cache, cache_parabolic, elements_to_refine, nothing)
     end
 
     # Coarsen complete sibling groups and restrict the physical transfer variable
@@ -301,7 +310,7 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
 
         elements_to_remove = findall(in(removed_child_cells), cache.elements.cell_ids)
         Trixi.coarsen!(transferred_ode, amr_callback.adaptor, mesh, equations, dg,
-                       cache, semi_base.cache_parabolic, elements_to_remove, nothing)
+                       cache, cache_parabolic, elements_to_remove, nothing)
     end
 
     has_changed = !isempty(refined_original_cells) || !isempty(coarsened_original_cells)

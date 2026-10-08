@@ -55,7 +55,7 @@ struct PassiveVariablesBoundaryFlux1D <: AbstractPassiveVariables end
 
 @doc raw"""
     SemidiscretizationImplicit{Semidiscretization, TemporalOperator,
-                               PassiveVariables}
+                               PassiveVariables, CacheParabolic}
     SemidiscretizationImplicit(semi_base, operator_temporal,
                                passive_variables = NoPassiveVariables())
 
@@ -77,6 +77,10 @@ generic spatial operator. The `PassiveVariables` type may be
 which appends two passive scalar variables to the ODE state that store the time-integrated
 boundary fluxes for a one-dimensional scalar problem.
 
+For one-dimensional parabolic `TreeMesh` discretizations with a Lobatto-Legendre `DGSEM`,
+the wrapper adds boundary-flux storage without replacing `semi_base`. Its spatial operator
+retains both the interior solution and flux at each boundary.
+
 !!! note
     The constant temporal mass matrix ``\boldsymbol{M}`` is distinct from the spatial
     discretization mass matrix, which is handled by `semi_base` inside
@@ -84,11 +88,21 @@ boundary fluxes for a one-dimensional scalar problem.
 """
 struct SemidiscretizationImplicit{Semidiscretization <: Trixi.AbstractSemidiscretization,
                                   TemporalOperator <: AbstractTemporalOperator,
-                                  PassiveVariables <: AbstractPassiveVariables} <:
+                                  PassiveVariables <: AbstractPassiveVariables,
+                                  CacheParabolic} <:
        Trixi.AbstractSemidiscretization
-    semi_base::Semidiscretization
+    semi_base        ::Semidiscretization
     operator_temporal::TemporalOperator
     passive_variables::PassiveVariables
+    cache_parabolic  ::CacheParabolic
+end
+
+function SemidiscretizationImplicit(semi_base::Trixi.AbstractSemidiscretization,
+                                    operator_temporal::AbstractTemporalOperator,
+                                    passive_variables::AbstractPassiveVariables)
+    cache_parabolic = create_cache_parabolic_implicit(semi_base)
+    return SemidiscretizationImplicit(semi_base, operator_temporal, passive_variables,
+                                      cache_parabolic)
 end
 
 function SemidiscretizationImplicit(semi_base::Trixi.AbstractSemidiscretization,
@@ -382,9 +396,36 @@ end
 function Trixi.calc_error_norms(func, u_ode, t, analyzer,
                                 semi::SemidiscretizationImplicit, cache_analysis)
     state_variable = state_variable_block(u_ode, semi)
-    return Trixi.calc_error_norms(func, state_variable, t, analyzer, semi.semi_base,
-                                  cache_analysis)
+    semi_base = semi.semi_base
+    mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi_base)
+    GC.@preserve u_ode begin
+        u = wrap_array_implicit(state_variable, mesh, equations, dg, cache)
+        return Trixi.calc_error_norms(func, u, t, analyzer, mesh, equations,
+                                      semi_base.initial_condition, dg, cache,
+                                      cache_analysis)
+    end
 end
+
+# Native wrapping accepts contiguous block views of resizable ODE storage.
+# Pointer-backed arrays do not mark the resizable ODE vector as shared storage.
+@inline function wrap_array_implicit(u_ode::SubArray{<:Any, 1, <:Array,
+                                                    <:Tuple{<:AbstractUnitRange}, true},
+                                     mesh, equations, dg, cache)
+    return Trixi.wrap_array_native(u_ode, mesh, equations, dg, cache)
+end
+
+@inline function wrap_array_implicit(u_ode, mesh, equations, dg, cache)
+    return Trixi.wrap_array(u_ode, mesh, equations, dg, cache)
+end
+
+# Native spatial entry points expect vector storage even for implicit state blocks.
+# The caller preserves the source view while this non-owning alias is consumed.
+@inline function wrap_vector_implicit(u_ode::SubArray{<:Any, 1, <:Array,
+                                                     <:Tuple{<:AbstractUnitRange}, true})
+    return unsafe_wrap(Vector{eltype(u_ode)}, pointer(u_ode), length(u_ode))
+end
+
+@inline wrap_vector_implicit(u_ode) = u_ode
 
 # Standard and capacity analysis use u directly
 @inline function Trixi.wrap_array(u_ode::AbstractVector, mesh::Trixi.AbstractMesh,
@@ -393,7 +434,7 @@ end
                                                        <:Union{TemporalOperatorStandard,
                                                                TemporalOperatorCapacity}})
     u_physical = physical_variable_view(u_ode, cache)
-    return Trixi.wrap_array(u_physical, mesh, equations, dg, cache.cache_base)
+    return wrap_array_implicit(u_physical, mesh, equations, dg, cache.cache_base)
 end
 
 # Constitutive analysis uses the evolved block as the conserved variable
@@ -403,7 +444,33 @@ end
                                                        <:TemporalOperatorConstitutive})
     evolved_variable = evolved_variable_block(physical_variable_view(u_ode, cache),
                                               cache.operator_temporal)
-    return Trixi.wrap_array(evolved_variable, mesh, equations, dg, cache.cache_base)
+    return wrap_array_implicit(evolved_variable, mesh, equations, dg, cache.cache_base)
+end
+
+# Preserve native spatial operators outside the owned parabolic cache path
+@inline function rhs_spatial!(du_ode, u_ode, semi_base, ::Nothing, t)
+    GC.@preserve du_ode u_ode begin
+        du = wrap_vector_implicit(du_ode)
+        u = wrap_vector_implicit(u_ode)
+        return Trixi.default_rhs(semi_base)(du, u, semi_base, t)
+    end
+end
+
+function rhs_spatial!(du_ode, u_ode, semi_base, cache_parabolic::CacheParabolic1D, t)
+    (; mesh, equations, boundary_conditions, source_terms, solver, solver_parabolic,
+       cache) = semi_base
+    GC.@preserve du_ode u_ode begin
+        u = wrap_array_implicit(u_ode, mesh, equations, solver, cache)
+        du = wrap_array_implicit(du_ode, mesh, equations, solver, cache)
+        time_start = time_ns()
+        Trixi.@trixi_timeit Trixi.timer() "parabolic rhs!" begin
+            Trixi.rhs_parabolic!(du, u, t, mesh, equations, boundary_conditions,
+                                  source_terms, solver, solver_parabolic, cache,
+                                  cache_parabolic)
+        end
+        put!(semi_base.performance_counter, time_ns() - time_start)
+    end
+    return nothing
 end
 
 # Default operator hooks correspond to the standard semidiscrete form `∂_t u = R(u, t)`.
@@ -413,8 +480,8 @@ end
 end
 
 @inline function rhs_implicit!(du_ode, u_ode, ::AbstractTemporalOperator,
-                               semi_base, t)
-    return Trixi.default_rhs(semi_base)(du_ode, u_ode, semi_base, t)
+                               semi_base, cache_parabolic, t)
+    return rhs_spatial!(du_ode, u_ode, semi_base, cache_parabolic, t)
 end
 
 @inline function mass_matrix(u_ode, ::AbstractTemporalOperator,
@@ -423,8 +490,8 @@ end
 end
 
 function rhs_implicit!(du_ode, u_ode, operator_temporal::TemporalOperatorCapacity,
-                       semi_base, t)
-    Trixi.default_rhs(semi_base)(du_ode, u_ode, semi_base, t)
+                       semi_base, cache_parabolic, t)
+    rhs_spatial!(du_ode, u_ode, semi_base, cache_parabolic, t)
     (; equations) = semi_base
     capacity_function = operator_temporal.capacity_function
 
@@ -443,14 +510,14 @@ end
 end
 
 function rhs_implicit!(du_ode, u_ode, operator_temporal::TemporalOperatorConstitutive,
-                       semi_base, t)
+                       semi_base, cache_parabolic, t)
     evolved_variable = evolved_variable_block(u_ode, operator_temporal)
     state_variable = state_variable_block(u_ode, operator_temporal)
     evolved_variable_rhs = evolved_variable_block(du_ode, operator_temporal)
     state_variable_rhs = state_variable_block(du_ode, operator_temporal)
 
     # First block of du_ode: R(u_state, t)
-    Trixi.default_rhs(semi_base)(evolved_variable_rhs, state_variable, semi_base, t)
+    rhs_spatial!(evolved_variable_rhs, state_variable, semi_base, cache_parabolic, t)
     (; equations) = semi_base
 
     # Second block of du_ode: u_evolved - state_to_evolved(u_state)
@@ -560,7 +627,9 @@ end
 function implicit_physical_coefficients!(u_physical, t, semi_base,
                                          ::Union{TemporalOperatorStandard,
                                                  TemporalOperatorCapacity})
-    return Trixi.compute_coefficients!(u_physical, t, semi_base)
+    GC.@preserve u_physical begin
+        return Trixi.compute_coefficients!(wrap_vector_implicit(u_physical), t, semi_base)
+    end
 end
 
 function implicit_physical_coefficients!(u_physical, t,
@@ -568,7 +637,9 @@ function implicit_physical_coefficients!(u_physical, t,
                                          operator_temporal::TemporalOperatorConstitutive)
     evolved_variable = evolved_variable_block(u_physical, operator_temporal)
     state_variable = state_variable_block(u_physical, operator_temporal)
-    Trixi.compute_coefficients!(state_variable, t, semi_base)
+    GC.@preserve u_physical begin
+        Trixi.compute_coefficients!(wrap_vector_implicit(state_variable), t, semi_base)
+    end
     equations = semi_base.equations
     state_to_evolved = operator_temporal.state_to_evolved
 
@@ -612,7 +683,8 @@ function rhs_implicit!(du_ode, u_ode, semi::SemidiscretizationImplicit, t)
     du_passive = passive_variable_view(du_ode, semi)
 
     # The physical residual is independent of the passive diagnostic variables
-    rhs_implicit!(du_physical, u_physical, semi.operator_temporal, semi.semi_base, t)
+    rhs_implicit!(du_physical, u_physical, semi.operator_temporal, semi.semi_base,
+                   semi.cache_parabolic, t)
 
     # Passive variables are filled after the physical RHS has updated solver caches
     rhs_passive!(du_passive, u_physical, du_physical, semi.passive_variables, semi, t)

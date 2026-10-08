@@ -61,7 +61,8 @@ end
 @doc raw"""
     HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
                                                     constitutive_model = default_constitutive_model(),
-                                                    penalty_factor = 1)
+                                                    penalty_factor = 1,
+                                                    boundary_conditions = :dirichlet_dirichlet)
 
 Return a one-dimensional manufactured-solution problem for the Richards equation. The
 manufactured pressure head is
@@ -69,41 +70,62 @@ manufactured pressure head is
 \psi(z, t) =
 0.204 \tanh\left(\frac{1}{2}\left(100z + \frac{t}{12} - 15\right)\right) - 0.411.
 ```
-The boundary conditions impose this profile using the penalty formulation. The storage
-source term
+The default `boundary_conditions = :dirichlet_dirichlet` imposes this profile at both
+boundaries using penalty Dirichlet conditions. With `:dirichlet_neumann`, the left
+boundary uses the same penalty Dirichlet condition and the right boundary imposes the
+exact normal flux. A custom `(; x_neg, x_pos)` tuple overrides both boundaries;
+`nothing` selects the default pair.
+
+```julia
+problem = HydrologicProblemRichardsManufacturedSolution(
+    boundary_conditions = :dirichlet_neumann)
+exact_solution = problem.initial_condition
+```
+The manufactured solution is imposed through the source term
 ```math
 s(z,t) = c(\psi(z,t))\partial_t \psi(z,t)
 - \partial_z \left(\kappa(\psi(z,t))
 \left(\partial_z \psi(z,t) - 1\right)\right),
 \qquad c(\psi) \coloneqq \vartheta'(\psi),
 ```
-makes the profile solve the one-dimensional Richards equation with the Haverkamp
-constitutive laws. The default setup uses the same Haverkamp parameters as
+The default setup uses the same Haverkamp parameters as
 [`HydrologicProblemCeliaHaverkamp`](@ref). The dimensionless `penalty_factor` is the
-coefficient ``C_\tau`` in the boundary penalty; setting it to zero omits the additional
-divergence-flux penalty.
+coefficient ``C_\tau`` for the Dirichlet boundaries in either named choice; setting it to
+zero omits the divergence flux penalty term. Custom boundary tuples retain their own
+penalty settings.
 
 The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds on
 ``t \in [0, 120]`` by default. It is intended for regression and convergence checks of
 mixed and pressure-head forms of the Richards equation.
 
 # References
-- List, F., Radu, F. A. (2016). A study on iterative methods for solving the
-  Richards equation. *Computational Geosciences*, 20, 341-353.
-  [DOI: 10.1007/s10596-016-9566-3](https://doi.org/10.1007/s10596-016-9566-3)
 - Keita, S., Beljadid, A., Bourgault, Y. (2021). Implicit and semi-implicit
   second-order time stepping methods for the Richards equation.
   [arXiv:2105.05224](https://arxiv.org/abs/2105.05224)
 """
 function HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
                                                        constitutive_model = default_constitutive_model(),
-                                                       penalty_factor = 1)
+                                                       penalty_factor = 1,
+                                                       boundary_conditions = :dirichlet_dirichlet)
     equations = RichardsEquation1D(constitutive_model = constitutive_model)
     state_to_evolved = water_content
     evolved_to_state = pressure_head_from_water_content
-    boundary_condition = BoundaryConditionDirichletPenalty(richards_manufactured_solution;
-                                                           penalty_factor)
-    boundary_conditions = (; x_neg = boundary_condition, x_pos = boundary_condition)
+    if isnothing(boundary_conditions) || boundary_conditions isa Symbol
+        if isnothing(boundary_conditions)
+            boundary_conditions = :dirichlet_dirichlet
+        end
+        left_boundary = BoundaryConditionDirichletPenalty(richards_manufactured_solution;
+                                                          penalty_factor)
+        right_boundary = if boundary_conditions === :dirichlet_dirichlet
+            left_boundary
+        elseif boundary_conditions === :dirichlet_neumann
+            Trixi.BoundaryConditionNeumann(richards_manufactured_right_boundary_flux)
+        else
+            throw(ArgumentError("Unknown boundary choice $boundary_conditions; use " *
+                                ":dirichlet_dirichlet or :dirichlet_neumann."))
+        end
+        boundary_conditions = (; x_neg = left_boundary, x_pos = right_boundary)
+    end
 
     return HydrologicProblem(equations = equations, state_to_evolved = state_to_evolved,
                              evolved_to_state = evolved_to_state,

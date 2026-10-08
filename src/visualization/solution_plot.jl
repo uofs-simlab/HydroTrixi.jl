@@ -1,27 +1,6 @@
 @inline scalar_value(u::Number) = u
 @inline scalar_value(u) = u[1]
 
-@inline function plot_component_data(pd, component)
-    return vec(pd.data[:, component])
-end
-
-function plot_data_1d(u_ode, semi; component = 1)
-    if semi isa HydroTrixi.SemidiscretizationImplicit
-        nstate_variables = Trixi.nvariables(semi.semi_base)
-        if component <= nstate_variables
-            data = HydroTrixi.evolved_variable_block(u_ode, semi)
-            local_component = component
-        else
-            data = HydroTrixi.state_variable_block(u_ode, semi)
-            local_component = component - nstate_variables
-        end
-        pd = Trixi.PlotData1D(data, semi.semi_base; solution_variables = Trixi.cons2cons)
-        return pd, local_component
-    end
-
-    return Trixi.PlotData1D(u_ode, semi; solution_variables = Trixi.cons2cons), component
-end
-
 function exact_solution_x(x)
     finite_x = x[isfinite.(x)]
     return range(minimum(finite_x), maximum(finite_x); length = 1500)
@@ -75,57 +54,6 @@ function add_legend!(ax; position, font, labelsize, show_legend)
     end
 
     return nothing
-end
-
-# Extract the curve and mesh vertices from the same PlotData1D snapshot
-function solution_curve_data_1d(u_ode, semi; component)
-    pd, local_component = plot_data_1d(u_ode, semi; component = component)
-    mesh_vertices_x = isnothing(pd.mesh_vertices_x) ? Float64[] :
-                      collect(pd.mesh_vertices_x)
-    return collect(pd.x), plot_component_data(pd, local_component), mesh_vertices_x
-end
-
-# Rebuild Trixi's default 1D DG plotting grid from saved solution values and mesh edges.
-function solution_curve_data_1d(u_ode, semi::HydroTrixi.SemidiscretizationImplicit,
-                                mesh_vertices_x; component)
-    nvariables = Trixi.nvariables(semi.semi_base)
-    n_nodes = Trixi.nnodes(semi.semi_base.solver)
-    n_elements = length(mesh_vertices_x) - 1
-    if component < 1 || component > 2 * nvariables
-        throw(ArgumentError("The requested component is outside the solution state."))
-    end
-
-    block, local_component = if component <= nvariables
-        HydroTrixi.evolved_variable_block(u_ode, semi), component
-    else
-        HydroTrixi.state_variable_block(u_ode, semi), component - nvariables
-    end
-    if length(block) != nvariables * n_nodes * n_elements
-        throw(ArgumentError("The saved state does not match its mesh history."))
-    end
-
-    nodal_values = reshape(block, nvariables, n_nodes, n_elements)
-    unstructured_data = Array{eltype(block)}(undef, n_nodes, n_elements, 1)
-    original_nodes = Array{eltype(mesh_vertices_x)}(undef, 1, 2, n_elements)
-    for element in 1:n_elements
-        original_nodes[1, 1, element] = mesh_vertices_x[element]
-        original_nodes[1, 2, element] = mesh_vertices_x[element + 1]
-        for node in 1:n_nodes
-            unstructured_data[node, element, 1] = nodal_values[local_component, node,
-                                                                 element]
-        end
-    end
-
-    x, data, _ = Trixi.get_data_1d(original_nodes, unstructured_data, nothing, true)
-    return collect(x), vec(data[:, 1]), mesh_vertices_x
-end
-
-function solution_frame_data_1d(sol, index, mesh_history; component)
-    if isnothing(mesh_history)
-        return solution_curve_data_1d(sol.u[index], sol.prob.p; component = component)
-    end
-    return solution_curve_data_1d(sol.u[index], sol.prob.p, mesh_history[index];
-                                  component = component)
 end
 
 # Store each curve as points so adaptive meshes update atomically
@@ -215,8 +143,11 @@ function update_solution_plot_1d!(solution_plot, x, y, mesh_vertices_x, t)
     return nothing
 end
 
-function save_solution_plot_1d(x, y, mesh_vertices_x, t; output_path, kwargs...)
-    solution_plot = initialize_solution_plot_1d(x, y, mesh_vertices_x, t; kwargs...)
+function HydroTrixi.plot_solution_1d(data::NamedTuple;
+                                     output_path = joinpath(pwd(), "solution_1d.pdf"),
+                                     kwargs...)
+    solution_plot = initialize_solution_plot_1d(data.x, data.values, data.mesh_vertices_x,
+                                                data.time; kwargs...)
     mkpath(dirname(abspath(output_path)))
     save(output_path, solution_plot.fig; px_per_unit = 1)
     return solution_plot.fig
@@ -235,13 +166,8 @@ function HydroTrixi.plot_solution_1d(sol::SciMLBase.AbstractODESolution;
     if isnothing(mesh_history) && index != lastindex(sol.u)
         throw(ArgumentError("Plotting an earlier saved state requires mesh history."))
     end
-    if !isnothing(mesh_history) && length(mesh_history) != length(sol.u)
-        throw(ArgumentError("The mesh history must match the saved states."))
-    end
-    x, y, mesh_vertices_x = solution_frame_data_1d(sol, index, mesh_history;
-                                                    component = component)
-    return save_solution_plot_1d(x, y, mesh_vertices_x, sol.t[index];
-                                 output_path, kwargs...)
+    data = HydroTrixi.solution_data_1d(sol; index, component, mesh_history)
+    return HydroTrixi.plot_solution_1d(data; output_path, kwargs...)
 end
 
 function HydroTrixi.plot_solution_1d(result::HydroTrixi.ImplicitSolveResult;

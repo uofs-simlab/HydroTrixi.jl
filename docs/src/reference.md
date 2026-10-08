@@ -93,6 +93,8 @@ AnalysisCallbackFullState
 mass_balance
 mass_bias
 mass_bias_history
+accepted_step_history
+solution_data_1d
 compute_eoc
 ```
 
@@ -102,6 +104,8 @@ compute_eoc
 plot_solution_1d
 animate_solution_1d
 plot_convergence_1d
+plot_reference_triangle!
 plot_mass_bias_magnitude
 mass_bias_magnitude_axis
+plot_time_steps
 ```

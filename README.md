@@ -12,8 +12,6 @@
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes, following [Ireson et al. (2023)](#references)
 - Tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases
 
-The mixed formulation advances water content as the conserved variable while evaluating the nonlinear diffusion operator in terms of pressure head, and guarantees a fully discrete water mass balance under spatial as well as temporal adaptivity.
-
 ## Installation
 
 If you have not yet installed Julia, please [follow the instructions for your operating system](https://julialang.org/downloads/platform/). HydroTrixi.jl works with Julia v1.10 and newer. We recommend using the latest stable release.

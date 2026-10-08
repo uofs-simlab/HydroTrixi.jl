@@ -15,19 +15,20 @@ unnormalized total variation is
 \left|\frac{\mathrm{d}}{\mathrm{d}\xi}v_k^N(\xi,t)\right|\mathrm{d}\xi,
 ```
 where ``N`` is the polynomial degree, ``\omega_i`` are the LGL quadrature weights, and
-``D_{ij}`` are entries of the reference differentiation matrix.
-
-With `normalize = true`, divide by the range of `variable` over all mesh nodes,
-recomputed on every indicator evaluation:
+``D_{ij}`` are entries of the reference differentiation matrix. With `normalize = true`, 
+we divide by the range of `variable` over all mesh nodes, recomputed on every indicator 
+evaluation:
 ```math
 \eta_k(t) =
 \frac{\mathcal{V}_k(t)}{v_{\max}(t)-v_{\min}(t)+\varepsilon}.
 ```
 The regularization ``\varepsilon`` is set by `normalization_epsilon` and defaults to
-`1.0e-11`. The manuscript uses this normalized form with ``v_{k,j}=\theta_{k,j}``, so
-``v_{\min}=\theta_{\min}`` and ``v_{\max}=\theta_{\max}``. Constant fields have zero
-indicator. Extrema use the current nodal solution over all MPI ranks, without adding
-boundary values or interelement jumps. The normalized indicator is dimensionless; with
+`1.0e-11`. The manuscript uses this normalized form with
+``v_{k,j}(t)=\vartheta(\psi_{k,j}(t))``, so ``v_{\min}=\theta_{\min}`` and
+``v_{\max}=\theta_{\max}``. In both Richards formulations, this sensor is evaluated
+from the spatial pressure-head state. Constant fields have zero indicator. Extrema use
+the current nodal solution over all MPI ranks, without adding boundary values or
+interelement jumps. The normalized indicator is dimensionless; with
 `normalize = false`, the function returns ``\mathcal{V}_k``, which has the same units as
 `variable`.
 """

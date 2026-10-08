@@ -43,17 +43,15 @@ function save_snapshots(result, study, tolerance, snapshot_directory, final_time
     component = startswith(study.case, "pressure_head") ? 1 : 2
     for (stage, time) in ((:half, final_time / 2), (:full, final_time))
         index = findfirst(==(time), result.sol.t)
-        x, y, mesh_vertices_x =
-            RichardsConservationPlots.VISUALIZATION.solution_frame_data_1d(
-                result.sol, index, result.mesh_history; component)
+        data = solution_data_1d(result; index, component)
         path = joinpath(snapshot_directory,
                         RichardsConservationPlots.snapshot_filename(study_name(study),
                                                                      tolerance, stage))
         open(path, "w") do io
             println(io, "#time_s depth_m pressure_head_m mesh_edge_m")
-            for i in eachindex(x)
-                mesh_edge = i <= length(mesh_vertices_x) ? mesh_vertices_x[i] : NaN
-                println(io, join((time, x[i], y[i], mesh_edge), ' '))
+            for i in eachindex(data.x)
+                mesh_edge = i <= length(data.mesh_vertices_x) ? data.mesh_vertices_x[i] : NaN
+                println(io, join((data.time, data.x[i], data.values[i], mesh_edge), ' '))
             end
         end
     end
@@ -88,22 +86,12 @@ function solve_case(study, tolerance, data_directory, snapshot_directory)
         error("Conservation solve failed; partial data retained at $partial_path")
     end
 
-    lines = filter(line -> !isempty(strip(line)), readlines(partial_path))
-    columns = split(strip(first(lines))[2:end])
-    indices = Dict(column => index for (index, column) in pairs(columns))
-    rows = map(lines[2:end]) do line
-        values = split(line)
-        (; step = parse(Int, values[indices["timestep"]]),
-         time = parse(Float64, values[indices["time"]]),
-         dt = parse(Float64, values[indices["dt"]]),
-         balance = parse(Float64, values[indices["mass_balance"]]))
-    end
-    initial_balance = first(rows).balance
+    history = accepted_step_history(partial_path; include_initial = true)
+    _, biases = mass_bias_history(partial_path)
     open(final_path, "w") do io
         println(io, "#accepted_step time_s dt_s mass_bias_m")
-        for row in rows
-            println(io, join((row.step, row.time, row.dt,
-                              row.balance - initial_balance), ' '))
+        for row in zip(history.steps, history.times, history.dts, biases)
+            println(io, join(row, ' '))
         end
     end
     rm(partial_path)

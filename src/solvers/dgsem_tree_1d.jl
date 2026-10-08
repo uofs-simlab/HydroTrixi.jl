@@ -17,21 +17,28 @@ mutable struct ParabolicBoundaryContainer1D{uEltype <: Real}
     end
 end
 
-# Creates the parabolic cache, including parabolic-specific boundary container
-function Trixi.create_cache_parabolic(mesh::Trixi.TreeMesh{1},
-                                      equations::Trixi.AbstractEquationsParabolic{1},
-                                      dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
-                                      n_elements,
-                                      ::Type{uEltype}) where {uEltype <: Real}
-    parabolic_container = Trixi.init_parabolic_container_1d(Trixi.nvariables(equations),
-                                                            Trixi.nnodes(dg),
-                                                            n_elements,
-                                                            uEltype)
+# Own the additional boundary storage used by the implicit spatial operator
+struct CacheParabolic1D{ParabolicContainer, ParabolicBoundaries}
+    parabolic_container ::ParabolicContainer
+    parabolic_boundaries::ParabolicBoundaries
+end
+
+# Other spatial discretizations retain their native right-hand side
+create_cache_parabolic_implicit(semi_base) = nothing
+
+function create_cache_parabolic_implicit(
+        semi_base::Trixi.SemidiscretizationParabolic{<:Trixi.TreeMesh{1},
+                                                  <:Trixi.AbstractEquationsParabolic{1},
+                                                  <:Any, <:Any, <:Any,
+                                                  <:Trixi.DGSEM{<:Trixi.LobattoLegendreBasis}})
+    mesh, equations, _, _ = Trixi.mesh_equations_solver_cache(semi_base)
+    parabolic_container = semi_base.cache_parabolic.parabolic_container
+    uEltype = eltype(semi_base.cache.elements)
     n_boundaries = Trixi.isperiodic(mesh, 1) ? 0 : 2
     parabolic_boundaries = ParabolicBoundaryContainer1D{uEltype}(n_boundaries,
                                                                  Trixi.nvariables(equations))
 
-    return (; parabolic_container, parabolic_boundaries)
+    return CacheParabolic1D(parabolic_container, parabolic_boundaries)
 end
 
 function Base.resize!(boundaries::ParabolicBoundaryContainer1D, equations, dg, cache)
@@ -46,7 +53,7 @@ end
 function Trixi.refine!(u_ode::AbstractVector, adaptor, mesh::Trixi.TreeMesh{1},
                        equations::Trixi.AbstractEquationsParabolic{1},
                        dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis}, cache,
-                       cache_parabolic, elements_to_refine, limiter!)
+                       cache_parabolic::CacheParabolic1D, elements_to_refine, limiter!)
     Trixi.refine!(u_ode, adaptor, mesh, equations, dg, cache, elements_to_refine,
                   limiter!)
 
@@ -60,7 +67,7 @@ end
 function Trixi.coarsen!(u_ode::AbstractVector, adaptor, mesh::Trixi.TreeMesh{1},
                         equations::Trixi.AbstractEquationsParabolic{1},
                         dg::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis}, cache,
-                        cache_parabolic, elements_to_remove, limiter!)
+                        cache_parabolic::CacheParabolic1D, elements_to_remove, limiter!)
     Trixi.coarsen!(u_ode, adaptor, mesh, equations, dg, cache, elements_to_remove,
                    limiter!)
 
@@ -77,7 +84,7 @@ function Trixi.rhs_parabolic!(du, u, t, mesh::Trixi.TreeMesh{1},
                               equations_parabolic::Trixi.AbstractEquationsParabolic{1},
                               boundary_conditions, source_terms,
                               solver::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
-                              solver_parabolic, cache, cache_parabolic)
+                              solver_parabolic, cache, cache_parabolic::CacheParabolic1D)
     (; parabolic_container, parabolic_boundaries) = cache_parabolic
     (; u_transformed, gradients, flux_parabolic) = parabolic_container
 

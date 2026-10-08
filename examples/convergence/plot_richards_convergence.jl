@@ -12,35 +12,6 @@ const SPATIAL_TRIANGLE_GAP = 2.5
 const TEMPORAL_TRIANGLE_GAP = 3.0
 const FIGURE_SIZE = (500, 350)
 
-function draw_reference_triangle!(ax, groups, order; position = :below, gap_factor = 1.5)
-    fine_x, coarse_x = first(groups).x[1:2]
-    ratio = coarse_x / fine_x
-
-    # Use both endpoint errors to place the triangle close to the curves.
-    bound = position === :below ? minimum : maximum
-    combine = position === :below ? min : max
-    coarse_error = bound(errors[2] for group in groups for errors in group.errors)
-    fine_error = bound(errors[1] for group in groups for errors in group.errors)
-    reference_error = combine(coarse_error, fine_error * ratio^order)
-
-    if position === :below
-        HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error, order;
-                                        triangle_slope = :positive, gap_factor,
-                                        trianglefontsize = 15)
-    else
-        # Upside-down triangle: horizontal edge on top, vertical edge on the left.
-        upper = reference_error * gap_factor
-        lower = upper / ratio^order
-        lines!(ax, [fine_x, coarse_x, fine_x, fine_x], [upper, upper, lower, upper];
-               color = :black)
-        label_x = 10^((2 * log10(fine_x) + log10(coarse_x)) / 3)
-        label_y = 10^((2 * log10(upper) + log10(lower)) / 3)
-        text!(ax, label_x, label_y; text = "$order:1", align = (:center, :center),
-              color = :black, fontsize = 15, font = HydroTrixi.DEFAULT_PLOT_FONT)
-    end
-    return nothing
-end
-
 function read_table(path)
     lines = readlines(path)
     names = Tuple(Symbol.(split(first(lines))))
@@ -75,10 +46,12 @@ function plot_study(path, rows, temporal, N, output_dir)
         ylims = ERROR_LIMITS, legend_position = (:left, :top))
     ax = fig.content[1]
 
-    draw_reference_triangle!(ax, groups, temporal ? 4 : N + 1;
+    plot_reference_triangle!(ax, groups, temporal ? 4 : N + 1;
+        triangle_slope = :positive, trianglefontsize = 15,
         gap_factor = temporal ? TEMPORAL_TRIANGLE_GAP : SPATIAL_TRIANGLE_GAP)
     if temporal
-        draw_reference_triangle!(ax, groups, 5; position = :above,
+        plot_reference_triangle!(ax, groups, 5; position = :above,
+                                 triangle_slope = :positive, trianglefontsize = 15,
                                  gap_factor = TEMPORAL_TRIANGLE_GAP)
     end
 

@@ -17,6 +17,15 @@ form_name = pressure_head_form ? "pressure_head" : "mixed"
 component = pressure_head_form ? 1 : 2
 result_prefix = "richards_celia_new_mexico_$(form_name)_amr_interval$(amr_interval)_base$(amr_base_level)_t$(round(Int, final_time))"
 
+# Estimate temporal error in water content for both formulations
+if pressure_head_form
+    error_control_block = state_variable_block
+    error_control_mapping = water_content
+else
+    error_control_block = evolved_variable_block
+    error_control_mapping = nothing
+end
+
 plots_dir = mkpath(joinpath(dirname(dirname(@__DIR__)), "plots"))
 analysis_filename = "$(result_prefix)_analysis.dat"
 analysis_path = joinpath(plots_dir, analysis_filename)
@@ -25,6 +34,7 @@ Trixi.trixi_include(@__MODULE__,
                     joinpath(dirname(@__DIR__), "elixirs",
                              "elixir_richards_celia_new_mexico.jl");
                     tspan = (0.0, final_time), form = form, analysis_interval = 200,
+                    error_control_block, error_control_mapping,
                     amr = true, amr_interval = amr_interval,
                     base_level = amr_base_level,
                     saveat = frame_times, save_mesh_history = true,

@@ -1,7 +1,7 @@
 name = "HydroTrixi"
 uuid = "7af077dc-b170-402d-9829-aaaeff984f5f"
 authors = ["Tristan Montoya <montoya.tristan@gmail.com>"]
-version = "0.1.0-DEV"
+version = "0.1.0"
 
 [deps]
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
@@ -27,13 +27,18 @@ HydroTrixiVisualizationExt = ["CairoMakie", "LaTeXStrings"]
 CairoMakie = "0.15"
 DiffEqBase = "7.19"
 LaTeXStrings = "1"
+LinearAlgebra = "1"
 LinearSolve = "5.1"
+MuladdMacro = "0.2"
 OrdinaryDiffEqCore = "4.16"
 OrdinaryDiffEqNonlinearSolve = "2"
 OrdinaryDiffEqRosenbrock = "2.7.1"
 PreallocationTools = "1"
 SciMLBase = "3.55"
+SparseArrays = "1"
+Test = "1"
 Trixi = "0.16.24"
+TrixiTest = "0.2.9"
 julia = "1.10"
 
 [extras]

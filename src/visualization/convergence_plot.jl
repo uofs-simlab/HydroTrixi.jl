@@ -22,10 +22,14 @@ function HydroTrixi.doubling_dof_ticks(values::AbstractVector{<:Real}; base::Int
     return ticks, labels
 end
 
-function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error, order;
-                                          gap_factor = 1.5, trianglefontsize = 12,
-                                          triangle_slope = :negative,
-                                          font = HydroTrixi.DEFAULT_PLOT_FONT,)
+function HydroTrixi.plot_reference_triangle!(ax, coarse_x, fine_x, reference_error, order;
+                                             position = :below, gap_factor = 1.5,
+                                             trianglefontsize = 12,
+                                             triangle_slope = :negative,
+                                             font = HydroTrixi.DEFAULT_PLOT_FONT,)
+    if !(position in (:below, :above))
+        throw(ArgumentError("position must be :below or :above"))
+    end
     if !(triangle_slope in (:negative, :positive))
         throw(ArgumentError("triangle_slope must be :negative or :positive"))
     end
@@ -34,15 +38,24 @@ function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error,
         throw(ArgumentError("Triangle endpoints must follow the requested refinement direction."))
     end
     refinement_ratio = max(fine_x, coarse_x) / min(fine_x, coarse_x)
-    upper_error = reference_error / gap_factor
-    lower_error = upper_error / refinement_ratio^order
+    if position === :below
+        upper_error = reference_error / gap_factor
+        lower_error = upper_error / refinement_ratio^order
+        triangle_x = [coarse_x, fine_x, coarse_x, coarse_x]
+        triangle_errors = [lower_error, lower_error, upper_error, lower_error]
+        label_x = 10^((2 * log10(coarse_x) + log10(fine_x)) / 3)
+        label_error = 10^((2 * log10(lower_error) + log10(upper_error)) / 3)
+    else
+        # Reflect the triangle so its horizontal edge sits above the curves.
+        upper_error = reference_error * gap_factor
+        lower_error = upper_error / refinement_ratio^order
+        triangle_x = [fine_x, coarse_x, fine_x, fine_x]
+        triangle_errors = [upper_error, upper_error, lower_error, upper_error]
+        label_x = 10^((2 * log10(fine_x) + log10(coarse_x)) / 3)
+        label_error = 10^((2 * log10(upper_error) + log10(lower_error)) / 3)
+    end
 
-    # Draw a right triangle with right angle at the bottom-left corner.
-    lines!(ax, [coarse_x, fine_x, coarse_x, coarse_x],
-           [lower_error, lower_error, upper_error, lower_error]; color = :black,)
-
-    label_x = 10^((2 * log10(coarse_x) + log10(fine_x)) / 3)
-    label_error = 10^((2 * log10(lower_error) + log10(upper_error)) / 3)
+    lines!(ax, triangle_x, triangle_errors; color = :black)
     text!(ax, label_x, label_error; text = string(order, ":1"),
           align = (:center, :center),
           color = :black, fontsize = trianglefontsize, font = font,)
@@ -50,30 +63,52 @@ function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error,
     return nothing
 end
 
-function convergence_triangle_from_data(series_groups, order; triangle_slope = :negative)
+function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error, order;
+                                          kwargs...)
+    return HydroTrixi.plot_reference_triangle!(ax, coarse_x, fine_x, reference_error, order;
+                                              position = :below, kwargs...)
+end
+
+function convergence_triangle_from_data(series_groups, order; triangle_slope = :negative,
+                                         position = :below)
     # Automatic placement assumes every curve uses the same refinement levels.
     reference_x = first(series_groups).x
     if !all(group -> group.x == reference_x, series_groups)
         throw(ArgumentError("Automatic reference triangles require shared x values."))
     end
+    if !(position in (:below, :above))
+        throw(ArgumentError("position must be :below or :above"))
+    end
 
-    # Span the last refinement interval and place the triangle below the lowest error at
-    # the coarser of those two levels.
+    # Span the finest refinement interval, regardless of the input row order.
     if length(reference_x) < 2
         throw(ArgumentError("A triangle requires two levels."))
     end
     indices = sortperm(reference_x; rev = triangle_slope === :positive)
     coarse, fine = indices[end - 1], indices[end]
-    reference_error = minimum(errors[coarse] for group in series_groups
-                              for errors in group.errors)
-    if triangle_slope === :positive
-        # Keep the entire triangle below both endpoint errors, including at a plateau.
-        reference_error = min(reference_error,
-                              minimum(errors[fine] for group in series_groups
-                                      for errors in group.errors))
-    end
+    refinement_ratio = max(reference_x[coarse], reference_x[fine]) /
+                       min(reference_x[coarse], reference_x[fine])
+
+    # Both endpoint errors bound the sloping edge, including at a plateau or when the
+    # measured convergence order differs from the reference order.
+    bound = position === :below ? minimum : maximum
+    combine = position === :below ? min : max
+    coarse_error = bound(errors[coarse] for group in series_groups
+                        for errors in group.errors)
+    fine_error = bound(errors[fine] for group in series_groups for errors in group.errors)
+    reference_error = combine(coarse_error, fine_error * refinement_ratio^order)
     return (; coarse_x = reference_x[coarse], fine_x = reference_x[fine],
             reference_error, order)
+end
+
+function HydroTrixi.plot_reference_triangle!(ax, series_groups, order;
+                                             position = :below,
+                                             triangle_slope = :negative, kwargs...)
+    triangle = convergence_triangle_from_data(series_groups, order; triangle_slope,
+                                               position)
+    return HydroTrixi.plot_reference_triangle!(ax, triangle.coarse_x, triangle.fine_x,
+                                              triangle.reference_error, triangle.order;
+                                              position, triangle_slope, kwargs...)
 end
 
 function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVector};
@@ -96,6 +131,7 @@ function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVect
                                         xticks = :doubling, yticks = nothing,
                                         triangle_order = nothing,
                                         triangle_slope = :negative,
+                                        triangle_position = :below,
                                         triangle_gap_factor = 1.5,)
     HydroTrixi.set_serif_tex_theme!(font = font)
     trianglefontsize = isnothing(trianglefontsize) ? fontsize : trianglefontsize
@@ -134,13 +170,11 @@ function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVect
     end
 
     if !isnothing(triangle_order)
-        triangle = convergence_triangle_from_data(series_groups, triangle_order;
-                                                  triangle_slope)
-        HydroTrixi.plot_bottom_triangle!(ax, triangle.coarse_x, triangle.fine_x,
-                                         triangle.reference_error, triangle.order;
-                                         gap_factor = triangle_gap_factor,
-                                         triangle_slope,
-                                         trianglefontsize = trianglefontsize, font = font)
+        HydroTrixi.plot_reference_triangle!(ax, series_groups, triangle_order;
+                                            position = triangle_position,
+                                            gap_factor = triangle_gap_factor,
+                                            triangle_slope,
+                                            trianglefontsize = trianglefontsize, font = font)
     end
 
     add_legend!(ax; position = legend_position, font = legendfont,

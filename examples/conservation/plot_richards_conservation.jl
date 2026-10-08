@@ -6,8 +6,6 @@ using CairoMakie, HydroTrixi, LaTeXStrings
 using Dates, Printf
 using DelimitedFiles
 
-const VISUALIZATION = Base.get_extension(HydroTrixi, :HydroTrixiVisualizationExt)
-
 const RTOL_FONT = assetpath("fonts", "DejaVuSansMono.ttf")
 const RELTOLS = ((value = 1.0e-5, tag = "1e-5",
                   label = rich(rich("rtol", font = RTOL_FONT), " = 10",
@@ -89,34 +87,6 @@ function collect_tables(directories)
     return tables
 end
 
-function accepted_step_history(path)
-    columns = split(strip(open(readline, path))[2:end])
-    values = readdlm(path, Float64; comments = true)
-    steps = values[:, findfirst(==("accepted_step"), columns)]
-    times = values[:, findfirst(==("time_s"), columns)]
-    dts = values[:, findfirst(==("dt_s"), columns)]
-    accepted = steps .> 0
-    return times[accepted], dts[accepted]
-end
-
-function plot_time_steps(paths, output_path; labels, colors, linestyles,
-                         legend_position, xticks, xlims)
-    HydroTrixi.set_serif_tex_theme!()
-    fig = Figure(size = HydroTrixi.DEFAULT_SOLUTION_FIGSIZE, fontsize = 15)
-    ax = VISUALIZATION.solution_axis(fig; xlabel = L"$t$ (s)",
-                                     ylabel = L"$\Delta t$ (s)", xticks, xlims)
-    for (i, path) in pairs(paths)
-        times, dts = accepted_step_history(path)
-        VISUALIZATION.plot_series!(ax, times, dts; label = labels[i],
-                                   color = colors[i], linestyle = linestyles[i])
-    end
-    VISUALIZATION.add_legend!(ax; position = legend_position,
-                              font = HydroTrixi.DEFAULT_PLOT_FONT,
-                              labelsize = 14, show_legend = true)
-    save(output_path, fig; px_per_unit = 1)
-    return output_path
-end
-
 function plot_study(table, output_directory, bias_axis)
     time_ticks = if table.final_time == 360.0
         collect(0.0:60.0:360.0)
@@ -159,12 +129,25 @@ function plot_study(table, output_directory, bias_axis)
                              yticks = bias_axis.ticks,
                              xlims = (0.0, table.final_time),
                              ylims = bias_axis.limits)
-    step_path = joinpath(output_directory, "$(table.name)_time_steps.pdf")
-    plot_time_steps(paths, step_path; labels, colors, linestyles,
-                    legend_position = (:left, :top),
-                    xticks = (time_ticks, tick_labels),
-                    xlims = (0.0, table.final_time))
-    return [bias_path, step_path]
+    output_paths = [bias_path]
+
+    # The manuscript compares time steps for water-content solution transfer only
+    water_content_paths = [path for transfer_table in table.transfer_tables
+                           if transfer_table.transfer === :water_content
+                           for path in transfer_table.paths]
+    if !isempty(water_content_paths)
+        step_path = joinpath(output_directory, "$(table.name)_time_steps.pdf")
+        plot_time_steps(water_content_paths; output_path = step_path,
+                        step_column = "accepted_step", time_column = "time_s",
+                        dt_column = "dt_s",
+                        labels = [tolerance.label for tolerance in RELTOLS],
+                        colors = palette[1:length(RELTOLS)],
+                        legend_position = (:left, :top),
+                        xticks = (time_ticks, tick_labels),
+                        xlims = (0.0, table.final_time))
+        push!(output_paths, step_path)
+    end
+    return output_paths
 end
 
 function plot_snapshots(table, output_directory)
@@ -181,17 +164,14 @@ function plot_snapshots(table, output_directory)
                     continue
                 end
                 values = readdlm(snapshot_path, Float64; comments = true)
-                t = values[1, 1]
-                x = values[:, 2]
-                y = values[:, 3]
-                mesh_vertices_x = filter(isfinite, values[:, 4])
+                data = (; time = values[1, 1], x = values[:, 2], values = values[:, 3],
+                         mesh_vertices_x = filter(isfinite, values[:, 4]))
                 output_path = joinpath(output_directory, pdf_filename)
-                VISUALIZATION.save_solution_plot_1d(x, y, mesh_vertices_x, t;
-                                                    output_path,
-                                                    xlabel = "Distance below surface (m)",
-                                                    ylabel = "Pressure head (m)",
-                                                    ylims = table.solution_ylims,
-                                                    show_element_boundaries = true)
+                plot_solution_1d(data; output_path,
+                                  xlabel = "Distance below surface (m)",
+                                  ylabel = "Pressure head (m)",
+                                  ylims = table.solution_ylims,
+                                  show_element_boundaries = true)
                 push!(output_paths, output_path)
             end
         end

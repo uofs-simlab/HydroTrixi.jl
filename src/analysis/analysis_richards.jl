@@ -3,9 +3,11 @@
 @inline function water_content_integral(u_ode::AbstractVector,
                                         semi::SemidiscretizationImplicit)
     mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi)
-    u = Trixi.wrap_array(u_ode, mesh, equations, solver, cache)
-    return water_content_integral(u, mesh, equations, solver, cache.cache_base,
-                                  semi.operator_temporal)
+    GC.@preserve u_ode begin
+        u = Trixi.wrap_array(u_ode, mesh, equations, solver, cache)
+        return water_content_integral(u, mesh, equations, solver, cache.cache_base,
+                                      semi.operator_temporal)
+    end
 end
 
 # Destructure the semidiscretization so the integral can dispatch on the equations and
@@ -66,11 +68,13 @@ function water_content_timederivative end
                                                        u_ode::AbstractVector,
                                                        semi::SemidiscretizationImplicit)
     mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi)
-    u = Trixi.wrap_array(u_ode, mesh, equations, solver, cache)
-    du = Trixi.wrap_array(du_ode, mesh, equations, solver, cache)
-    return water_content_timederivative_integral(du, u, mesh, equations, solver,
-                                                 cache.cache_base,
-                                                 semi.operator_temporal)
+    GC.@preserve du_ode u_ode begin
+        u = Trixi.wrap_array(u_ode, mesh, equations, solver, cache)
+        du = Trixi.wrap_array(du_ode, mesh, equations, solver, cache)
+        return water_content_timederivative_integral(du, u, mesh, equations, solver,
+                                                     cache.cache_base,
+                                                     semi.operator_temporal)
+    end
 end
 
 @inline function water_content_timederivative_integral(du, u,
@@ -125,19 +129,16 @@ where ``F_{\mathrm{T}}`` and ``F_{\mathrm{B}}`` are the passive SFOM variables s
 ``\dot{F}_{\mathrm{B}}=f_{\mathrm{B}}^\star``, respectively, and
 ``\boldsymbol{\theta}_k`` is the nodal water-content vector. The Julia named-tuple keys
 `x_neg` and `x_pos` represent the top and bottom boundaries. This function returns the
-negative of the fully discrete invariant
+negative of the fully discrete invariant for source-free problems:
 ```math
 \sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
 \boldsymbol{\theta}_k(t)+F_{\mathrm{T}}(t)-F_{\mathrm{B}}(t)
 ```
-used in the accompanying manuscript. Differencing this quantity between time levels
-produces the signed mass bias ``\epsilon_{\mathrm{B}}^n`` documented by
-[`mass_bias`](@ref).
-
-This solver flux output method diagnostic requires
-[`PassiveVariablesBoundaryFlux1D`](@ref), which advances the integrated numerical
-boundary fluxes with the same time-integration stages, time steps, and step-acceptance
-decisions as the physical state.
+Differencing this quantity between time levels produces the signed mass bias 
+``\epsilon_{\mathrm{b}}(t^n)`` documented by [`mass_bias`](@ref). This solver flux output
+method diagnostic requires [`PassiveVariablesBoundaryFlux1D`](@ref), which advances 
+the integrated numerical boundary fluxes with the same time-integration stages, time steps,
+and step-acceptance decisions as the physical state.
 """
 function mass_balance end
 
@@ -161,7 +162,7 @@ Trixi.pretty_form_utf(::typeof(mass_balance)) = "mass balance"
 
 Return the water mass bias relative to an initial total water content:
 ```math
-\epsilon_{\mathrm{B}}^n =
+\epsilon_{\mathrm{b}}(t^n) =
 \left(F_{\mathrm{B}}^n-F_{\mathrm{B}}^0\right)
 -\left(F_{\mathrm{T}}^n-F_{\mathrm{T}}^0\right)
 -\left(
@@ -176,6 +177,7 @@ This method assumes the initialization
 ``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``. For complete
 saved time histories, prefer [`mass_bias_history`](@ref), which differences
 [`mass_balance`](@ref) and therefore also supports nonzero initial SFOM variables.
+The source-free scope of [`mass_balance`](@ref) also applies to this mass bias.
 """
 function mass_bias end
 
@@ -228,41 +230,8 @@ end
 
 function mass_bias_history(analysis_path::AbstractString; time_column = "time",
                            mass_balance_column = "mass_balance")
-    times = Float64[]
-    balances = Float64[]
-
-    open(analysis_path, "r") do io
-        # Read the Trixi.jl analysis header to locate scalar output columns
-        header = nothing
-        for line in eachline(io)
-            stripped_line = strip(line)
-            if isempty(stripped_line)
-                continue
-            end
-            header = stripped_line
-            break
-        end
-
-        header_columns = split(strip(header[2:end]))
-        column_indices = Dict(column => index for (index, column) in pairs(header_columns))
-        time_index = column_indices[time_column]
-        mass_balance_index = column_indices[mass_balance_column]
-
-        # Parse the scalar time history from the selected columns
-        for line in eachline(io)
-            stripped_line = strip(line)
-            if isempty(stripped_line)
-                continue
-            end
-            if startswith(stripped_line, "#")
-                continue
-            end
-
-            values = split(stripped_line)
-            push!(times, parse(Float64, values[time_index]))
-            push!(balances, parse(Float64, values[mass_balance_index]))
-        end
-    end
+    times, balances = read_analysis_columns(analysis_path, (time_column => Float64,
+                                                           mass_balance_column => Float64))
 
     if isempty(times)
         throw(ArgumentError("`analysis_path` does not contain mass-balance samples."))

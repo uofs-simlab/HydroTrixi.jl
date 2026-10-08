@@ -1,9 +1,3 @@
-# Let Trixi.jl wrap contiguous implicit state views without copying
-@inline function Trixi.storage_type(::Type{<:SubArray{<:Any, 1, <:Array,
-                                                      <:Tuple{<:AbstractUnitRange}, true}})
-    return Array
-end
-
 # Remake an implicit semidiscretization with caches matching the destination element type
 # in order to evaluate a residual with dual numbers for automatic differentiation
 function remake_implicit_semidiscretization(dual_cache_input)

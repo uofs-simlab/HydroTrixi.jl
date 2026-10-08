@@ -34,19 +34,17 @@ function HydroTrixi.animate_solution_1d(sol::SciMLBase.AbstractODESolution;
     end
 
     first_idx = first(indices)
-    x, y, mesh_vertices_x = solution_frame_data_1d(sol, first_idx, mesh_history;
-                                                    component = component)
-    solution_plot = initialize_solution_plot_1d(x, y, mesh_vertices_x, sol.t[first_idx];
-                                                kwargs...)
+    data = HydroTrixi.solution_data_1d(sol; index = first_idx, component, mesh_history)
+    solution_plot = initialize_solution_plot_1d(data.x, data.values, data.mesh_vertices_x,
+                                                data.time; kwargs...)
 
     mkpath(dirname(abspath(output_path)))
 
     record(solution_plot.fig, output_path, indices; framerate = framerate,
            px_per_unit = 1) do i
-        x_frame, y_frame, mesh_vertices_x_frame =
-            solution_frame_data_1d(sol, i, mesh_history; component = component)
-        update_solution_plot_1d!(solution_plot, x_frame, y_frame, mesh_vertices_x_frame,
-                                 sol.t[i])
+        data = HydroTrixi.solution_data_1d(sol; index = i, component, mesh_history)
+        update_solution_plot_1d!(solution_plot, data.x, data.values, data.mesh_vertices_x,
+                                 data.time)
     end
 
     return output_path

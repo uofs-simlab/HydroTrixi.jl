@@ -62,21 +62,18 @@ end
 run_simulation = true
 saveat = Float64[]
 save_everystep = false
-save_start = save_everystep || saveat isa Number || isempty(saveat) ||
-             first(ode.tspan) in saveat
-save_end = save_everystep || saveat isa Number || isempty(saveat) ||
-           last(ode.tspan) in saveat
 save_mesh_history = false
+solve_options = NamedTuple()
 
 if run_simulation
     # By default, the mixed form controls error in its stored water-content block.
     result = solve_implicit(ode; dt = 1.0e-2, adaptive = true,
                             reltol = 1.0e-7, abstol = 1.0e-11,
-                            saveat, save_everystep, save_start, save_end,
+                            saveat, save_everystep,
                             save_mesh_history, dense = true,
                             error_control_block = evolved_variable_block,
                             error_control_mapping = nothing,
                             isoutofdomain = pressure_head_out_of_domain,
-                            callback = callbacks)
+                            callback = callbacks, solve_options...)
     sol = result.sol
 end

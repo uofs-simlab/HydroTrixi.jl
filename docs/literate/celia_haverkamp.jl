@@ -78,6 +78,8 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # `error_control_block = evolved_variable_block` restricts adaptive error control to water
 # content in the mixed form and pressure head in the pressure-head form. It excludes the
 # algebraic pressure head and any passive diagnostic variables in the mixed form.
+# The error norm is the root-mean-square of the scaled nodal errors, with equal weight
+# for each entry in the selected block.
 
 ode = semidiscretize(semi, problem.tspan)
 

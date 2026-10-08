@@ -11,5 +11,6 @@ include("../src/visualization/solution_plot.jl")
 include("../src/visualization/solution_animation.jl")
 include("../src/visualization/convergence_plot.jl")
 include("../src/visualization/mass_bias_plot.jl")
+include("../src/visualization/time_step_plot.jl")
 
 end

@@ -11,7 +11,7 @@ const ROOT = normpath(joinpath(@__DIR__, "..", ".."))
 const ELIXIR = joinpath(ROOT, "examples", "elixirs",
                         "elixir_richards_manufactured_solution.jl")
 const FORMS = (("pressure_head", PressureHeadForm()), ("mixed", MixedForm()))
-const STUDIES = [(; bc, kind, N) for bc in ("DD", "DN")
+const STUDIES = [(; bc, kind, N) for bc in (:dirichlet_dirichlet, :dirichlet_neumann)
                  for (kind, N) in (("space", 3), ("space", 4), ("time", 3))]
 
 # Keep the elixir's global assignments separate from the convergence driver.
@@ -19,22 +19,12 @@ module ManufacturedSolutionElixir end
 
 function solve_case(bc, form, level, N, dt)
     final_time = 120.0
-    problem_options = (;)
-    if bc == "DN"
-        base = HydrologicProblemRichardsManufacturedSolution()
-        boundaries = (; x_neg = base.boundary_conditions.x_neg,
-                        x_pos = BoundaryConditionNeumann(HydroTrixi.richards_manufactured_right_boundary_flux))
-        problem = HydrologicProblem(; equations = base.equations,
-            state_to_evolved = base.state_to_evolved, evolved_to_state = base.evolved_to_state,
-            initial_condition = base.initial_condition, boundary_conditions = boundaries,
-            source_terms = base.source_terms, domain = base.domain, tspan = base.tspan)
-        problem_options = (; problem)
-    end
+    problem = HydrologicProblemRichardsManufacturedSolution(boundary_conditions = bc)
     # Prescribe the grid to avoid a roundoff-sized extra step for decimal dt.
     nsteps = round(Int, final_time / dt)
     time_grid = range(0.0, final_time; length = nsteps + 1)[2:end]
     simulation = Trixi.trixi_include(ManufacturedSolutionElixir, ELIXIR;
-                                     problem_options..., initial_refinement_level = level,
+                                     problem, initial_refinement_level = level,
                                      polydeg = N, form, dt, adaptive = false,
                                      callback = nothing,
                                      solve_options = (; tstops = time_grid, dense = false))
@@ -63,8 +53,7 @@ function run_convergence(studies = STUDIES; output_directory = nothing)
 
     for study in studies
         (; bc, kind, N) = study
-        boundary_name = bc == "DD" ? "dirichlet_dirichlet" : "dirichlet_neumann"
-        name = "richards_manufactured_solution_$(boundary_name)_$(kind)_N$(N)"
+        name = "richards_manufactured_solution_$(bc)_$(kind)_N$(N)"
         println("Running $name")
         configs = kind == "space" ? [(level, 0.1) for level in 4:8] :
                                    [(12, dt) for dt in (4.0, 2.0, 1.0, 0.5, 0.25)]
@@ -108,7 +97,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
     if !(length(ARGS) in (0, 3))
         error("Usage: julia --project=run $(@__FILE__) [DD|DN space|time N]")
     end
-    studies = isempty(ARGS) ? RichardsConvergence.STUDIES :
-              [(bc = ARGS[1], kind = ARGS[2], N = parse(Int, ARGS[3]))]
+    studies = if isempty(ARGS)
+        RichardsConvergence.STUDIES
+    else
+        bc = if ARGS[1] == "DD"
+            :dirichlet_dirichlet
+        elseif ARGS[1] == "DN"
+            :dirichlet_neumann
+        else
+            error("Unknown convergence study")
+        end
+        [(; bc, kind = ARGS[2], N = parse(Int, ARGS[3]))]
+    end
     RichardsConvergence.run_convergence(studies)
 end

@@ -30,6 +30,7 @@ include("visualization/visualization.jl")
 
 include("equations/problems/problems.jl")
 include("time_integration/time_integration.jl")
+include("analysis/solution_data.jl")
 include("time_integration/stepsize_controller_mapped_error.jl")
 
 export HydrologicProblem
@@ -39,6 +40,8 @@ export VanGenuchten
 export AnalysisCallbackFullState
 export water_content, water_content_timederivative
 export mass_balance, mass_bias, mass_bias_history
+export accepted_step_history
+export solution_data_1d
 export effective_saturation, water_capacity, hydraulic_conductivity, pressure_head
 export HydrologicProblemCeliaHaverkamp
 export HydrologicProblemCeliaNewMexico

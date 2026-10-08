@@ -38,6 +38,16 @@ end
         SciMLBase.step!(dense_integrator)
 
         @test Matrix(sparse_integrator.cache.J)≈dense_integrator.cache.J rtol=1.0e-6
+
+        # Automatic differentiation rebuilds both spatial caches with dual storage.
+        dual_caches = sparse_ode.f.f.dual_semidiscretizations.bufs
+        @test !isempty(dual_caches)
+        for dual_semi in values(dual_caches)
+            @test eltype(dual_semi.cache_parabolic.parabolic_boundaries.flux_values) ==
+                  eltype(dual_semi.semi_base.cache.elements)
+            @test dual_semi.cache_parabolic.parabolic_container ===
+                  dual_semi.semi_base.cache_parabolic.parabolic_container
+        end
     end
 end
 
@@ -45,6 +55,12 @@ end
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_diffusion_1d_dirichlet_dirichlet.jl"),
                         l2=[7.161872258671082e-5], linf=[0.00035212174570417587])
+
+    @test semi.semi_base === semi_base
+    @test semi.cache_parabolic isa HydroTrixi.CacheParabolic1D
+    @test semi.cache_parabolic.parabolic_container ===
+          semi_base.cache_parabolic.parabolic_container
+    @test !hasproperty(semi_base.cache_parabolic, :parabolic_boundaries)
 end
 
 @trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl sparse Jacobian" begin
@@ -61,6 +77,84 @@ end
                                  "elixir_diffusion_1d_mixed_dirichlet_neumann.jl"),
                         dt=1.0e-3,
                         l2=[4.1106696084102e-5], linf=[0.00022679747809317696])
+end
+
+@trixi_testset "elixir_diffusion_1d_mixed_dirichlet_neumann.jl native Trixi" begin
+    import OrdinaryDiffEqRosenbrock
+
+    # Native spatial caches retain upstream dispatch after HydroTrixi is loaded.
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_diffusion_1d_mixed_dirichlet_neumann.jl"),
+                        semi=semi_base,
+                        algorithm=OrdinaryDiffEqRosenbrock.Rodas5P(
+                            autodiff=OrdinaryDiffEqRosenbrock.AutoFiniteDiff()),
+                        dt=1.0e-3,
+                        l2=[4.1106696084102e-5], linf=[0.00022679747809317696])
+
+    @test SciMLBase.successful_retcode(sol)
+    @test !hasproperty(semi.cache_parabolic, :parabolic_boundaries)
+    u_ode = last(sol.u)
+    GC.@preserve u_ode begin
+        u = Trixi.wrap_array(u_ode, semi)
+        arguments = (u, u, last(sol.t), semi.mesh, semi.equations,
+                     semi.boundary_conditions, semi.source_terms, semi.solver,
+                     semi.solver_parabolic, semi.cache, semi.cache_parabolic)
+        @test which(Trixi.rhs_parabolic!, typeof(arguments)).module === Trixi
+    end
+
+    # Non-parabolic discretizations use the native spatial fallback.
+    equations_hyperbolic = Trixi.LinearScalarAdvectionEquation1D(1.0)
+    semi_hyperbolic = Trixi.SemidiscretizationHyperbolic(mesh, equations_hyperbolic,
+                                                        initial_condition, solver;
+                                                        boundary_conditions =
+                                                        Trixi.BoundaryConditionDirichlet(initial_condition))
+    implicit_hyperbolic = SemidiscretizationImplicit(semi_hyperbolic,
+                                                     TemporalOperatorStandard())
+    @test implicit_hyperbolic.semi_base === semi_hyperbolic
+    @test isnothing(implicit_hyperbolic.cache_parabolic)
+    state = Trixi.compute_coefficients(0.0, implicit_hyperbolic)
+    native_rhs = similar(state)
+    implicit_rhs = similar(state)
+    Trixi.default_rhs(semi_hyperbolic)(native_rhs, state, semi_hyperbolic, 0.0)
+    Trixi.default_rhs(implicit_hyperbolic)(implicit_rhs, state, implicit_hyperbolic, 0.0)
+    @test implicit_rhs == native_rhs
+end
+
+@trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl native 2D AMR" begin
+    # The exact profile is independent of y, so it also solves the 2D diffusion equation.
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_diffusion_1d_dirichlet_dirichlet.jl"),
+                        mesh=Trixi.TreeMesh((0.0, 0.0), (1.0, 1.0);
+                                            initial_refinement_level=1, periodicity=false),
+                        equations=Trixi.LinearDiffusionEquation2D(diffusivity),
+                        boundary_conditions=Trixi.BoundaryConditionDirichlet(
+                            initial_condition),
+                        tspan=(0.0, 0.01), dt=0.001,
+                        l2=[0.0013200742189360601], linf=[0.004697866874314283])
+
+    @test SciMLBase.successful_retcode(sol)
+    @test isnothing(semi.cache_parabolic)
+    state = copy(last(sol.u))
+    initial_elements = Trixi.nelements(solver, semi_base.cache)
+    request = Ref(1)
+    controller = (u, mesh, equations, dg, cache; kwargs...) ->
+                 fill(request[], Trixi.nelements(dg, cache))
+    amr_callback = Trixi.AMRCallback(semi, controller; interval = 1,
+                                    adapt_initial_condition = false)
+
+    # Refine every cell, then coarsen complete sibling groups back to the original mesh.
+    for (direction, element_factor) in ((1, 4), (-1, 1))
+        request[] = direction
+        @test amr_callback.affect!(state, semi, last(sol.t), 0)
+        n_elements = Trixi.nelements(solver, semi_base.cache)
+        @test n_elements == element_factor * initial_elements
+        @test size(semi_base.cache_parabolic.parabolic_container.u_transformed, 4) ==
+              n_elements
+        du = similar(state)
+        Trixi.default_rhs(semi)(du, state, semi, last(sol.t))
+        @test all(isfinite, du)
+    end
+    @test state≈last(sol.u) rtol=1.0e-12
 end
 
 @trixi_testset "elixir_richards_celia_haverkamp.jl" begin
@@ -89,6 +183,57 @@ end
     @test all(isfinite, amr_indicator(u, mesh, equations, dg, cache))
 end
 
+@trixi_testset "elixir_richards_celia_haverkamp.jl accepted-step history" begin
+    analysis_directory = mktempdir()
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_celia_haverkamp.jl"),
+                        amr=true, tspan=(0.0, 1.0), initial_refinement_level=2,
+                        amr_interval=1, base_level=1, max_level=4,
+                        adapt_initial_condition=false,
+                        analysis_interval=1, save_analysis=true,
+                        output_directory=analysis_directory,
+                        save_everystep=true, dense=false,
+                        l2=[0.05128549457329617], linf=[0.41441386613429104])
+
+    analysis_path = joinpath(analysis_directory, "analysis.dat")
+    history = accepted_step_history(analysis_path)
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.stats.nreject > 0
+    @test history.steps == collect(1:sol.stats.naccept)
+    @test eltype(history.steps) == Int
+    @test history.times == sol.t[2:end]
+    @test history.dts≈diff(sol.t) rtol=1.0e-12 atol=eps(1.0)
+
+    full_history = accepted_step_history(analysis_path; include_initial = true)
+    @test full_history.steps == collect(0:sol.stats.naccept)
+    @test full_history.times == sol.t
+    @test first(full_history.dts) == 1.0e-2
+    @test full_history.dts[2:end] == history.dts
+
+    times, biases = mass_bias_history(analysis_path)
+    @test times == sol.t
+    # The uniform initial profile gives an independent reference for total storage.
+    column_length = last(problem.domain)[1] - first(problem.domain)[1]
+    initial_storage = water_content(-0.615, problem.equations) * column_length
+    @test last(biases)≈mass_bias(last(sol.u), semi, initial_storage) atol=1.0e-14
+
+    # Preserve the initial row and signed biases in the conservation-study schema.
+    study_path = joinpath(analysis_directory, "conservation.dat")
+    open(study_path, "w") do io
+        println(io, "\n#accepted_step time_s dt_s mass_bias_m")
+        println(io, "\n# Accepted-step samples")
+        for row in zip(full_history.steps, full_history.times, full_history.dts, biases)
+            println(io, join(row, ' '))
+        end
+    end
+    columns = (; step_column = "accepted_step", time_column = "time_s", dt_column = "dt_s")
+    @test accepted_step_history(study_path; columns...) == history
+    @test accepted_step_history(study_path; columns..., include_initial = true) ==
+          full_history
+    @test mass_bias_history(study_path; time_column = "time_s",
+                            mass_balance_column = "mass_bias_m") == (times, biases)
+end
+
 @trixi_testset "elixir_richards_celia_haverkamp.jl saved AMR meshes" begin
     elixir = joinpath(EXAMPLES_DIR, "elixirs", "elixir_richards_celia_haverkamp.jl")
     @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
@@ -103,6 +248,38 @@ end
     @test length(last(result.mesh_history)) == 6
     @test result.mesh_history[2] === result.mesh_history[3]
 
+    # The initial uniform profile is extracted on its original mesh after refinement.
+    initial = solution_data_1d(result; index = 1, component = 2)
+    initial_water = solution_data_1d(result; index = 1, component = 1)
+    @test initial.time≈first(sol.t) atol=eps(1.0)
+    @test initial.mesh_vertices_x≈first(result.mesh_history) rtol=1.0e-14 atol=eps(1.0)
+    @test all(x -> first(problem.domain)[1] <= x <= last(problem.domain)[1],
+              filter(isfinite, initial.x))
+    @test filter(isfinite, initial.values) ≈ fill(-0.615, count(isfinite, initial.values))
+    @test filter(isfinite, initial_water.values) ≈
+          fill(water_content(-0.615, problem.equations),
+               count(isfinite, initial_water.values))
+    @test length(initial.x) == length(initial.values)
+    @test all(edge -> count(==(edge), initial.x) == 2, initial.mesh_vertices_x[2:end-1])
+    explicit = solution_data_1d(sol; index = 1, component = 2,
+                                mesh_history = result.mesh_history)
+    @test initial.time≈explicit.time rtol=1.0e-14 atol=eps(1.0)
+    @test initial.x≈explicit.x rtol=1.0e-14 atol=eps(1.0)
+    @test initial.values≈explicit.values rtol=1.0e-14 atol=eps(1.0)
+    @test initial.mesh_vertices_x≈explicit.mesh_vertices_x rtol=1.0e-14 atol=eps(1.0)
+    final = solution_data_1d(result; component = 2)
+    @test final.time≈last(sol.t) rtol=1.0e-14 atol=eps(1.0)
+    @test final.mesh_vertices_x≈last(result.mesh_history) rtol=1.0e-14 atol=eps(1.0)
+    @test length(initial.x) != length(final.x)
+
+    # Mesh-edge edits to a snapshot preserve shared saved meshes.
+    shared_vertices = copy(result.mesh_history[2])
+    snapshot = solution_data_1d(result; index = 2, component = 2)
+    snapshot.mesh_vertices_x .*= 100
+    @test result.mesh_history[2] == shared_vertices
+    @test solution_data_1d(result; index = 3, component = 2).mesh_vertices_x ==
+          shared_vertices
+
     @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
                         amr=true, amr_interval=1, base_level=1, max_level=4,
                         save_mesh_history=true,
@@ -111,6 +288,24 @@ end
     @test length(result.mesh_history) == 2
     @test length(first(result.mesh_history)) == 5
     @test length(last(result.mesh_history)) == 6
+    @test sol.t == [0.0, 1.0]
+
+    # Solver defaults retain only the requested times for explicit save grids.
+    for (saveat, expected_times) in ((0.25, collect(0.0:0.25:1.0)),
+                                     ([0.25, 0.75], [0.25, 0.75]),
+                                     ([0.5, 1.0], [0.5, 1.0]))
+        @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
+                            amr=true, amr_interval=1, base_level=1, max_level=4,
+                            save_mesh_history=true, saveat=saveat, dense=false)
+        @test SciMLBase.successful_retcode(sol)
+        @test sol.t == expected_times
+        @test length(result.mesh_history) == length(sol.u)
+        for index in eachindex(sol.t)
+            snapshot = solution_data_1d(result; index, component = 2)
+            @test snapshot.time == sol.t[index]
+            @test snapshot.mesh_vertices_x == result.mesh_history[index]
+        end
+    end
 
     @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
                         amr=true, amr_interval=1, base_level=1, max_level=4,
@@ -125,7 +320,7 @@ end
     @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
                         amr=true, amr_interval=1, base_level=1, max_level=4,
                         save_mesh_history=true,
-                        save_start=false)
+                        solve_options=(; save_start=false))
     @test length(sol.u) == 1
     @test length(result.mesh_history) == 1
     @test length(only(result.mesh_history)) == 6
@@ -133,7 +328,7 @@ end
     @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
                         amr=true, amr_interval=1, base_level=1, max_level=4,
                         save_mesh_history=true,
-                        save_end=false)
+                        solve_options=(; save_end=false))
     @test length(sol.u) == 1
     @test length(result.mesh_history) == 1
     @test length(only(result.mesh_history)) == 5
@@ -143,6 +338,14 @@ end
                         saveat=0.0:0.25:1.0, dense=false)
     @test length(result.mesh_history) == length(sol.u)
     @test all(mesh -> mesh === first(result.mesh_history), result.mesh_history)
+    # Static-mesh extraction agrees with and without a recorded mesh history.
+    recorded = solution_data_1d(result; index = 1, component = 2)
+    current = solution_data_1d(sol; index = 1, component = 2)
+    # Reconstruction and live-mesh extraction may differ by floating-point roundoff.
+    @test recorded.time≈current.time rtol=1.0e-14 atol=eps(1.0)
+    @test recorded.x≈current.x rtol=1.0e-14 atol=eps(1.0)
+    @test recorded.values≈current.values rtol=1.0e-14 atol=eps(1.0)
+    @test recorded.mesh_vertices_x≈current.mesh_vertices_x rtol=1.0e-14 atol=eps(1.0)
 end
 
 @trixi_testset "elixir_richards_celia_haverkamp.jl normalized saturation indicator" begin
@@ -201,6 +404,13 @@ end
 @trixi_testset "elixir_richards_manufactured_solution.jl mixed form" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_richards_manufactured_solution.jl"),
+                        problem=HydrologicProblemRichardsManufacturedSolution(
+                            boundary_conditions = :dirichlet_dirichlet),
+                        l2=[5.842386475768436e-5], linf=[0.0003809050528057467])
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
+                                 "elixir_richards_manufactured_solution.jl"),
+                        problem=HydrologicProblemRichardsManufacturedSolution(
+                            boundary_conditions = nothing),
                         l2=[5.842386475768436e-5], linf=[0.0003809050528057467])
 end
 
@@ -320,27 +530,23 @@ end
 end
 
 @testset "Richards manufactured solution Dirichlet-Neumann convergence" begin
-    base_problem = HydrologicProblemRichardsManufacturedSolution()
-    dirichlet_left = Trixi.BoundaryConditionDirichlet(base_problem.initial_condition)
-    right_flux = HydroTrixi.richards_manufactured_right_boundary_flux
-    neumann_right = Trixi.BoundaryConditionNeumann(right_flux)
-    boundary_conditions = (; x_neg = dirichlet_left, x_pos = neumann_right)
-    problem = HydrologicProblem(equations = base_problem.equations,
-                                state_to_evolved = base_problem.state_to_evolved,
-                                evolved_to_state = base_problem.evolved_to_state,
-                                initial_condition = base_problem.initial_condition,
-                                boundary_conditions = boundary_conditions,
-                                source_terms = base_problem.source_terms,
-                                domain = base_problem.domain, tspan = base_problem.tspan)
+    preset = HydrologicProblemRichardsManufacturedSolution(
+        boundary_conditions = :dirichlet_neumann)
+    # Retain the custom unpenalized Dirichlet condition used by this regression.
+    boundaries = (; x_neg = Trixi.BoundaryConditionDirichlet(preset.initial_condition),
+                   x_pos = preset.boundary_conditions.x_pos)
+    custom = HydrologicProblemRichardsManufacturedSolution(boundary_conditions = boundaries)
 
-    eocs, _ = Trixi.convergence_test(@__MODULE__,
-                                     joinpath(EXAMPLES_DIR, "elixirs",
-                                              "elixir_richards_manufactured_solution.jl"),
-                                     3; problem = problem,
-                                     initial_refinement_level = 4)
-    mean_convergence = Trixi.calc_mean_convergence(eocs)
-    @test isapprox(mean_convergence[:l2], [4.0]; rtol = 0.1)
-    @test isapprox(mean_convergence[:linf], [4.0]; rtol = 0.1)
+    for problem in (custom, preset)
+        eocs, _ = Trixi.convergence_test(@__MODULE__,
+                                         joinpath(EXAMPLES_DIR, "elixirs",
+                                                  "elixir_richards_manufactured_solution.jl"),
+                                         3; problem = problem,
+                                         initial_refinement_level = 4)
+        mean_convergence = Trixi.calc_mean_convergence(eocs)
+        @test isapprox(mean_convergence[:l2], [4.0]; rtol = 0.1)
+        @test isapprox(mean_convergence[:linf], [4.0]; rtol = 0.1)
+    end
 end
 
 @testset "elixir_richards_celia_haverkamp.jl AMR mass bias" begin
@@ -370,6 +576,13 @@ end
         condition = (u, t, integrator) -> t in scheduled_times
         affect! = function (integrator)
             amr_callback.affect!(integrator)
+            # Both refinement and coarsening keep the reused spatial storage consistent.
+            cache_parabolic = semi.cache_parabolic
+            n_elements = Trixi.nelements(semi.semi_base.solver, semi.semi_base.cache)
+            @test size(cache_parabolic.parabolic_container.u_transformed, 3) == n_elements
+            @test size(cache_parabolic.parabolic_boundaries.flux_values) ==
+                  (2, Trixi.nvariables(semi.semi_base),
+                   Trixi.nboundaries(semi.semi_base.cache.boundaries))
             push!(topology_history,
                   (integrator.t, copy(Trixi.leaf_cells(mesh.tree))))
             return nothing
