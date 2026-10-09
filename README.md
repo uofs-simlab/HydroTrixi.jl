@@ -47,7 +47,7 @@ Worked examples and tutorials are provided in the [documentation](https://tjbmon
 
 ## Acknowledgements
 
-The developers of this package acknowledge funding support from the [Cooperative Institute for Research to Operations in Hydrology (CIROH)](https://ciroh.ua.edu/).
+The developers of this package acknowledge funding support from the [Cooperative Institute for Research to Operations in Hydrology (CIROH)](https://ciroh.ua.edu/) and the [Natural Sciences and Engineering Research Council of Canada (NSERC)](https://www.nserc-crsng.gc.ca/).
 
 ## License
 
