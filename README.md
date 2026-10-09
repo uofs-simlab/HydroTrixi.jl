@@ -1,6 +1,7 @@
 # HydroTrixi.jl
 
 [![CI](https://github.com/uofs-simlab/HydroTrixi.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/uofs-simlab/HydroTrixi.jl/actions/workflows/ci.yml)
+[![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://tjbmontoya.com/HydroTrixi.jl/stable)
 [![docs-dev](https://img.shields.io/badge/docs-dev-blueviolet.svg)](https://tjbmontoya.com/HydroTrixi.jl/dev)
 
 **HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic problems. It builds upon the parabolic spatial discretization capabilities in [Trixi.jl](https://github.com/trixi-framework/Trixi.jl) [(Ranocha et al. 2022)](#references) and the time integration methods in [SciML](https://sciml.ai/), adding the following technical features to support the solution of the **Richards equation** in one spatial dimension using local discontinuous Galerkin methods with collocated Legendre-Gauss-Lobatto quadrature:
@@ -38,7 +39,7 @@ Run the test suite:
 julia> Pkg.test()
 ```
 
-Worked examples and tutorials are provided in the [documentation](https://tjbmontoya.com/HydroTrixi.jl/dev).
+Worked examples and tutorials are provided in the [documentation](https://tjbmontoya.com/HydroTrixi.jl/stable).
 
 ## References
 

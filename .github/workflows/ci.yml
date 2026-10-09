@@ -26,16 +26,25 @@ concurrency:
 
 jobs:
   test-core:
-    name: Julia 1.10 - core tests - ubuntu-latest - x64 - ${{ github.event_name }}
+    name: >-
+      Julia ${{ matrix.version }} - core tests - ubuntu-latest - x64 -
+      ${{ github.event_name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['1.10', '1']
+    env:
+      JULIA_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
         with:
-          version: '1.10'
+          version: ${{ matrix.version }}
           arch: x64
           show-versioninfo: true
       - uses: julia-actions/cache@v2
 
       - name: Run core tests
-        run: julia --project=. -e 'using Pkg; Pkg.test()'
+        run: julia --threads=1 --project=. -e 'using Pkg; Pkg.test()'

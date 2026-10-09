@@ -1,11 +1,11 @@
 # Visualization methods are added by HydroTrixiVisualizationExt when CairoMakie is
 # loaded, to avoid making CairoMakie a hard dependency.
-const DEFAULT_PLOT_FONT = "CMU Serif"
+const DEFAULT_PLOT_FONT = :regular
 const DEFAULT_SOLUTION_FIGSIZE = (500, 350)
 const DEFAULT_CONVERGENCE_FIGSIZE = (500, 350)
 
 @doc raw"""
-    plot_solution_1d(sol; kwargs...)
+    plot_solution_1d(sol; output_path = "solution_1d.pdf", kwargs...)
     plot_solution_1d(result::ImplicitSolveResult; index=lastindex(result.sol.u), kwargs...)
     plot_solution_1d(data::NamedTuple; kwargs...)
 
@@ -19,6 +19,31 @@ Set `show_element_boundaries = true` to draw the mesh guides used in animations.
 A named-tuple input must contain `time`, `x`, `values`, and `mesh_vertices_x`, as returned
 by [`solution_data_1d`](@ref). This also supports profiles read from saved numerical tables.
 Use the same axis, styling, and exact-solution keywords as for solution inputs.
+
+# Common plotting keywords
+
+[`plot_solution_1d`](@ref), [`plot_convergence_1d`](@ref),
+[`plot_mass_bias_magnitude`](@ref), and [`plot_time_steps`](@ref) accept these keywords:
+
+| Keywords | Meaning and defaults |
+|:---------|:---------------------|
+| `output_path` | Save the figure to this path; the default filename depends on the plot. |
+| `xlabel`, `ylabel` | Axis labels, with plot-specific defaults. |
+| `xscale`, `yscale` | Axis scale functions, with plot-specific defaults and restrictions. |
+| `xticks`, `yticks` | Axis ticks; `nothing` infers them automatically. Convergence defaults to `xticks = :doubling`. |
+| `xlims`, `ylims` | Axis limits; `nothing` infers them from the domain or data. |
+| `size = (500, 350)` | Figure size in Makie units. |
+| `font = :regular`, `fontsize = 15` | Base font from Makie's LaTeX font family and figure font size. |
+| `xlabelfont`, `ylabelfont`, `titlefont`, `xticklabelfont`, `yticklabelfont`, `legendfont` | Font overrides, each defaulting to `font`. |
+| `legendfontsize = 14` | Legend label size. |
+| `linewidth` | Curve width; defaults to `1.8` for convergence and `2.0` for the other plots. |
+| `show_legend` | Whether to draw a legend; the default depends on the plot. History legends require `labels`. |
+| `legend_position` | Legend position, expressed as a tuple such as `(:right, :top)`. |
+
+Solution plots default to linear axes, automatically inferred ticks, and horizontal limits
+at the domain endpoints. The legend defaults to `(:right, :bottom)` and is shown when
+`exact_solution` is supplied. Set `show_legend = true` to show `numerical_label` without an
+exact solution, or `show_legend = false` to suppress the legend.
 
 ```julia
 using HydroTrixi, CairoMakie, LaTeXStrings
@@ -35,7 +60,7 @@ This method is provided by `HydroTrixiVisualizationExt` and becomes available wh
 function plot_solution_1d end
 
 @doc raw"""
-    plot_convergence_1d(series; kwargs...)
+    plot_convergence_1d(series; output_path = "convergence_1d.pdf", kwargs...)
 
 Plot one-dimensional convergence data, save the figure to `output_path`,
 and return the `CairoMakie.Figure`.
@@ -52,13 +77,18 @@ Placement uses both errors at the finest interval.
 The x ticks are inferred for doubling degrees of freedom; pass `xticks = nothing` or
 explicit ticks for other x axes. Pass `yticks` to set the y-axis ticks.
 
+For common axis, figure, font, and legend keywords, see [`plot_solution_1d`](@ref).
+Both scales default to `log10`, with `xticks = :doubling` and automatically inferred y ticks
+and limits. The legend defaults to `(:right, :top)` and is shown unless
+`show_legend = false`.
+
 This method is provided by `HydroTrixiVisualizationExt` and becomes available when
 `CairoMakie` and `LaTeXStrings` are loaded.
 """
 function plot_convergence_1d end
 
 @doc raw"""
-    plot_mass_bias_magnitude(sol; kwargs...)
+    plot_mass_bias_magnitude(sol; output_path = "mass_bias.pdf", kwargs...)
     plot_mass_bias_magnitude(analysis_path::AbstractString;
                              time_column = "time", mass_balance_column = "mass_balance",
                              kwargs...)
@@ -72,7 +102,14 @@ Zero magnitudes are omitted from the logarithmic plot.
 Save the plot to `output_path` and return the `CairoMakie.Figure`.
 For multiple sources, `labels` controls the legend
 while `colors` and `linestyles` select each curve's style.
-Pass `xticks`, `yticks`, `xlims`, and `ylims` to set axis ticks and limits.
+Pass `xticks`, `yticks`, `xlims`, and `ylims` to set axis ticks and limits,
+and `xlabel` and `ylabel` to change axis labels.
+
+For common axis, figure, font, and legend keywords, see [`plot_solution_1d`](@ref).
+The defaults are `xscale = identity` and `yscale = log10`; `yscale` accepts only `log10`
+and `identity` because zero handling and inferred y ticks and limits depend on the scale.
+Ticks and limits are inferred automatically. The legend defaults to `(:right, :top)` and
+is shown when `labels` is supplied; pass `show_legend = false` to suppress it.
 
 This method is provided by `HydroTrixiVisualizationExt` and becomes available when
 `CairoMakie` and `LaTeXStrings` are loaded.
@@ -95,13 +132,13 @@ function mass_bias_magnitude_axis end
 @doc raw"""
     plot_time_steps(source; output_path = "time_steps.pdf", kwargs...)
 
-Plot accepted-step sizes against their end times, save the figure to `output_path`,
+Plot accepted step sizes against their end times, save the figure to `output_path`,
 and return the `CairoMakie.Figure`.
 Both axes are linear by default; set `xscale` or `yscale` to change them.
 Pass `xticks`, `yticks`, `xlims`, and `ylims` to set axis ticks and limits,
 and `xlabel` and `ylabel` to change axis labels.
 
-Supply an analysis-file path, a named tuple containing `times` and `dts`,
+Supply an analysis file path, a named tuple containing `times` and `dts`,
 or a tuple or vector of these sources.
 File inputs use [`accepted_step_history`](@ref), omitting step zero;
 pass `step_column`, `time_column`, and `dt_column` for alternate column names.
@@ -110,7 +147,9 @@ its saved times need not include every accepted step.
 
 For multiple sources, `labels`, `colors`, and `linestyles` each take one entry per source.
 The legend is omitted when `labels` is not supplied.
-Set its position with `legend_position`.
+Set its position with `legend_position`, or suppress it with `show_legend = false`.
+For common axis, figure, font, and legend keywords, see [`plot_solution_1d`](@ref).
+Ticks and limits are inferred automatically, and the legend defaults to `(:left, :top)`.
 
 ```julia
 using HydroTrixi, CairoMakie, LaTeXStrings
@@ -135,6 +174,7 @@ function plot_time_steps end
 
 Animate a saved one-dimensional solution and save it to `output_path`.
 An `ImplicitSolveResult` supplies its recorded mesh history automatically.
+Axis, figure, font, and legend keywords are shared with [`plot_solution_1d`](@ref).
 
 These methods are provided by `HydroTrixiVisualizationExt` and become available when
 `CairoMakie` and `LaTeXStrings` are loaded.

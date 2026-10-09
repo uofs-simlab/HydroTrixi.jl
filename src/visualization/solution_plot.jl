@@ -53,7 +53,7 @@ end
 
 function add_legend!(ax; position, font, labelsize, show_legend)
     if show_legend
-        axislegend(ax; position = position, font = font, labelsize = labelsize)
+        axislegend(ax; position = position, labelfont = font, labelsize = labelsize)
     end
 
     return nothing
@@ -75,14 +75,14 @@ function initialize_solution_plot_1d(x, y, mesh_vertices_x, t;
                                      fontsize = 15, legendfontsize = 14, linewidth = 2.0,
                                      markersize = 7.0, show_nodes = false,
                                      show_element_boundaries = false,
-                                     xlabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
-                                     ylabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
-                                     titlefont = HydroTrixi.DEFAULT_PLOT_FONT,
-                                     xticklabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
-                                     yticklabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
-                                     legendfont = HydroTrixi.DEFAULT_PLOT_FONT,
-                                     legend_position = :rb, xlims = nothing,
-                                     ylims = nothing)
+                                     show_legend = !isnothing(exact_solution),
+                                     xlabelfont = font, ylabelfont = font,
+                                     titlefont = font, xticklabelfont = font,
+                                     yticklabelfont = font, legendfont = font,
+                                     legend_position = (:right, :bottom),
+                                     xscale = identity, yscale = identity,
+                                     xticks = nothing, yticks = nothing,
+                                     xlims = nothing, ylims = nothing)
     HydroTrixi.set_serif_tex_theme!(font = font)
 
     show_exact = !isnothing(exact_solution)
@@ -100,6 +100,7 @@ function initialize_solution_plot_1d(x, y, mesh_vertices_x, t;
     ax = solution_axis(fig; xlabel = xlabel, ylabel = ylabel, xlabelfont = xlabelfont,
                        ylabelfont = ylabelfont, titlefont = titlefont,
                        xticklabelfont = xticklabelfont, yticklabelfont = yticklabelfont,
+                       xscale = xscale, yscale = yscale, xticks = xticks, yticks = yticks,
                        xlims = xlims, ylims = ylims)
     ax.xgridvisible = false
     ax.ygridvisible = false
@@ -111,11 +112,11 @@ function initialize_solution_plot_1d(x, y, mesh_vertices_x, t;
     end
 
     if show_nodes
-        scatterlines!(ax, points_obs; label = show_exact ? numerical_label : nothing,
+        scatterlines!(ax, points_obs; label = show_legend ? numerical_label : nothing,
                       linewidth = linewidth, markersize = markersize,
                       color = Makie.wong_colors()[1])
     else
-        lines!(ax, points_obs; label = show_exact ? numerical_label : nothing,
+        lines!(ax, points_obs; label = show_legend ? numerical_label : nothing,
                linewidth = linewidth, color = Makie.wong_colors()[1])
     end
 
@@ -128,7 +129,7 @@ function initialize_solution_plot_1d(x, y, mesh_vertices_x, t;
                linestyle = :dash, color = Makie.wong_colors()[2],)
     end
     add_legend!(ax; position = legend_position, font = legendfont,
-                labelsize = legendfontsize, show_legend = show_exact)
+                labelsize = legendfontsize, show_legend = show_legend)
 
     return (; fig, points_obs, mesh_vertices_x_obs, x_exact, y_exact_obs, exact_solution)
 end

@@ -106,8 +106,18 @@ function HydroTrixi.plot_mass_bias_magnitude(source;
                                              mass_balance_column = "mass_balance",
                                              labels = nothing, colors = nothing,
                                              linestyles = nothing,
+                                             font = HydroTrixi.DEFAULT_PLOT_FONT,
+                                             size = HydroTrixi.DEFAULT_SOLUTION_FIGSIZE,
+                                             fontsize = 15, legendfontsize = 14,
+                                             linewidth = 2.0,
+                                             show_legend = !isnothing(labels),
+                                             xlabelfont = font, ylabelfont = font,
+                                             titlefont = font, xticklabelfont = font,
+                                             yticklabelfont = font, legendfont = font,
                                              legend_position = (:right, :top),
-                                             yscale = log10,
+                                             xlabel = L"Time $t$ (s)",
+                                             ylabel = L"Absolute bias error $|\epsilon_{\mathrm{b}}(t)|$ (m)",
+                                             xscale = identity, yscale = log10,
                                              xticks = nothing, yticks = nothing,
                                              xlims = nothing, ylims = nothing)
     if yscale !== log10 && yscale !== identity
@@ -143,22 +153,22 @@ function HydroTrixi.plot_mass_bias_magnitude(source;
         yticks = bias_axis.ticks
     end
 
-    HydroTrixi.set_serif_tex_theme!()
-    fig = Figure(size = HydroTrixi.DEFAULT_SOLUTION_FIGSIZE, fontsize = 15)
-    ax = solution_axis(fig; xlabel = L"$t$ (s)",
-                       ylabel = L"$|\epsilon_{\mathrm{b}}(t)|$ (m)",
-                       yscale, xticks, yticks, xlims, ylims)
+    HydroTrixi.set_serif_tex_theme!(; font)
+    fig = Figure(; size, fontsize)
+    ax = solution_axis(fig; xlabel, ylabel, xlabelfont, ylabelfont, titlefont,
+                       xticklabelfont, yticklabelfont, xscale, yscale, xticks, yticks,
+                       xlims, ylims)
 
     palette = Makie.wong_colors()
     for (i, ((times, _), values)) in enumerate(zip(histories, magnitudes))
         label = isnothing(labels) ? nothing : labels[i]
         color = isnothing(colors) ? palette[mod1(i, length(palette))] : colors[i]
         linestyle = isnothing(linestyles) ? :solid : linestyles[i]
-        plot_series!(ax, times, values; label, color, linestyle)
+        plot_series!(ax, times, values; label, color, linestyle, linewidth)
     end
 
-    add_legend!(ax; position = legend_position, font = HydroTrixi.DEFAULT_PLOT_FONT,
-                labelsize = 14, show_legend = !isnothing(labels))
+    add_legend!(ax; position = legend_position, font = legendfont,
+                labelsize = legendfontsize, show_legend)
 
     mkpath(dirname(abspath(output_path)))
     save(output_path, fig; px_per_unit = 1)
