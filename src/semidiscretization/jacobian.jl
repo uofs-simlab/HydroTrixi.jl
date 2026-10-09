@@ -3,12 +3,14 @@
     AbstractJacobianStrategy
 
 Abstract supertype for strategies that control the Jacobian information supplied by
-[`semidiscretize`](@ref) for a [`SemidiscretizationImplicit`](@ref). The Jacobian strategy
-is specified by the `jacobian` keyword argument to [`semidiscretize`](@ref) and defines
+[`semidiscretize`](@ref) for a [`SemidiscretizationImplicit`](@ref).
+The Jacobian strategy is specified by the `jacobian` keyword argument
+to [`semidiscretize`](@ref) and defines
 whether a sparse Jacobian prototype is supplied (the default `SparseJacobian()` option) or
-whether a dense Jacobian is used (`DenseJacobian()`). This is independent of the
-differentiation backend, which controls how the Jacobian entries are computed and is
-specified by the time integration algorithm's `autodiff` keyword argument.
+whether a dense Jacobian is used (`DenseJacobian()`).
+This is independent of the differentiation backend,
+which controls how the Jacobian entries are computed
+and is specified by the time integration algorithm's `autodiff` keyword argument.
 """
 abstract type AbstractJacobianStrategy end
 
@@ -18,9 +20,9 @@ abstract type AbstractJacobianStrategy end
 When [`semidiscretize`](@ref) is called with `jacobian = DenseJacobian()`, HydroTrixi.jl
 selects dense Jacobian storage and does not supply an analytical `jac` function.
 
-The Jacobian entries are computed using the backend passed to the
-time integration algorithm's `autodiff` keyword, for example, `ADTypes.AutoForwardDiff()`
-or `ADTypes.AutoFiniteDiff()`.
+The Jacobian entries are computed using the backend
+passed to the time integration algorithm's `autodiff` keyword,
+for example, `ADTypes.AutoForwardDiff()` or `ADTypes.AutoFiniteDiff()`.
 """
 struct DenseJacobian <: AbstractJacobianStrategy end
 
@@ -28,13 +30,14 @@ struct DenseJacobian <: AbstractJacobianStrategy end
     SparseJacobian()
 
 When [`semidiscretize`](@ref) is called with `jacobian = SparseJacobian()`, HydroTrixi.jl
-supplies a sparse zero matrix as `jac_prototype`, but no analytical `jac` function. The
-resulting `SparseMatrixCSC` is a prototype that encodes the full Jacobian sparsity pattern.
-It has size `length(u_ode)` by `length(u_ode)`, has `eltype(u_ode)`, and stores zeros at
-every coordinate in the pattern. When passive variables are present, their rows are
-included, and their columns are zero.
+supplies a sparse zero matrix as `jac_prototype`, but no analytical `jac` function.
+The resulting `SparseMatrixCSC` is a prototype
+that encodes the full Jacobian sparsity pattern.
+It has size `length(u_ode)` by `length(u_ode)`, has `eltype(u_ode)`,
+and stores zeros at every coordinate in the pattern.
+When passive variables are present, their rows are included, and their columns are zero.
 
-Entries arising only from the constant temporal mass matrix ``\boldsymbol{M}`` are
+Entries arising only from the constant DAE mass matrix ``\boldsymbol{M}`` are
 excluded, since OrdinaryDiffEq.jl combines the Jacobian information with
 ``\boldsymbol{M}`` when constructing the Rosenbrock matrix
 ```math
@@ -43,18 +46,19 @@ excluded, since OrdinaryDiffEq.jl combines the Jacobian information with
 (\boldsymbol{y}^n,t^n).
 ```
 
-The Jacobian entries are computed using the backend passed to the
-time integration algorithm's `autodiff` keyword, for example, `ADTypes.AutoForwardDiff()`
-or `ADTypes.AutoFiniteDiff()`.
+The Jacobian entries are computed using the backend
+passed to the time integration algorithm's `autodiff` keyword,
+for example, `ADTypes.AutoForwardDiff()` or `ADTypes.AutoFiniteDiff()`.
 
 This is the default Jacobian strategy for `SemidiscretizationImplicit`. Jacobian storage,
 the time integration algorithm, and the differentiation backend are configured separately.
 
 For the supported serial, nonperiodic, one-dimensional LGL-DGSEM LDG discretization,
 HydroTrixi.jl also supplies a deterministic analytical column colouring. The construction
-assumes a fixed polynomial degree during h-adaptive mesh refinement and Trixi.jl's current
-physical ordering of one-dimensional leaf cells. It must be revisited if the stencil,
-field coupling, mesh type, boundary treatment, or leaf ordering changes.
+assumes a fixed polynomial degree during h-adaptive mesh refinement
+and Trixi.jl's current physical ordering of one-dimensional leaf cells.
+It must be revisited if the stencil, field coupling, mesh type, boundary treatment,
+or leaf ordering changes.
 """
 struct SparseJacobian <: AbstractJacobianStrategy end
 
@@ -173,19 +177,11 @@ function spatial_operator_jacobian_sparsity_pattern(u_state, mesh::Trixi.TreeMes
     return spatial_pattern
 end
 
-# Retain the spatial pattern for the standard physical system
+# Dense element-local blocks already contain the nodal capacity derivative's diagonal
 function physical_jacobian_sparsity_pattern(spatial_pattern,
-                                            ::TemporalOperatorStandard)
+                                            ::Union{TemporalOperatorStandard,
+                                                    TemporalOperatorCapacity})
     return spatial_pattern
-end
-
-# Add the nodal capacity derivative to the physical Jacobian pattern
-function physical_jacobian_sparsity_pattern(spatial_pattern,
-                                            ::TemporalOperatorCapacity)
-    n_state_dofs = size(spatial_pattern, 1)
-    identity_pattern = sparse(1:n_state_dofs, 1:n_state_dofs, trues(n_state_dofs),
-                              n_state_dofs, n_state_dofs)
-    return spatial_pattern .| identity_pattern
 end
 
 # Embed the spatial pattern in the constitutive evolved-state block layout

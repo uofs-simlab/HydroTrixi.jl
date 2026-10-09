@@ -45,19 +45,19 @@ Trixi.pretty_form_utf(::typeof(water_content)) = "∫θ"
 @doc raw"""
     water_content_timederivative
 
-Analysis integral for the time derivative of the total water content,
+Analysis integral for the time derivative of water storage per unit cross-sectional area,
 ```math
 \frac{\mathrm{d}}{\mathrm{d}t}
 \sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
 \boldsymbol{\theta}_k(t).
 ```
 
-For the mixed formulation, ``\boldsymbol{\theta}_k`` is evolved directly. For the
-pressure-head formulation,
+For the mixed formulation, ``\boldsymbol{\theta}_k`` is evolved directly.
+For the pressure-head formulation,
 ``\boldsymbol{\theta}_k=\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` and this quantity
 integrates ``\boldsymbol{C}_k\dot{\boldsymbol{\psi}}_k``, where
-``\boldsymbol{C}_k`` contains the nodal values of [`water_capacity`](@ref). The two
-expressions agree when the constitutive constraint
+``\boldsymbol{C}_k`` contains the nodal values of [`water_capacity`](@ref).
+The two expressions agree when the constitutive constraint
 ``\boldsymbol{\theta}_k=\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` is satisfied.
 """
 function water_content_timederivative end
@@ -118,7 +118,7 @@ Trixi.pretty_form_utf(::typeof(water_content_timederivative)) = "d/dt ∫θ"
     mass_balance
     mass_balance(u_ode, semi::SemidiscretizationImplicit)
 
-Return the signed cumulative water mass balance
+Return cumulative net boundary flux minus water storage per unit cross-sectional area:
 ```math
 F_{\mathrm{B}}(t)-F_{\mathrm{T}}(t)
 -\sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
@@ -127,17 +127,32 @@ F_{\mathrm{B}}(t)-F_{\mathrm{T}}(t)
 where ``F_{\mathrm{T}}`` and ``F_{\mathrm{B}}`` are the passive SFOM variables satisfying
 ``\dot{F}_{\mathrm{T}}=f_{\mathrm{T}}^\star`` and
 ``\dot{F}_{\mathrm{B}}=f_{\mathrm{B}}^\star``, respectively, and
-``\boldsymbol{\theta}_k`` is the nodal water-content vector. The Julia named-tuple keys
-`x_neg` and `x_pos` represent the top and bottom boundaries. This function returns the
-negative of the fully discrete invariant for source-free problems:
+``\boldsymbol{\theta}_k`` is the nodal water-content vector,
+stored directly in mixed form and evaluated as
+``\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` in pressure-head form.
+The Julia named-tuple keys `x_neg` and `x_pos` represent the top and bottom boundaries.
+This function returns the negative of the semi-discrete invariant for source-free problems:
 ```math
 \sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
 \boldsymbol{\theta}_k(t)+F_{\mathrm{T}}(t)-F_{\mathrm{B}}(t)
 ```
-Differencing this quantity between time levels produces the signed mass bias 
-``\epsilon_{\mathrm{b}}(t^n)`` documented by [`mass_bias`](@ref). This solver flux output
-method diagnostic requires [`PassiveVariablesBoundaryFlux1D`](@ref), which advances 
-the integrated numerical boundary fluxes with the same time-integration stages, time steps,
+In mixed form, Rosenbrock-Wanner integration preserves this invariant in exact arithmetic,
+and water-content transfer preserves it across mesh changes.
+Numerical calculations are subject to roundoff;
+the pressure-head formulation has no corresponding fully discrete conservation guarantee.
+The change in `mass_balance` from initialization gives the signed bias error
+``\epsilon_{\mathrm{b}}(t^n)`` documented by [`mass_bias`](@ref).
+
+This expression accounts only for boundary fluxes. For a volume source ``s(z,t)`` added
+to the right-hand side of the Richards equation, an invariant also requires adding its
+cumulative contribution ``\int_{t^0}^{t}\int_0^L s(z,\tau)\,\mathrm{d}z\,\mathrm{d}\tau``
+to `mass_balance`, using the spatial quadrature and time-integration stages of the solver.
+Without that contribution, this diagnostic need not remain constant
+for source-driven problems such as the manufactured solution.
+
+This solver flux output method diagnostic requires [`PassiveVariablesBoundaryFlux1D`](@ref),
+which advances the integrated numerical boundary fluxes
+with the same time-integration stages, time steps,
 and step-acceptance decisions as the physical state.
 """
 function mass_balance end
@@ -160,7 +175,8 @@ Trixi.pretty_form_utf(::typeof(mass_balance)) = "mass balance"
 @doc raw"""
     mass_bias(u_ode, semi::SemidiscretizationImplicit, initial_water_content)
 
-Return the water mass bias relative to an initial total water content:
+Return the signed bias error relative to the initial water storage
+per unit cross-sectional area `initial_water_content`:
 ```math
 \epsilon_{\mathrm{b}}(t^n) =
 \left(F_{\mathrm{B}}^n-F_{\mathrm{B}}^0\right)
@@ -173,10 +189,10 @@ Return the water mass bias relative to an initial total water content:
 \boldsymbol{\theta}_k^0
 \right).
 ```
-This method assumes the initialization
-``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``. For complete
-saved time histories, prefer [`mass_bias_history`](@ref), which differences
-[`mass_balance`](@ref) and therefore also supports nonzero initial SFOM variables.
+This method assumes the initialization ``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``.
+For complete saved time histories, prefer [`mass_bias_history`](@ref),
+which differences [`mass_balance`](@ref)
+and therefore also supports nonzero initial SFOM variables.
 The source-free scope of [`mass_balance`](@ref) also applies to this mass bias.
 """
 function mass_bias end
@@ -191,14 +207,16 @@ end
     mass_bias_history(analysis_path::AbstractString;
                       time_column = "time", mass_balance_column = "mass_balance")
 
-Return the saved times and corresponding water mass biases for `sol`.
+Return the saved times and corresponding signed bias errors ``\epsilon_{\mathrm{b}}(t^n)``
+for `sol`. The errors have the units of water storage per unit cross-sectional area and
+inherit the source-free scope of [`mass_balance`](@ref).
 
 The solution must use a [`SemidiscretizationImplicit`](@ref) with
 [`PassiveVariablesBoundaryFlux1D`](@ref). By default, the first saved state must be at the
 initial time ``t^0``. When it is not available, pass `initial_water_content` explicitly;
-this assumes ``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``. Solution
-postprocessing requires a fixed state layout; for AMR solutions, use the analysis-file
-method instead.
+this assumes ``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``.
+Solution postprocessing requires a fixed state layout;
+for AMR solutions, use the analysis-file method instead.
 
 When `analysis_path` is provided, read the time and signed cumulative water mass balance
 columns from an analysis file written by

@@ -89,8 +89,8 @@ function OrdinaryDiffEqCore.stepsize_controller!(integrator,
     _, equations, _, _ = Trixi.mesh_equations_solver_cache(semi)
     block = cache.error_control_block
     u = block(integrator.u, semi)
-    u_reference = block(u_embedded, semi)
-    u_previous = block(integrator.uprev, semi)
+    u_hat = block(u_embedded, semi)
+    uprev = block(integrator.uprev, semi)
     # Array tolerances follow the full ODE storage layout, as required by SciML.
     abstol = integrator.opts.abstol
     if !(abstol isa Number)
@@ -99,15 +99,16 @@ function OrdinaryDiffEqCore.stepsize_controller!(integrator,
 
     mapping = cache.error_control_mapping
     reltol = integrator.opts.reltol
-    residual = broadcast(u, u_reference, u_previous,
-                         abstol, reltol) do value, reference, previous, atol, rtol
+    # Scale nodal errors before reducing them to the RMS estimate Eⁿ⁺¹.
+    scaled_error = broadcast(u, u_hat, uprev,
+                             abstol, reltol) do value, embedded, previous, atol, rtol
         mapped_value = mapping(value, equations)
-        mapped_reference = mapping(reference, equations)
+        mapped_embedded = mapping(embedded, equations)
         mapped_previous = mapping(previous, equations)
-        return (mapped_value - mapped_reference) /
+        return (mapped_value - mapped_embedded) /
                (atol + rtol * max(abs(mapped_previous), abs(mapped_value)))
     end
-    error = Trixi.ode_norm(residual, integrator.t + integrator.dt)
+    error = Trixi.ode_norm(scaled_error, integrator.t + integrator.dt)
     OrdinaryDiffEqCore.set_EEst!(integrator, error)
     return OrdinaryDiffEqCore.stepsize_controller!(integrator, cache.controller_cache,
                                                    algorithm)

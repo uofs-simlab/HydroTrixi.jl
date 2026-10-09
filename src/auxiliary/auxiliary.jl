@@ -9,8 +9,8 @@ examples_dir() = joinpath(pkgdir(HydroTrixi), "examples")
     compute_eoc(errors; refinement_factor=2.0)
 
 Compute the estimated orders of convergence between successive entries of `errors`.
-The first entry of the returned vector is `NaN` because no coarser reference value is
-available.
+The first entry of the returned vector is `NaN`
+because no coarser reference value is available.
 """
 function compute_eoc(errors::AbstractVector{<:Real}; refinement_factor = 2.0)
     values = similar(errors, Float64)

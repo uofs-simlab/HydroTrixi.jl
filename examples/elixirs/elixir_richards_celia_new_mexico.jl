@@ -3,7 +3,7 @@ using SciMLBase
 using Trixi
 
 ###############################################################################
-# semidiscretization of the Celia et al. New Mexico Richards benchmark
+# Semidiscretization of the New Mexico infiltration problem (Celia et al., 1990)
 
 problem = HydrologicProblemCeliaNewMexico(tspan = (0.0, 86_400.0))
 

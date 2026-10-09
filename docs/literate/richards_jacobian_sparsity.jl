@@ -76,8 +76,8 @@ ode = semidiscretize(semi, problem.tspan);
 # $K(N+1)^2 + 2(N+1)(K-1) + 2K(N+1)$ stored entries. The first term contains dense
 # element-local entries of
 # $\partial_{\boldsymbol{\Psi}}\boldsymbol{\mathcal{R}}$, the second term contains
-# LDG interface entries, and the third term contains the two constitutive identity
-# diagonals. We verify the prototype size, number of stored entries, and stored values:
+# LDG interface entries, and the third term contains the two constitutive diagonal
+# blocks. We verify the prototype size, number of stored entries, and stored values:
 
 mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
 n_nodes = Trixi.nnodes(solver)

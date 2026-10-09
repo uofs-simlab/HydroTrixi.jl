@@ -10,8 +10,6 @@ function exact_solution_values(exact_solution, x_exact, t)
     return [scalar_value(exact_solution(Trixi.SVector(xi), t)) for xi in x_exact]
 end
 
-@inline series_label(show_label, label) = show_label ? label : nothing
-
 function solution_axis(fig; xlabel, ylabel, xlabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
                        ylabelfont = HydroTrixi.DEFAULT_PLOT_FONT,
                        titlefont = HydroTrixi.DEFAULT_PLOT_FONT,
@@ -30,7 +28,12 @@ function solution_axis(fig; xlabel, ylabel, xlabelfont = HydroTrixi.DEFAULT_PLOT
     if !isnothing(yticks)
         ax.yticks = yticks
     end
-    apply_axis_limits!(ax; xlims = xlims, ylims = ylims)
+    if !isnothing(xlims)
+        CairoMakie.xlims!(ax, xlims)
+    end
+    if !isnothing(ylims)
+        CairoMakie.ylims!(ax, ylims)
+    end
 
     return ax
 end
@@ -108,11 +111,11 @@ function initialize_solution_plot_1d(x, y, mesh_vertices_x, t;
     end
 
     if show_nodes
-        scatterlines!(ax, points_obs; label = series_label(show_exact, numerical_label),
+        scatterlines!(ax, points_obs; label = show_exact ? numerical_label : nothing,
                       linewidth = linewidth, markersize = markersize,
                       color = Makie.wong_colors()[1])
     else
-        lines!(ax, points_obs; label = series_label(show_exact, numerical_label),
+        lines!(ax, points_obs; label = show_exact ? numerical_label : nothing,
                linewidth = linewidth, color = Makie.wong_colors()[1])
     end
 
@@ -159,9 +162,6 @@ function HydroTrixi.plot_solution_1d(sol::SciMLBase.AbstractODESolution;
                                      mesh_history = nothing, kwargs...)
     if isempty(sol.u)
         throw(ArgumentError("The solution has no saved states to plot."))
-    end
-    if !checkbounds(Bool, sol.u, index)
-        throw(BoundsError(sol.u, index))
     end
     if isnothing(mesh_history) && index != lastindex(sol.u)
         throw(ArgumentError("Plotting an earlier saved state requires mesh history."))

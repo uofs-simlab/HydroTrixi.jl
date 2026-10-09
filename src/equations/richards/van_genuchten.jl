@@ -5,16 +5,16 @@
     VanGenuchten(; saturated_hydraulic_conductivity, alpha, n, theta_s, theta_r,
                    m = 1 - 1 / n, pore_connectivity = 1 / 2)
 
-A van Genuchten–Mualem soil-hydraulic model, written in terms of the effective
-saturation following Ireson et al. (2023). For ``\psi < 0``, the water content and
-hydraulic conductivity are
+A van Genuchten-Mualem soil-hydraulic model,
+written in terms of the effective saturation following Ireson et al. (2023).
+For ``\psi < 0``, the water content and hydraulic conductivity are
 ```math
 \vartheta(\psi) = \theta_{\mathrm{r}}+
 (\theta_{\mathrm{s}}-\theta_{\mathrm{r}})
-\left(1+(\alpha|\psi|)^n\right)^{-m},
+\left(1+(\alpha_{\mathrm{V}}|\psi|)^{n_{\mathrm{V}}}\right)^{-m_{\mathrm{V}}},
 \qquad
-\kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^l
-\left(1-\left(1-S_{\mathrm{e}}(\psi)^{1/m}\right)^m\right)^2,
+\kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^{\ell_{\mathrm{V}}}
+\left(1-\left(1-S_{\mathrm{e}}(\psi)^{1/m_{\mathrm{V}}}\right)^{m_{\mathrm{V}}}\right)^2,
 ```
 where
 ```math
@@ -22,19 +22,26 @@ S_{\mathrm{e}}(\psi) \coloneqq
 \frac{\vartheta(\psi)-\theta_{\mathrm{r}}}
 {\theta_{\mathrm{s}}-\theta_{\mathrm{r}}}.
 ```
-Here, ``\kappa_{\mathrm{s}}`` is the `saturated_hydraulic_conductivity` parameter and
-``l`` is the `pore_connectivity` parameter. Although the accompanying manuscript
-restricts the mathematical formulation to ``\psi<0``, this implementation extends the
-model with ``S_{\mathrm{e}}(\psi)=1``, ``\vartheta(\psi)=\theta_{\mathrm{s}}``, and
-``\kappa(\psi)=\kappa_{\mathrm{s}}`` for ``\psi\geq 0``.
+The inverse pressure-head scale ``\alpha_{\mathrm{V}}``, water-retention exponent
+``n_{\mathrm{V}}``, derived shape parameter ``m_{\mathrm{V}}``, and pore-connectivity
+parameter ``\ell_{\mathrm{V}}`` correspond to `alpha`, `n`, `m`, and `pore_connectivity`,
+respectively.
+The constructor defaults to ``m_{\mathrm{V}}=1-1/n_{\mathrm{V}}``
+but permits an explicit `m`.
+The parameters ``\kappa_{\mathrm{s}}``, ``\theta_{\mathrm{s}}``,
+and ``\theta_{\mathrm{r}}`` correspond to `saturated_hydraulic_conductivity`,
+`theta_s`, and `theta_r`, respectively.
+For ``\psi\geq 0``, the model uses the saturated values ``S_{\mathrm{e}}(\psi)=1``,
+``\vartheta(\psi)=\theta_{\mathrm{s}}``, and ``\kappa(\psi)=\kappa_{\mathrm{s}}``.
 
 # References
-- van Genuchten, M. Th. (1980). A closed-form equation for predicting the
-  hydraulic conductivity of unsaturated soils. *Soil Science Society of America
-  Journal*, 44(5), 892-898.
+- van Genuchten, M. Th. (1980).
+  A closed-form equation for predicting the hydraulic conductivity of unsaturated soils.
+  *Soil Science Society of America Journal*, 44(5), 892-898.
   [DOI: 10.2136/sssaj1980.03615995004400050002x](https://doi.org/10.2136/sssaj1980.03615995004400050002x)
-- Mualem, Y. (1976). A new model for predicting the hydraulic conductivity of
-  unsaturated porous media. *Water Resources Research*, 12(3), 513-522.
+- Mualem, Y. (1976).
+  A new model for predicting the hydraulic conductivity of unsaturated porous media.
+  *Water Resources Research*, 12(3), 513-522.
   [DOI: 10.1029/WR012i003p00513](https://doi.org/10.1029/WR012i003p00513)
 """
 struct VanGenuchten{RealT}

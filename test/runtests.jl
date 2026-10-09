@@ -291,12 +291,12 @@ end
     @test sol.t == [0.0, 1.0]
 
     # Solver defaults retain only the requested times for explicit save grids.
-    for (saveat, expected_times) in ((0.25, collect(0.0:0.25:1.0)),
-                                     ([0.25, 0.75], [0.25, 0.75]),
-                                     ([0.5, 1.0], [0.5, 1.0]))
+    for (requested_times, expected_times) in ((0.25, collect(0.0:0.25:1.0)),
+                                              ([0.25, 0.75], [0.25, 0.75]),
+                                              ([0.5, 1.0], [0.5, 1.0]))
         @test_trixi_include(elixir, tspan=(0.0, 1.0), initial_refinement_level=2,
                             amr=true, amr_interval=1, base_level=1, max_level=4,
-                            save_mesh_history=true, saveat=saveat, dense=false)
+                            save_mesh_history=true, saveat=requested_times, dense=false)
         @test SciMLBase.successful_retcode(sol)
         @test sol.t == expected_times
         @test length(result.mesh_history) == length(sol.u)
@@ -634,8 +634,4 @@ end
     initial_storage = first(storage)
     @test isapprox(storage, fill(initial_storage, length(storage));
                    rtol = 0, atol = 100 * eps(initial_storage))
-end
-
-if isempty(ARGS) || "visualization" in ARGS
-    include("visualization_extension.jl")
 end

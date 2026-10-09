@@ -1,4 +1,4 @@
-# Animate the AMR Celia Haverkamp benchmark in mixed or pressure-head form
+# Animate the Haverkamp infiltration problem with AMR (Celia et al., 1990)
 
 using CairoMakie
 using HydroTrixi
@@ -51,6 +51,6 @@ plot_mass_bias_magnitude(analysis_path; output_path = mass_bias_path,
                          xticks = (time_ticks, string.(Int.(time_ticks))),
                          xlims = (0.0, final_time))
 
-println("Saved Celia Haverkamp $(form_name) AMR animation to: $(animation_path)")
-println("Saved Celia Haverkamp $(form_name) AMR mass-bias plot to: $(mass_bias_path)")
-println("Saved Celia Haverkamp $(form_name) AMR analysis data to: $(analysis_path)")
+println("Saved Haverkamp $(form_name) AMR animation to: $(animation_path)")
+println("Saved Haverkamp $(form_name) AMR mass-bias plot to: $(mass_bias_path)")
+println("Saved Haverkamp $(form_name) AMR analysis data to: $(analysis_path)")

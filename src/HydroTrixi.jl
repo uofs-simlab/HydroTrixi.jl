@@ -1,10 +1,11 @@
 """
     HydroTrixi
 
-**HydroTrixi.jl** is an adaptive discontinuous spectral-element framework for hydrologic
-problems based on the Trixi.jl and SciML ecosystems. Its one-dimensional Richards solver
-supports mixed and pressure-head formulations with local discontinuous Galerkin spatial
-discretization, adaptive implicit time integration, and adaptive mesh refinement.
+**HydroTrixi.jl** is an adaptive discontinuous spectral-element framework
+for hydrologic problems based on the Trixi.jl and SciML ecosystems.
+Its one-dimensional Richards solver supports mixed and pressure-head formulations
+with local discontinuous Galerkin spatial discretization,
+adaptive implicit time integration, and adaptive mesh refinement.
 """
 module HydroTrixi
 

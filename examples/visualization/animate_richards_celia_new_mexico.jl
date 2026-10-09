@@ -1,4 +1,4 @@
-# Animate the fixed-mesh Celia New Mexico benchmark and plot its mass bias
+# Animate the fixed-mesh New Mexico infiltration problem (Celia et al., 1990)
 
 using CairoMakie
 using HydroTrixi
@@ -11,6 +11,7 @@ final_time = 86_400.0
 Trixi.trixi_include(@__MODULE__,
                     joinpath(dirname(@__DIR__), "elixirs",
                              "elixir_richards_celia_new_mexico.jl");
+                    amr = false,
                     tspan = (0.0, final_time),
                     saveat = range(0.0, final_time; length = 181))
 
@@ -27,5 +28,5 @@ plot_mass_bias_magnitude(sol; output_path = mass_bias_path, yscale = identity,
                          xticks = (time_ticks, string.(Int.(time_ticks))),
                          xlims = (0.0, final_time))
 
-println("Saved Celia New Mexico pressure-head animation to: $(animation_path)")
-println("Saved Celia New Mexico mass-bias plot to: $(mass_bias_path)")
+println("Saved New Mexico pressure-head animation to: $(animation_path)")
+println("Saved New Mexico mass-bias plot to: $(mass_bias_path)")

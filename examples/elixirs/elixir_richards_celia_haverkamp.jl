@@ -3,7 +3,7 @@ using SciMLBase
 using Trixi
 
 ###############################################################################
-# semidiscretization of the Celia et al. Haverkamp Richards benchmark
+# Semidiscretization of the Haverkamp infiltration problem (Celia et al., 1990)
 
 problem = HydrologicProblemCeliaHaverkamp(tspan = (0.0, 360.0))
 

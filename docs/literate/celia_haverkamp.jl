@@ -2,9 +2,10 @@
 # CurrentModule = HydroTrixi
 # ```
 #
-# # Celia-Haverkamp infiltration problem
+# # Haverkamp infiltration problem
 #
-# This tutorial runs the first infiltration Richards benchmark from the following paper:
+# This tutorial runs the Haverkamp infiltration problem, the first Richards equation
+# infiltration problem in the following paper:
 #
 # Celia, M. A., Bouloutas, E. T., Zarba, R. L. (1990). A general
 # mass-conservative numerical solution for the unsaturated flow equation.
@@ -14,7 +15,6 @@
 # First, we load the required packages.
 
 using HydroTrixi
-using SciMLBase
 using Trixi
 
 tutorial_utils_root = get(ENV, "HYDROTRIXI_DOCS_LITERATE", @__DIR__) #hide
@@ -73,11 +73,16 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 # controls time adaptivity only; run `examples/elixirs/elixir_richards_celia_haverkamp.jl` with
 # `amr = true` for mesh adaptivity based on water content.
 #
-# The mixed state contains both water content and pressure head, while the pressure-head
-# form contains only pressure head. The default
+# The mixed state contains the evolved water content $\theta$ and pressure head $\psi$,
+# constrained by $\theta = \vartheta(\psi)$, while the pressure-head formulation stores
+# only pressure head. The default
 # `error_control_block = evolved_variable_block` restricts adaptive error control to water
-# content in the mixed form and pressure head in the pressure-head form. It excludes the
-# algebraic pressure head and any passive diagnostic variables in the mixed form.
+# content in the mixed formulation and pressure head in the pressure-head formulation.
+# It excludes the algebraic pressure head and any passive diagnostic variables in the
+# mixed formulation. To control water-content error in the pressure-head formulation as
+# in the manuscript, use `error_control_block = state_variable_block` and
+# `error_control_mapping = water_content` to evaluate $\vartheta(\psi)$ for the previous,
+# primary, and embedded solutions before scaling their errors.
 # The error norm is the root-mean-square of the scaled nodal errors, with equal weight
 # for each entry in the selected block.
 

@@ -2,12 +2,17 @@
 #! format: noindent
 
 @doc raw"""
-    HydrologicProblemRichardsClosedColumn(; constitutive_model, domain, tspan, base_head, amplitude)
+    HydrologicProblemRichardsClosedColumn(; constitutive_model, domain, tspan,
+                                          base_head, amplitude)
 
-Return a one-dimensional Richards-equation redistribution problem on a closed column with
-homogeneous Neumann boundary conditions at both ends. The prescribed numerical boundary
-fluxes vanish, so the semi-discrete water mass is constant. With [`MixedForm`](@ref), this
-linear invariant is also retained by the time integration method up to roundoff.
+Return a one-dimensional Richards-equation redistribution problem on a closed column
+with homogeneous Neumann boundary conditions at both ends.
+The prescribed numerical boundary fluxes vanish,
+so the semi-discrete water mass is constant.
+With [`MixedForm`](@ref),
+Rosenbrock-Wanner time integration preserves this linear invariant in exact arithmetic.
+Water-content solution transfer also preserves it through mesh updates;
+numerical calculations retain it up to roundoff.
 
 The problem provides the constitutive map ``\theta = \vartheta(\psi)`` required by the
 mixed formulation. The pressure head is initialized as
@@ -15,15 +20,16 @@ mixed formulation. The pressure head is initialized as
 \psi(z, 0) = \psi_{\mathrm{base}} + z +
 A \left( 1 - \cos\left(\frac{2\pi (z - z_{\min})}{L}\right) \right),
 ```
-where ``\psi_{\mathrm{base}}`` is `base_head`, ``A`` is `amplitude`, and
-``L = z_{\max} - z_{\min}``. This profile satisfies ``\partial \psi / \partial z = 1`` at 
-both boundaries, and therefore the flux
+where ``\psi_{\mathrm{base}}`` is `base_head`, ``A`` is `amplitude`,
+and ``L = z_{\max} - z_{\min}``.
+This profile satisfies ``\partial \psi / \partial z = 1`` at both boundaries,
+and therefore the flux
 ```math
 f(\psi, \partial_z\psi) \coloneqq
 \kappa(\psi) \left( \partial_z \psi - 1 \right)
 ```
-vanishes at ``z = z_{\min}`` and ``z = z_{\max}`` at the initial time, and should
-remain zero for all time due to the homogeneous Neumann boundary conditions.
+vanishes at ``z = z_{\min}`` and ``z = z_{\max}`` at the initial time. The homogeneous
+Neumann conditions prescribe zero numerical boundary fluxes throughout the simulation.
 
 The returned problem setup contains the fields `equations`, `state_to_evolved`,
 `evolved_to_state`, `initial_condition`, `boundary_conditions`, `domain`, and `tspan`.

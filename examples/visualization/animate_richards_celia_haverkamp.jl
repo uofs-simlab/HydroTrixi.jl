@@ -1,4 +1,4 @@
-# Animate the fixed-mesh Celia Haverkamp benchmark and plot its mass bias
+# Animate the fixed-mesh Haverkamp infiltration problem (Celia et al., 1990)
 
 using CairoMakie
 using HydroTrixi
@@ -27,5 +27,5 @@ plot_mass_bias_magnitude(sol; output_path = mass_bias_path, yscale = identity,
                          xticks = (time_ticks, string.(Int.(time_ticks))),
                          xlims = (0.0, final_time))
 
-println("Saved Celia Haverkamp pressure-head animation to: $(animation_path)")
-println("Saved Celia Haverkamp mass-bias plot to: $(mass_bias_path)")
+println("Saved Haverkamp pressure-head animation to: $(animation_path)")
+println("Saved Haverkamp mass-bias plot to: $(mass_bias_path)")

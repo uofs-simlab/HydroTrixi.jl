@@ -63,12 +63,6 @@ function HydroTrixi.plot_reference_triangle!(ax, coarse_x, fine_x, reference_err
     return nothing
 end
 
-function HydroTrixi.plot_bottom_triangle!(ax, coarse_x, fine_x, reference_error, order;
-                                          kwargs...)
-    return HydroTrixi.plot_reference_triangle!(ax, coarse_x, fine_x, reference_error, order;
-                                              position = :below, kwargs...)
-end
-
 function convergence_triangle_from_data(series_groups, order; triangle_slope = :negative,
                                          position = :below)
     # Automatic placement assumes every curve uses the same refinement levels.
@@ -180,10 +174,7 @@ function HydroTrixi.plot_convergence_1d(series_groups::Union{Tuple, AbstractVect
     add_legend!(ax; position = legend_position, font = legendfont,
                 labelsize = legendfontsize, show_legend = show_legend)
 
-    outdir = dirname(output_path)
-    if outdir != ""
-        mkpath(outdir)
-    end
+    mkpath(dirname(abspath(output_path)))
     save(output_path, fig; px_per_unit = 1)
 
     return fig

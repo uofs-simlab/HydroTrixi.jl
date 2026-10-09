@@ -8,9 +8,10 @@ Read accepted-step numbers, end times, and step sizes from an analysis file and 
 step size is the initial guess rather than an accepted step. Set `include_initial = true`
 to retain that row when copying a complete analysis table.
 
-An analysis callback with `analysis_interval = 1` records every accepted step. Larger
-intervals produce a sampled history; the recorded step sizes are not differences between
-successive sample times. Rejected steps are not recorded.
+An analysis callback with `analysis_interval = 1` records every accepted step.
+Larger intervals produce a sampled history;
+the recorded step sizes are not differences between successive sample times.
+Rejected steps are not recorded.
 
 The default column names match Trixi analysis files. Supply explicit names for other
 tables with the same commented-header format:

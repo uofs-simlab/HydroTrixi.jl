@@ -6,9 +6,9 @@
 **HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic problems. It builds upon the parabolic spatial discretization capabilities in [Trixi.jl](https://github.com/trixi-framework/Trixi.jl) [(Ranocha et al. 2022)](#references) and the time integration methods in [SciML](https://sciml.ai/), adding the following technical features to support the solution of the **Richards equation** in one spatial dimension using local discontinuous Galerkin methods with collocated Legendre-Gauss-Lobatto quadrature:
 
 - Implicit temporal operator formulations using algebraic constitutive constraints or capacity functions to support mixed and pressure-head formulations, respectively
-- Flexible parabolic boundary conditions allowing penalty-type numerical fluxes that depend on the inner and outer solution and flux values
+- Flexible parabolic boundary conditions, including penalty-type Dirichlet fluxes that depend on the interior pressure head, interior flux, and prescribed boundary head
 - Implicit solution strategies using adaptive Rosenbrock-Wanner methods with sparse graph-coloured Jacobian evaluation using finite differences or forward-mode automatic differentiation
-- Adaptivity in space with mass-conservative solution transfer
+- Adaptivity in space with water-content transfer that preserves water storage
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes, following [Ireson et al. (2023)](#references)
 - Tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases
 

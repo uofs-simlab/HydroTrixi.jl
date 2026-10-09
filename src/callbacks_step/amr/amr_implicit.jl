@@ -1,49 +1,50 @@
-# Mark evolved variables as differential and state variables as algebraic
-function fill_mass_matrix_diagonal!(diagonal_entries, ::TemporalOperatorConstitutive)
+# Mark evolved variables as differential and state variables as algebraic in the DAE
+# mass matrix
+function fill_dae_mass_matrix_diagonal!(diagonal_entries, ::TemporalOperatorConstitutive)
     fill!(diagonal_entries, zero(eltype(diagonal_entries)))
     half = length(diagonal_entries) ÷ 2
     @inbounds diagonal_entries[1:half] .= one(eltype(diagonal_entries))
     return nothing
 end
 
-# Mark all variables as differential for standard temporal operators
-function fill_mass_matrix_diagonal!(diagonal_entries, ::AbstractTemporalOperator)
+# Mark all variables as differential in the DAE mass matrix for standard temporal operators
+function fill_dae_mass_matrix_diagonal!(diagonal_entries, ::AbstractTemporalOperator)
     fill!(diagonal_entries, one(eltype(diagonal_entries)))
     return nothing
 end
 
-# Resize the physical and passive blocks of an implicit mass matrix after AMR
-function update_mass_matrix!(mass_matrix_implicit::Diagonal, u_ode,
-                             semi::SemidiscretizationImplicit)
-    n_passive = passive_variable_count(semi)
+# Resize the physical and passive blocks of the DAE mass matrix after AMR.
+function update_dae_mass_matrix!(dae_mass_matrix_implicit::Diagonal, u_ode,
+                                 semi::SemidiscretizationImplicit)
+    n_passive = passive_variable_count(semi.passive_variables)
     n_physical = length(u_ode) - n_passive
-    resize!(mass_matrix_implicit.diag, length(u_ode))
+    resize!(dae_mass_matrix_implicit.diag, length(u_ode))
 
-    # The physical block keeps the temporal-operator mass matrix layout
-    diagonal_entries_physical = @view mass_matrix_implicit.diag[1:n_physical]
-    fill_mass_matrix_diagonal!(diagonal_entries_physical, semi.operator_temporal)
+    # The physical block keeps the temporal operator's DAE mass matrix layout
+    diagonal_entries_physical = @view dae_mass_matrix_implicit.diag[1:n_physical]
+    fill_dae_mass_matrix_diagonal!(diagonal_entries_physical, semi.operator_temporal)
 
     if n_passive > 0
         # Passive scalar variables are differential variables
-        diagonal_entries_passive = @view mass_matrix_implicit.diag[(n_physical + 1):end]
-        fill!(diagonal_entries_passive, one(eltype(mass_matrix_implicit.diag)))
+        diagonal_entries_passive = @view dae_mass_matrix_implicit.diag[(n_physical + 1):end]
+        fill!(diagonal_entries_passive, one(eltype(dae_mass_matrix_implicit.diag)))
     end
 
     return nothing
 end
 
-# Leave implicit mass matrices without resizable diagonal storage unchanged
-function update_mass_matrix!(mass_matrix, u_ode, semi::SemidiscretizationImplicit)
+# Leave DAE mass matrices without resizable diagonal storage unchanged
+function update_dae_mass_matrix!(dae_mass_matrix, u_ode, semi::SemidiscretizationImplicit)
     return nothing
 end
 
-# Propagate implicit mass-matrix updates through nested ODE function wrappers
-function update_mass_matrix!(ode_function::SciMLBase.ODEFunction, u_ode,
-                             semi::SemidiscretizationImplicit)
-    update_mass_matrix!(ode_function.mass_matrix, u_ode, semi)
+# Propagate DAE mass-matrix updates through nested ODE function wrappers
+function update_dae_mass_matrix!(ode_function::SciMLBase.ODEFunction, u_ode,
+                                 semi::SemidiscretizationImplicit)
+    update_dae_mass_matrix!(ode_function.mass_matrix, u_ode, semi)
 
     if ode_function.f isa SciMLBase.ODEFunction
-        update_mass_matrix!(ode_function.f, u_ode, semi)
+        update_dae_mass_matrix!(ode_function.f, u_ode, semi)
     end
 
     return nothing
@@ -87,10 +88,8 @@ end
 # Store the AMR policy, transfer adaptor, and reusable cell-index buffers
 struct AMRCallbackImplicit{Controller, Adaptor, Cache}
     controller::Controller
-    interval::Int
     adapt_initial_condition::Bool
     adapt_initial_condition_only_refine::Bool
-    dynamic_load_balancing::Bool
     adaptor::Adaptor
     amr_cache::Cache
 end
@@ -115,9 +114,9 @@ function Trixi.AMRCallback(semi::SemidiscretizationImplicit, controller, adaptor
     end
 
     amr_cache = (; to_refine = Int[], to_coarsen = Int[])
-    amr_callback = AMRCallbackImplicit(controller, interval, adapt_initial_condition,
-                                       adapt_initial_condition_only_refine,
-                                       dynamic_load_balancing, adaptor, amr_cache)
+    amr_callback = AMRCallbackImplicit(controller, adapt_initial_condition,
+                                       adapt_initial_condition_only_refine, adaptor,
+                                       amr_cache)
 
     return SciMLBase.DiscreteCallback(condition, amr_callback;
                                       save_positions = (false, false),
@@ -165,11 +164,11 @@ function (amr_callback::AMRCallbackImplicit)(integrator; kwargs...)
     semi = integrator.p
     has_jac_prototype = !isnothing(integrator.f.jac_prototype)
 
-    # If the mesh has changed, update the mass matrix and rebuild the ODE problem
+    # If the mesh has changed, update the DAE mass matrix and rebuild the ODE problem
     has_changed = amr_callback(u_ode, semi, integrator.t, integrator.iter; kwargs...)
     if has_changed
         invalidate_rhs_implicit_cache!(integrator.f)
-        update_mass_matrix!(integrator.f, u_ode, semi)
+        update_dae_mass_matrix!(integrator.f, u_ode, semi)
         if has_jac_prototype
             # Rebuild the Jacobian prototype and deterministic colouring together
             (; jac_prototype, colorvec) = jacobian_options(SparseJacobian(), integrator.u,
@@ -238,7 +237,8 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
         error("MPI AMR has not been verified for `SemidiscretizationImplicit`.")
     end
 
-    # Evaluate the controller on the physical state represented on the current mesh
+    # Evaluate the controller on the physical state represented on the current mesh.
+    # Trixi's lambda stores signed markings: +1 to refine, -1 to coarsen, and 0 to retain.
     lambda = GC.@preserve u_ode begin
         u_state = wrap_array_implicit(state_variable_block(u_ode, semi), mesh, equations,
                                        dg, cache)
@@ -265,11 +265,12 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
         end
     end
 
-    # Transfer the operator-specific physical variable while preserving passive values
+    # transferred_ode is flat nodal storage for the selected transfer-variable polynomial.
+    # passive_ode preserves the global SFOM scalars F_T and F_B through the mesh update.
     transferred_ode = transferred_variables_for_amr(u_ode, semi, semi.operator_temporal)
     passive_ode = collect(passive_variable_view(u_ode, semi))
 
-    # Refine requested cells and prolong the physical transfer variable
+    # Refine requested cells and restrict the parent polynomial to its children
     if only_coarsen || isempty(to_refine)
         refined_original_cells = Int[]
     else
@@ -279,7 +280,7 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
                       cache, cache_parabolic, elements_to_refine, nothing)
     end
 
-    # Coarsen complete sibling groups and restrict the physical transfer variable
+    # Coarsen complete sibling groups by L² projection onto their parent
     if only_refine || isempty(to_coarsen)
         coarsened_original_cells = Int[]
     else
@@ -357,7 +358,7 @@ function resize_after_amr!(u_ode, transferred_ode, passive_ode,
                            operator_temporal::TemporalOperatorCapacity)
     # Passive scalar variables are global diagnostics and are not adapted
     resize!(u_ode, length(transferred_ode) + length(passive_ode))
-    state_variable = physical_variable_view(u_ode, semi)
+    state_variable = physical_variable_view(u_ode, semi.passive_variables)
     equations = semi.semi_base.equations
     transfer_to_state = operator_temporal.transfer_to_state
 
@@ -374,7 +375,7 @@ end
 function resize_after_amr!(u_ode, transferred_ode, passive_ode,
                            semi::SemidiscretizationImplicit, ::TemporalOperatorStandard)
     resize!(u_ode, length(transferred_ode) + length(passive_ode))
-    physical_variable_view(u_ode, semi) .= transferred_ode
+    physical_variable_view(u_ode, semi.passive_variables) .= transferred_ode
     passive_variable_view(u_ode, semi) .= passive_ode
     return nothing
 end

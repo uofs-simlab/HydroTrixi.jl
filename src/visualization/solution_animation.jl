@@ -7,12 +7,12 @@ Animate a one-dimensional solution history stored in `sol`, write the animation 
 
 Frames are taken from saved solution states. For adaptive meshes, pass `mesh_history`
 recorded during the solve so each state uses its original mesh coordinates.
-If `frame_indices` is `nothing`, every frame is rendered; otherwise, only the selected
-indices are rendered.
+If `frame_indices` is `nothing`, every frame is rendered;
+otherwise, only the selected indices are rendered.
 Set `component` to choose the plotted variable. Optional keyword arguments control axis
 labels and limits, figure size, fonts, line and marker styling, node markers, element
 boundary guides, exact-solution overlays, and the output `framerate`.
-The horizontal limits default to the column's left and right boundaries.
+The horizontal limits default to the domain endpoints.
 
 `exact_solution`, when supplied, is called as `exact_solution(Trixi.SVector(x), t)`.
 """
@@ -21,9 +21,6 @@ function HydroTrixi.animate_solution_1d(sol::SciMLBase.AbstractODESolution;
                                         component = 1, framerate = 24,
                                         frame_indices = nothing, mesh_history = nothing,
                                         kwargs...)
-    if !isnothing(mesh_history) && length(mesh_history) != length(sol.t)
-        throw(ArgumentError("The mesh history must match the saved states."))
-    end
     indices = if isnothing(frame_indices)
         collect(eachindex(sol.t))
     else

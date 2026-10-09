@@ -28,8 +28,9 @@ do not use it merely to delegate after unwrapping an argument to its base type.
 Save numerical tables and figures only. Do not generate metadata, provenance,
 source/environment snapshots, plot revision logs, question-based reports,
 Markdown run reports, experiment-index entries, or timing measurements.
-Preserve earlier results and partial tables from failed runs. Follow the
-convergence README; do not silently change numerical settings after a failure.
+Preserve earlier results and partial tables from failed runs. Follow
+`../paper-2026-adaptive-richards/README.md` for paper studies; do not silently change
+numerical settings after a failure.
 
 ## Reusing Julia sessions and running concurrently
 
@@ -43,9 +44,8 @@ session before starting another one.
    JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 julia --threads=1 --project=run -i
    ```
 
-   Set up the local `run/` environment as described in
-   `examples/convergence/README.md`; it includes CairoMakie and LaTeXStrings for
-   visualization. For non-visual core simulations, use `--project=.` instead. In each
+   Use a local `run/` environment with CairoMakie and LaTeXStrings for visualization.
+   For non-visual core simulations, use `--project=.` instead. In each
    session, explicitly set OpenBLAS threads after loading LinearAlgebra:
 
    ```julia

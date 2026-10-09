@@ -36,6 +36,52 @@ function mass_bias_log_axis(histories)
             ticks = (ticks, tick_labels))
 end
 
+function mass_bias_linear_axis(magnitudes; ylims = nothing, yticks = nothing)
+    finite_values = filter(isfinite, vcat(magnitudes...))
+    if isempty(finite_values)
+        throw(ArgumentError("Mass-bias histories contain no finite magnitudes"))
+    end
+
+    # The upper supplied limit determines the spacing of inferred ticks.
+    maximum_value = isnothing(ylims) ? maximum(finite_values) : ylims[2]
+    if maximum_value > 0
+        exponent = floor(Int, log10(maximum_value))
+        scale = 10.0^exponent
+        normalized_maximum = maximum_value / scale
+        tick_step = if normalized_maximum <= 2
+            0.5
+        elseif normalized_maximum <= 5
+            1.0
+        else
+            2.0
+        end
+        upper_factor = ceil(normalized_maximum / tick_step) * tick_step
+        if isnothing(ylims)
+            ylims = (0.0, upper_factor * scale)
+        end
+        if isnothing(yticks)
+            factors = collect(0.0:tick_step:upper_factor)
+            tick_labels = map(factors) do factor
+                if iszero(factor)
+                    return LaTeXString("0")
+                end
+                coefficient = isinteger(factor) ? string(Int(factor)) : string(factor)
+                return LaTeXString("$(coefficient)\\times 10^{$exponent}")
+            end
+            yticks = (scale .* factors, tick_labels)
+        end
+    else
+        if isnothing(ylims)
+            ylims = (0.0, 1.0)
+        end
+        if isnothing(yticks)
+            yticks = ([0.0, 1.0], ["0", "1"])
+        end
+    end
+
+    return (; limits = ylims, ticks = yticks)
+end
+
 function mass_bias_histories(source; time_column, mass_balance_column)
     source_items = is_mass_bias_source_collection(source) ? source : (source,)
     return map(source_items) do source_item
@@ -92,45 +138,9 @@ function HydroTrixi.plot_mass_bias_magnitude(source;
             yticks = bias_axis.ticks
         end
     elseif yscale === identity && (isnothing(ylims) || isnothing(yticks))
-        finite_values = filter(isfinite, vcat(magnitudes...))
-        if isempty(finite_values)
-            throw(ArgumentError("Mass-bias histories contain no finite magnitudes"))
-        end
-        maximum_value = isnothing(ylims) ? maximum(finite_values) : ylims[2]
-        if maximum_value > 0
-            exponent = floor(Int, log10(maximum_value))
-            scale = 10.0^exponent
-            normalized_maximum = maximum_value / scale
-            tick_step = if normalized_maximum <= 2
-                0.5
-            elseif normalized_maximum <= 5
-                1.0
-            else
-                2.0
-            end
-            upper_factor = ceil(normalized_maximum / tick_step) * tick_step
-            if isnothing(ylims)
-                ylims = (0.0, upper_factor * scale)
-            end
-            if isnothing(yticks)
-                factors = collect(0.0:tick_step:upper_factor)
-                tick_labels = map(factors) do factor
-                    if iszero(factor)
-                        return LaTeXString("0")
-                    end
-                    coefficient = isinteger(factor) ? string(Int(factor)) : string(factor)
-                    return LaTeXString("$(coefficient)\\times 10^{$exponent}")
-                end
-                yticks = (scale .* factors, tick_labels)
-            end
-        else
-            if isnothing(ylims)
-                ylims = (0.0, 1.0)
-            end
-            if isnothing(yticks)
-                yticks = ([0.0, 1.0], ["0", "1"])
-            end
-        end
+        bias_axis = mass_bias_linear_axis(magnitudes; ylims, yticks)
+        ylims = bias_axis.limits
+        yticks = bias_axis.ticks
     end
 
     HydroTrixi.set_serif_tex_theme!()
@@ -150,10 +160,7 @@ function HydroTrixi.plot_mass_bias_magnitude(source;
     add_legend!(ax; position = legend_position, font = HydroTrixi.DEFAULT_PLOT_FONT,
                 labelsize = 14, show_legend = !isnothing(labels))
 
-    output_directory = dirname(output_path)
-    if output_directory != ""
-        mkpath(output_directory)
-    end
+    mkpath(dirname(abspath(output_path)))
     save(output_path, fig; px_per_unit = 1)
     return fig
 end

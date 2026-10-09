@@ -4,38 +4,56 @@
 @doc raw"""
     HydrologicProblemCeliaNewMexico(; tspan = (0.0, 86_400.0), penalty_factor = 1)
 
-Return the second one-dimensional Richards-equation infiltration problem considered by
-Celia, Bouloutas, and Zarba (1990), based on field data from New Mexico.
+Return the New Mexico infiltration problem,
+the second one-dimensional Richards equation infiltration problem
+considered by Celia, Bouloutas, and Zarba (1990).
+Its soil parameters approximate the properties of a field site in New Mexico.
 
-The soil follows the van Genuchten–Mualem constitutive laws
+The soil follows the van Genuchten-Mualem constitutive model
+(van Genuchten, 1980; Mualem, 1976), given by
 ```math
-S_{\mathrm{e}}(\psi) = \left(1 + (\alpha |\psi|)^n\right)^{-m},
+S_{\mathrm{e}}(\psi) =
+\left(1 + (\alpha_{\mathrm{V}} |\psi|)^{n_{\mathrm{V}}}\right)^{-m_{\mathrm{V}}},
 \qquad
-\kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^l
-\left(1 - \left(1 - S_{\mathrm{e}}(\psi)^{1/m}\right)^m\right)^2,
+\kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^{\ell_{\mathrm{V}}}
+\left(1 -
+\left(1 - S_{\mathrm{e}}(\psi)^{1/m_{\mathrm{V}}}\right)^{m_{\mathrm{V}}}\right)^2,
 ```
-where ``m = 1 - 1/n`` and
+where ``m_{\mathrm{V}} = 1 - 1/n_{\mathrm{V}}`` and
 ``\vartheta(\psi) = \theta_{\mathrm{r}} +
-(\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}(\psi)``. The parameter values are
-``\alpha = 3.35\,\mathrm{m}^{-1}``, ``n = 2``, ``l = 0.5``,
+(\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}(\psi)``.
+The parameter values are
+``\alpha_{\mathrm{V}} = 3.35\,\mathrm{m}^{-1}``, ``n_{\mathrm{V}} = 2``,
+``\ell_{\mathrm{V}} = 0.5``,
 ``\kappa_{\mathrm{s}} = 9.22 \times 10^{-5}\,\mathrm{m}\,\mathrm{s}^{-1}``,
 ``\theta_{\mathrm{s}} = 0.368``, and ``\theta_{\mathrm{r}} = 0.102``.
+The parameters ``\alpha_{\mathrm{V}}``, ``n_{\mathrm{V}}``, ``m_{\mathrm{V}}``,
+and ``\ell_{\mathrm{V}}`` correspond to the [`VanGenuchten`](@ref) keywords
+`alpha`, `n`, `m`, and `pore_connectivity`, respectively.
 
-Depth ``z`` is measured in metres, positive downward on ``z \in [0, 1]``, and time is
-measured in seconds on ``t \in [0, 86400]`` (one day). The initial pressure head is
-``\psi(z,0)=-10`` m. The Dirichlet data are ``\psi_{\mathrm{T}}(t)=-0.75`` m at the soil
-surface (`x_neg`) and ``\psi_{\mathrm{B}}(t)=-10`` m at the column bottom (`x_pos`). This
-one-metre domain follows the depth axis used for the final profiles in Figure 3 of Celia
-et al. (1990); the paper's nearby statement placing a boundary at 60 cm is inconsistent
-with that figure.
+Depth ``z`` is measured in metres, positive downward on ``z \in [0, 1]``,
+and time is measured in seconds, with the default interval ``t \in [0, 86400]`` (one day).
+The initial pressure head is ``\psi(z,0)=-10`` m.
+The Dirichlet data are ``\psi_{\mathrm{T}}(t)=-0.75`` m at the soil surface (`x_neg`)
+and ``\psi_{\mathrm{B}}(t)=-10`` m at the column bottom (`x_pos`).
+This one-metre domain follows the depth axis used for the final profiles in Figure 3 of
+Celia et al. (1990), not the nearby statement placing a boundary at 60 cm.
 
-The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref). The dimensionless
-`penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty; setting it to zero
-omits the additional divergence-flux penalty.
+The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref).
+The dimensionless `penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty.
+Its default value is one; setting it to zero omits the additional divergence-flux penalty.
 
 # References
-- Celia, M. A., Bouloutas, E. T., Zarba, R. L. (1990). A general
-  mass-conservative numerical solution for the unsaturated flow equation.
+- van Genuchten, M. Th. (1980).
+  A closed-form equation for predicting the hydraulic conductivity of unsaturated soils.
+  *Soil Science Society of America Journal*, 44(5), 892-898.
+  [DOI: 10.2136/sssaj1980.03615995004400050002x](https://doi.org/10.2136/sssaj1980.03615995004400050002x)
+- Mualem, Y. (1976).
+  A new model for predicting the hydraulic conductivity of unsaturated porous media.
+  *Water Resources Research*, 12(3), 513-522.
+  [DOI: 10.1029/WR012i003p00513](https://doi.org/10.1029/WR012i003p00513)
+- Celia, M. A., Bouloutas, E. T., Zarba, R. L. (1990).
+  A general mass-conservative numerical solution for the unsaturated flow equation.
   *Water Resources Research*, 26(7), 1483-1496.
   [DOI: 10.1029/WR026i007p01483](https://doi.org/10.1029/WR026i007p01483)
 """

@@ -103,6 +103,8 @@ end
 # Refresh complete-state references before delegating to Trixi's callback implementation.
 function (analysis_callback::AnalysisCallbackFullState)(integrator)
     u_ode = integrator.u
+    # Store the buffer itself in each adapter. Trixi's callback then fills that buffer
+    # with integrator.f before the adapters use its contents for the analysis integrals.
     du_ode = first(SciMLBase.get_tmp_cache(integrator))
     update_full_state!(analysis_callback.full_state_analysis_integrals, du_ode, u_ode)
     return analysis_callback.callback.affect!(integrator)
@@ -116,6 +118,7 @@ end
 
 function initialize_analysis_callback_full_state!(cb, u_ode, t, integrator)
     analysis_callback = cb.affect!
+    # Store the buffer itself in each adapter before Trixi fills it for initial analysis.
     du_ode = first(SciMLBase.get_tmp_cache(integrator))
     update_full_state!(analysis_callback.full_state_analysis_integrals, du_ode, u_ode)
     callback = analysis_callback.callback

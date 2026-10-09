@@ -12,6 +12,7 @@ end
     z = x[1]
     head_amplitude = 0.204
     head_offset = -0.411
+    # Dimensionless tanh argument η(z,t) and its derivatives with respect to z and t
     eta_z = 50.0
     eta_t = 1 / 24
     eta = 0.5 * (100 * z + t / 12 - 15)
@@ -25,16 +26,16 @@ end
     return psi, psi_t, psi_z, psi_zz
 end
 
-# Exact normal flux at the right boundary for a manufactured Neumann condition
-@inline function richards_manufactured_right_boundary_flux(x, t, equations)
+# Exact bottom flux f(ψ, ∂zψ) for the manufactured Neumann condition
+@inline function richards_manufactured_bottom_boundary_flux(x, t, equations)
     psi, _, psi_z, _ = richards_manufactured_profile(x, t)
     flux = hydraulic_conductivity(psi, equations) * (psi_z - one(psi_z))
     return Trixi.SVector(flux)
 end
 
 # Source term corresponding to the manufactured pressure head
-@inline function source_terms_richards_manufactured_solution(u, gradients, x, t,
-                                                             equations)
+@inline function source_terms_richards_manufactured_solution(
+        u, gradients, x, t, equations::RichardsEquation1D{<:Haverkamp})
     constitutive_model = equations.constitutive_model
 
     psi, psi_t, psi_z, psi_zz = richards_manufactured_profile(x, t)
@@ -59,21 +60,26 @@ end
 end
 
 @doc raw"""
-    HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
-                                                    constitutive_model = default_constitutive_model(),
-                                                    penalty_factor = 1,
-                                                    boundary_conditions = :dirichlet_dirichlet)
+    HydrologicProblemRichardsManufacturedSolution(;
+        tspan = (0.0, 120.0), constitutive_model = default_constitutive_model(),
+        penalty_factor = 1, boundary_conditions = :dirichlet_dirichlet)
 
-Return a one-dimensional manufactured-solution problem for the Richards equation. The
-manufactured pressure head is
+Return a one-dimensional manufactured-solution problem for the Richards equation.
+The manufactured pressure head is
 ```math
 \psi(z, t) =
-0.204 \tanh\left(\frac{1}{2}\left(100z + \frac{t}{12} - 15\right)\right) - 0.411.
+0.204\,\mathrm{m}\,\tanh\left[
+\frac{1}{2}\left(100\,\mathrm{m}^{-1}z + \frac{t}{12\,\mathrm{s}} - 15\right)
+\right] - 0.411\,\mathrm{m}.
 ```
-The default `boundary_conditions = :dirichlet_dirichlet` imposes this profile at both
-boundaries using penalty Dirichlet conditions. With `:dirichlet_neumann`, the left
-boundary uses the same penalty Dirichlet condition and the right boundary imposes the
-exact normal flux. A custom `(; x_neg, x_pos)` tuple overrides both boundaries;
+Here, ``z`` is depth measured positive downward on a column of length
+``L=0.2\,\mathrm{m}``, and ``t`` is time in seconds.
+The default `boundary_conditions = :dirichlet_dirichlet` imposes this profile
+at both boundaries using penalty Dirichlet conditions.
+With `:dirichlet_neumann`,
+the top boundary (`x_neg`) uses the same penalty Dirichlet condition
+and the bottom (`x_pos`) imposes the exact flux ``f(\psi(L,t),\partial_z\psi(L,t))``.
+A custom `(; x_neg, x_pos)` tuple overrides both boundaries;
 `nothing` selects the default pair.
 
 ```julia
@@ -89,14 +95,15 @@ s(z,t) = c(\psi(z,t))\partial_t \psi(z,t)
 \qquad c(\psi) \coloneqq \vartheta'(\psi),
 ```
 The default setup uses the same Haverkamp parameters as
-[`HydrologicProblemCeliaHaverkamp`](@ref). The dimensionless `penalty_factor` is the
-coefficient ``C_\tau`` for the Dirichlet boundaries in either named choice; setting it to
-zero omits the divergence flux penalty term. Custom boundary tuples retain their own
-penalty settings.
+[`HydrologicProblemCeliaHaverkamp`](@ref).
+The dimensionless `penalty_factor` is the coefficient ``C_\tau`` for the Dirichlet
+boundaries in either named choice. Its default value is one;
+setting it to zero omits the divergence-flux penalty term.
+Custom boundary tuples retain their own penalty settings.
 
 The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds on
 ``t \in [0, 120]`` by default. It is intended for regression and convergence checks of
-mixed and pressure-head forms of the Richards equation.
+mixed and pressure-head formulations of the Richards equation.
 
 # References
 - Keita, S., Beljadid, A., Bourgault, Y. (2021). Implicit and semi-implicit
@@ -114,17 +121,17 @@ function HydrologicProblemRichardsManufacturedSolution(; tspan = (0.0, 120.0),
         if isnothing(boundary_conditions)
             boundary_conditions = :dirichlet_dirichlet
         end
-        left_boundary = BoundaryConditionDirichletPenalty(richards_manufactured_solution;
-                                                          penalty_factor)
-        right_boundary = if boundary_conditions === :dirichlet_dirichlet
-            left_boundary
+        top_boundary = BoundaryConditionDirichletPenalty(richards_manufactured_solution;
+                                                         penalty_factor)
+        bottom_boundary = if boundary_conditions === :dirichlet_dirichlet
+            top_boundary
         elseif boundary_conditions === :dirichlet_neumann
-            Trixi.BoundaryConditionNeumann(richards_manufactured_right_boundary_flux)
+            Trixi.BoundaryConditionNeumann(richards_manufactured_bottom_boundary_flux)
         else
             throw(ArgumentError("Unknown boundary choice $boundary_conditions; use " *
                                 ":dirichlet_dirichlet or :dirichlet_neumann."))
         end
-        boundary_conditions = (; x_neg = left_boundary, x_pos = right_boundary)
+        boundary_conditions = (; x_neg = top_boundary, x_pos = bottom_boundary)
     end
 
     return HydrologicProblem(equations = equations, state_to_evolved = state_to_evolved,

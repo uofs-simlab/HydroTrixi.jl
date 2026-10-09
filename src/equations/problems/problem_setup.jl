@@ -3,10 +3,14 @@
                         source_terms = nothing, state_to_evolved = nothing,
                         evolved_to_state = nothing)
 
-A container for reusable hydrologic PDE problem data. It stores the governing `equations`,
-an `initial_condition`, `boundary_conditions`, the spatial `domain`, the time interval
-`tspan`, optional `source_terms`, and optional maps between the spatial state and the
-evolved variable for mixed formulations.
+A container for reusable hydrologic PDE problem data.
+It stores the governing `equations`, an `initial_condition`, `boundary_conditions`,
+the spatial `domain`, the time interval `tspan`, optional `source_terms`,
+and optional maps between the spatial state and the evolved variable for mixed formulations.
+For the Richards equation, the spatial state is pressure head ``\psi``,
+`state_to_evolved` maps it to water content ``\vartheta(\psi)``,
+and `evolved_to_state` supplies the inverse map.
+These maps also support water-content solution transfer in the pressure-head formulation.
 
 The `domain` must be a pair `(x_min, x_max)` of coordinate tuples with matching dimension.
 The type parameter `NDIMS` records that dimension for dispatch and introspection.
@@ -60,10 +64,6 @@ end
 
 Base.ndims(::HydrologicProblem{NDIMS}) where {NDIMS} = NDIMS
 
-@inline function boundary_condition_summary_name(boundary_condition)
-    return nameof(typeof(boundary_condition))
-end
-
 function print_boundary_conditions_summary(io::IO, boundary_conditions::NamedTuple)
     Trixi.summary_line(io, "boundary conditions", length(boundary_conditions))
     for (boundary_name, boundary_condition) in pairs(boundary_conditions)
@@ -84,14 +84,14 @@ function print_boundary_conditions_summary(io::IO, boundary_conditions::NamedTup
             String(boundary_name)
         end
         Trixi.summary_line(Trixi.increment_indent(io), display_name,
-                           boundary_condition_summary_name(boundary_condition))
+                           nameof(typeof(boundary_condition)))
     end
     return nothing
 end
 
 function print_boundary_conditions_summary(io::IO, boundary_conditions)
     return Trixi.summary_line(io, "boundary conditions",
-                              boundary_condition_summary_name(boundary_conditions))
+                              nameof(typeof(boundary_conditions)))
 end
 
 function Base.show(io::IO, ::MIME"text/plain", hydrologic_problem::HydrologicProblem)
@@ -120,16 +120,23 @@ abstract type AbstractImplicitForm end
 @doc raw"""
     MixedForm(; transfer_state = false)
 
-Select the mixed form of the Richards equation in
-[`SemidiscretizationImplicit`](@ref). The global water-content vector
-``\boldsymbol{\Theta}`` is evolved directly, while the global pressure-head vector
+Select the mixed form of the Richards equation in [`SemidiscretizationImplicit`](@ref).
+The global water-content vector ``\boldsymbol{\Theta}`` is evolved directly,
+while the global pressure-head vector
 ``\boldsymbol{\Psi}`` is constrained algebraically by
 ```math
 \boldsymbol{\Theta} = \boldsymbol{\vartheta}(\boldsymbol{\Psi}).
 ```
 Consequently, the discrete water content is a linear function of the evolved state.
-With `transfer_state = true`, adaptive mesh refinement projects pressure head and
-recomputes water content from the projected values. The default transfers water content.
+The default adaptive mesh refinement transfers the stored water-content block
+and reconstructs pressure head through ``\vartheta^{-1}``.
+With `transfer_state = true`, it transfers pressure head
+and recomputes water content through ``\vartheta``.
+On the supported one-dimensional LDG mesh,
+refinement restricts the selected transfer-variable polynomial to the two children,
+while coarsening computes the ``L^2`` projection of the child polynomials onto their parent.
+Water-content solution transfer preserves the discrete water storage
+per unit cross-sectional area in exact arithmetic.
 """
 struct MixedForm <: AbstractImplicitForm
     transfer_state::Bool
@@ -141,23 +148,27 @@ MixedForm(; transfer_state = false) = MixedForm(transfer_state)
     PressureHeadForm()
     PressureHeadForm(; transfer_variables = pressure_head)
 
-Select the pressure-head form of the Richards equation in
-[`SemidiscretizationImplicit`](@ref). The evolved state is pressure head, and the temporal
-operator divides the spatial residual by the nodal capacity
-``c(\psi) \coloneqq \vartheta'(\psi)``. This formulation satisfies the same semi-discrete
-water mass balance as [`MixedForm`](@ref), but water content is a nonlinear function of
-the evolved state and is therefore not generally preserved as a linear invariant by the
-time integrator.
+Select the pressure-head form of the Richards equation
+in [`SemidiscretizationImplicit`](@ref).
+The evolved state is pressure head, and the temporal operator divides the spatial residual
+by the nodal capacity ``c(\psi) \coloneqq \vartheta'(\psi)``.
+This formulation satisfies the same semi-discrete water mass balance as [`MixedForm`](@ref),
+but water content is a nonlinear function of the evolved state
+and is therefore not generally preserved as a linear invariant by the time integrator.
 
-In the manuscript's global notation, ``\boldsymbol{y}=\boldsymbol{\Psi}`` and the
-right-hand side is
+In global vector notation, ``\boldsymbol{y}=\boldsymbol{\Psi}`` and the right-hand side is
 ``\boldsymbol{C}(\boldsymbol{\Psi})^{-1}
-\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)``.
+\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)``,
+where ``\boldsymbol{\Psi}`` collects the nodal pressure heads,
+``\boldsymbol{C}(\boldsymbol{\Psi})`` is the diagonal matrix of nodal capacities,
+and ``\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)`` is the spatial residual.
 
-The optional `transfer_variables` map controls which variable is transferred during
-adaptive mesh refinement. The default transfers pressure head directly. Use
-`transfer_variables = water_content` to transfer water content and reconstruct pressure
-head after each mesh update.
+The optional `transfer_variables` map controls which variable is transferred
+during adaptive mesh refinement. The default transfers pressure head directly.
+Use `transfer_variables = water_content` to transfer water content
+and reconstruct pressure head after each mesh update.
+Refinement and coarsening use the restriction and projection
+described for [`MixedForm`](@ref).
 """
 struct PressureHeadForm{TransferVariables} <: AbstractImplicitForm
     transfer_variables::TransferVariables
@@ -176,21 +187,20 @@ function implicit_temporal_operator(form::MixedForm, hydrologic_problem, capacit
                                         transfer_state = form.transfer_state)
 end
 
-# Select a problem-provided inverse only when the configured transfer map matches
-@inline function pressure_head_amr_transfer_to_state(::Val{true}, evolved_to_state)
-    return evolved_to_state
-end
-
 function implicit_temporal_operator(form::PressureHeadForm, hydrologic_problem,
                                     capacity_function)
     transfer_variables = form.transfer_variables
-    transfer_to_state = if transfer_variables === pressure_head ||
-                           transfer_variables === Trixi.cons2cons
-        amr_transfer_identity
+    transfers_pressure_head = transfer_variables === pressure_head ||
+                              transfer_variables === Trixi.cons2cons
+
+    if transfers_pressure_head
+        # Pressure head already matches the stored state
+        transfer_to_state = (u, equations) -> u
+    elseif transfer_variables === hydrologic_problem.state_to_evolved
+        # Use the problem's inverse map to recover pressure head
+        transfer_to_state = hydrologic_problem.evolved_to_state
     else
-        maps_problem_state = transfer_variables === hydrologic_problem.state_to_evolved
-        pressure_head_amr_transfer_to_state(Val(maps_problem_state),
-                                            hydrologic_problem.evolved_to_state)
+        throw(ArgumentError("Unsupported pressure-head AMR transfer map."))
     end
 
     return TemporalOperatorCapacity(capacity_function;
@@ -205,14 +215,14 @@ end
                                source_terms = hydrologic_problem.source_terms,
                                capacity_function = water_capacity, kwargs...)
 
-Create an implicit semidiscretization for `hydrologic_problem` using the parabolic spatial
-solver and the selected temporal operator. With `form = MixedForm()`, the global state is
-ordered as ``\boldsymbol{y} =
-(\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}`` and
-defines an index-1 differential-algebraic equation when all nodal capacity values are
-strictly positive. With `form = PressureHeadForm()`, the state is
-``\boldsymbol{y} = \boldsymbol{\Psi}`` and defines an ordinary differential equation
-after division by the nodal capacity values.
+Create an implicit semidiscretization for `hydrologic_problem`
+using the parabolic spatial solver and the selected temporal operator.
+With `form = MixedForm()`, the global state is ordered as
+``\boldsymbol{y} = (\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}``
+and defines an index-1 differential-algebraic equation
+when all nodal capacity values are strictly positive.
+With `form = PressureHeadForm()`, the state is ``\boldsymbol{y} = \boldsymbol{\Psi}``
+and defines an ordinary differential equation after division by the nodal capacity values.
 
 The optional `source_terms` keyword defaults to the hydrologic problem source terms, and
 `passive_variables` appends diagnostic scalars after the physical state. Extra keyword

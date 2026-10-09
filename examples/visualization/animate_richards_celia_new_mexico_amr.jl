@@ -1,4 +1,4 @@
-# Animate the spatially adaptive Celia New Mexico benchmark
+# Animate the New Mexico infiltration problem with AMR (Celia et al., 1990)
 
 using CairoMakie
 using HydroTrixi
@@ -56,6 +56,6 @@ plot_mass_bias_magnitude(analysis_path; output_path = mass_bias_path,
                          xticks = (time_ticks, string.(Int.(time_ticks))),
                          xlims = (0.0, final_time))
 
-println("Saved Celia New Mexico $(form_name) AMR animation to: $(animation_path)")
-println("Saved Celia New Mexico $(form_name) AMR mass-bias plot to: $(mass_bias_path)")
-println("Saved Celia New Mexico $(form_name) AMR analysis data to: $(analysis_path)")
+println("Saved New Mexico $(form_name) AMR animation to: $(animation_path)")
+println("Saved New Mexico $(form_name) AMR mass-bias plot to: $(mass_bias_path)")
+println("Saved New Mexico $(form_name) AMR analysis data to: $(analysis_path)")
