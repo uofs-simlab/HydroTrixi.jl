@@ -1,7 +1,7 @@
 name = "HydroTrixi"
 uuid = "7af077dc-b170-402d-9829-aaaeff984f5f"
-authors = ["Tristan Montoya <montoya.tristan@gmail.com>"]
-version = "0.1.0-DEV"
+authors = ["Tristan Montoya <montoya.tristan@gmail.com>", "Raymond J. Spiteri <spiteri@cs.usask.ca>"]
+version = "0.1.0"
 
 [deps]
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
