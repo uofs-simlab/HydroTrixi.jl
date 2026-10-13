@@ -1,0 +1,27 @@
+cff-version: "1.2.0"
+message: "If you use HydroTrixi.jl, please cite it using the metadata in this file."
+type: "software"
+title: "HydroTrixi.jl"
+authors:
+  - family-names: "Montoya"
+    given-names: "Tristan"
+    affiliation: "University of Saskatchewan"
+    orcid: "https://orcid.org/0000-0002-4259-1449"
+  - family-names: "Spiteri"
+    given-names: "Raymond J."
+    affiliation: "University of Saskatchewan"
+    orcid: "https://orcid.org/0000-0002-3513-6237"
+version: "0.1.1"
+date-released: "2026-10-09"
+repository-code: "https://github.com/uofs-simlab/HydroTrixi.jl"
+url: "https://tjbmontoya.com/HydroTrixi.jl/stable"
+license: "MIT"
+abstract: >-
+  HydroTrixi.jl is an adaptive discontinuous spectral-element solver for hydrologic
+  problems based on the Trixi.jl framework.
+keywords:
+  - "hydrology"
+  - "Richards equation"
+  - "discontinuous Galerkin methods"
+  - "adaptive mesh refinement"
+  - "Julia"
