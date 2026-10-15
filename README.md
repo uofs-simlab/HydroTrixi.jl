@@ -8,19 +8,19 @@
 **HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic models based on [Trixi.jl](https://github.com/trixi-framework/Trixi.jl) [(Ranocha et al. 2022)](#references), providing the following specialized capabilities:
 
 - Implicit temporal operator formulations using algebraic constitutive constraints or capacity functions to support mixed and pressure-head formulations of the Richards equation, respectively
-- General choice of nonlinear constitutive models for soil hydraulic properties (van Genuchten-Mualem,  Haverkamp, or add your own)
+- General choice of nonlinear constitutive models for soil hydraulic properties (van Genuchten-Mualem, Haverkamp, or add your own)
 - Extended parabolic boundary conditions, including penalty-type Dirichlet fluxes that depend on the interior pressure head, interior flux, and prescribed boundary head
 - Implicit time integration using adaptive Rosenbrock-Wanner methods with sparse graph-coloured Jacobian evaluation and forward-mode automatic differentiation
 - Adaptive mesh refinement and coarsening with configurable solution-transfer variables and a total-variation-based refinement indicator for front tracking
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes, following [Ireson et al. (2023)](#references)
 - Reusable tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases
 
-The following manuscript, available as an [arXiv preprint](https://arxiv.org/abs/2610.17031) describes the methods used in HydroTrixi.jl to obtain mass-conservative solutions of the Richards equation:
+The following manuscript, available as an [arXiv preprint](https://arxiv.org/abs/2610.17031), describes the methods used in HydroTrixi.jl to obtain mass-conservative solutions of the Richards equation:
 
 ```bibtex
 @misc{MontoyaSpiteriAdaptiveRichards2026,
   title={A Fully Discrete, Mass-Conservative Adaptive Discontinuous
-         Spectral-Element Method for the One-Dimensional {Richards} 
+         Spectral-Element Method for the One-Dimensional {Richards}
          Equation in Mixed Form},
   author={Tristan Montoya and Raymond J. Spiteri},
   year={2026},
@@ -31,7 +31,7 @@ The following manuscript, available as an [arXiv preprint](https://arxiv.org/abs
 }
 ```
 
-Please cite this preprint if you use HydroTrixi.jl in your research.
+Please cite this preprint if you use HydroTrixi.jl in your research. A reproducibility repository is provided [here](https://github.com/tristanmontoya/paper-2026-adaptive-richards).
 
 ## Installation
 
@@ -63,8 +63,8 @@ Worked examples and tutorials are provided in the [documentation](https://tjbmon
 
 ## References
 
-- Ranocha, H., Schlottke-Lakemper, M., Winters, A. R., Faulhaber, E., Chan, J., and Gassner, G. J. (2022). [Adaptive numerical simulations with Trixi.jl: A case study of Julia for scientific computing](https://doi.org/10.21105/jcon.00077). *Proceedings of the JuliaCon Conferences*, 1(1), 77.
-- Ireson, A. M., Spiteri, R. J., Clark, M. P., and Mathias, S. A. (2023). [A simple, efficient, mass-conservative approach to solving the Richards equation (openRE, v1.0)](https://doi.org/10.5194/gmd-16-659-2023). *Geoscientific Model Development*, 16, 659-677.
+- Ranocha, H., Schlottke-Lakemper, M., Winters, A. R., Faulhaber, E., Chan, J., and Gassner, G. J. (2022). [Adaptive numerical simulations with Trixi.jl: A case study of Julia for scientific computing](https://doi.org/10.21105/jcon.00077). _Proceedings of the JuliaCon Conferences_, 1(1), 77.
+- Ireson, A. M., Spiteri, R. J., Clark, M. P., and Mathias, S. A. (2023). [A simple, efficient, mass-conservative approach to solving the Richards equation (openRE, v1.0)](https://doi.org/10.5194/gmd-16-659-2023). _Geoscientific Model Development_, 16, 659-677.
 - Montoya, T., and Spiteri, R. J. (2026). [A fully discrete, mass-conservative adaptive discontinuous spectral-element method for the one-dimensional Richards equation in mixed form](https://arxiv.org/abs/2610.17031). arXiv:2610.17031 [math.NA].
 
 ## Acknowledgements
