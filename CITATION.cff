@@ -1,6 +1,5 @@
 cff-version: "1.2.0"
-message: "If you use HydroTrixi.jl, please cite it using the metadata in this file."
-type: "software"
+message: "If you use HydroTrixi.jl in your research, please cite the accompanying paper listed in the README."
 title: "HydroTrixi.jl"
 authors:
   - family-names: "Montoya"

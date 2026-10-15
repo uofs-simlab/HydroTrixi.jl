@@ -1,0 +1,14 @@
+{
+  "printWidth": 92,
+  "tabWidth": 2,
+  "useTabs": false,
+  "proseWrap": "preserve",
+  "overrides": [
+    {
+      "files": "*.cff",
+      "options": {
+        "parser": "yaml"
+      }
+    }
+  ]
+}

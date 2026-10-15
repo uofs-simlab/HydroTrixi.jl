@@ -46,5 +46,8 @@ tmp/
 # macOS Finder metadata
 .DS_Store
 
+# Local VS Code configuration
+/.vscode/
+
 # Underscore-prefixed directories
 **/_*/

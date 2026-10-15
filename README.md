@@ -3,15 +3,35 @@
 [![CI](https://github.com/uofs-simlab/HydroTrixi.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/uofs-simlab/HydroTrixi.jl/actions/workflows/ci.yml)
 [![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://tjbmontoya.com/HydroTrixi.jl/stable)
 [![docs-dev](https://img.shields.io/badge/docs-dev-blueviolet.svg)](https://tjbmontoya.com/HydroTrixi.jl/dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/LICENSE)
 
-**HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic problems. It builds upon the parabolic spatial discretization capabilities in [Trixi.jl](https://github.com/trixi-framework/Trixi.jl) [(Ranocha et al. 2022)](#references) and the time integration methods in [SciML](https://sciml.ai/), adding the following technical features to support the solution of the **Richards equation** in one spatial dimension using local discontinuous Galerkin methods with collocated Legendre-Gauss-Lobatto quadrature:
+**HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic models based on [Trixi.jl](https://github.com/trixi-framework/Trixi.jl) [(Ranocha et al. 2022)](#references), providing the following specialized capabilities:
 
-- Implicit temporal operator formulations using algebraic constitutive constraints or capacity functions to support mixed and pressure-head formulations, respectively
-- Flexible parabolic boundary conditions, including penalty-type Dirichlet fluxes that depend on the interior pressure head, interior flux, and prescribed boundary head
-- Implicit solution strategies using adaptive Rosenbrock-Wanner methods with sparse graph-coloured Jacobian evaluation using finite differences or forward-mode automatic differentiation
-- Adaptivity in space with water-content transfer that preserves water storage
+- Implicit temporal operator formulations using algebraic constitutive constraints or capacity functions to support mixed and pressure-head formulations of the Richards equation, respectively
+- General choice of nonlinear constitutive models for soil hydraulic properties (van Genuchten-Mualem,  Haverkamp, or add your own)
+- Extended parabolic boundary conditions, including penalty-type Dirichlet fluxes that depend on the interior pressure head, interior flux, and prescribed boundary head
+- Implicit time integration using adaptive Rosenbrock-Wanner methods with sparse graph-coloured Jacobian evaluation and forward-mode automatic differentiation
+- Adaptive mesh refinement and coarsening with configurable solution-transfer variables and a total-variation-based refinement indicator for front tracking
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes, following [Ireson et al. (2023)](#references)
-- Tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases
+- Reusable tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases
+
+The following manuscript, available as an [arXiv preprint](https://arxiv.org/abs/2610.17031) describes the methods used in HydroTrixi.jl to obtain mass-conservative solutions of the Richards equation:
+
+```bibtex
+@misc{MontoyaSpiteriAdaptiveRichards2026,
+  title={A Fully Discrete, Mass-Conservative Adaptive Discontinuous
+         Spectral-Element Method for the One-Dimensional {Richards} 
+         Equation in Mixed Form},
+  author={Tristan Montoya and Raymond J. Spiteri},
+  year={2026},
+  eprint={2610.17031},
+  archivePrefix={arXiv},
+  primaryClass={math.NA},
+  url={https://arxiv.org/abs/2610.17031},
+}
+```
+
+Please cite this preprint if you use HydroTrixi.jl in your research.
 
 ## Installation
 
@@ -45,6 +65,7 @@ Worked examples and tutorials are provided in the [documentation](https://tjbmon
 
 - Ranocha, H., Schlottke-Lakemper, M., Winters, A. R., Faulhaber, E., Chan, J., and Gassner, G. J. (2022). [Adaptive numerical simulations with Trixi.jl: A case study of Julia for scientific computing](https://doi.org/10.21105/jcon.00077). *Proceedings of the JuliaCon Conferences*, 1(1), 77.
 - Ireson, A. M., Spiteri, R. J., Clark, M. P., and Mathias, S. A. (2023). [A simple, efficient, mass-conservative approach to solving the Richards equation (openRE, v1.0)](https://doi.org/10.5194/gmd-16-659-2023). *Geoscientific Model Development*, 16, 659-677.
+- Montoya, T., and Spiteri, R. J. (2026). [A fully discrete, mass-conservative adaptive discontinuous spectral-element method for the one-dimensional Richards equation in mixed form](https://arxiv.org/abs/2610.17031). arXiv:2610.17031 [math.NA].
 
 ## Acknowledgements
 
