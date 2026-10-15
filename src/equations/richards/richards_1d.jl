@@ -37,8 +37,8 @@ where ``\psi_b`` is the prescribed top or bottom boundary pressure head
 ``\psi_{\mathrm{T}}`` or ``\psi_{\mathrm{B}}``;
 its optional `penalty_factor` multiplies ``\tau``.
 If `constitutive_model` is omitted, it defaults to a [`Haverkamp`](@ref) model
-parameterized with the Celia et al. (1990) reference values reported in
-Ireson et al. (2023), Eq. (25), in SI units (lengths in metres and time in seconds).
+parameterized with the Celia et al. (1990) reference values in SI units
+(lengths in metres and time in seconds).
 """
 struct RichardsEquation1D{ConstitutiveModel} <:
        Trixi.AbstractEquationsParabolic{1, 1, Trixi.GradientVariablesConservative}
@@ -65,13 +65,6 @@ with water content first and pressure head second;
 any passive SFOM variables follow these blocks.
 Use [`state_variable_block`](@ref) to obtain the pressure-head block
 of a complete implicit solver vector before selecting a nodal state.
-
-# References
-
-- Ireson, A. M., Spiteri, R. J., Clark, M. P., Mathias, S. A. (2023).
-  A simple, efficient, mass-conservative approach to solving
-  Richards' equation (openRE, v1.0). *Geoscientific Model Development*, 16, 659-677.
-  [DOI: 10.5194/gmd-16-659-2023](https://doi.org/10.5194/gmd-16-659-2023)
 """
 @inline pressure_head(psi::Number) = psi
 @inline pressure_head(u) = u[1]

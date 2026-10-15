@@ -5,8 +5,8 @@
     Haverkamp(; saturated_hydraulic_conductivity, a, beta, b, gamma, theta_s, theta_r)
 
 A Haverkamp constitutive model for the Richards equation,
-written in the form used by Celia et al. (1990) and Ireson et al. (2023).
-For ``\psi < 0``, the water content and hydraulic conductivity are
+written in the form used by Celia et al. (1990), using the parameters specified in the
+constructor. For ``\psi < 0``, the water content and hydraulic conductivity are
 
 ```math
 \vartheta(\psi) = \theta_{\mathrm{r}} +
@@ -45,10 +45,6 @@ For ``\psi\geq 0``, the model uses the saturated values
   A general mass-conservative numerical solution for the unsaturated flow equation.
   *Water Resources Research*, 26(7), 1483-1496.
   [DOI: 10.1029/WR026i007p01483](https://doi.org/10.1029/WR026i007p01483)
-- Ireson, A. M., Spiteri, R. J., Clark, M. P., Mathias, S. A. (2023).
-  A simple, efficient, mass-conservative approach to solving
-  Richards' equation (openRE, v1.0). *Geoscientific Model Development*, 16, 659-677.
-  [DOI: 10.5194/gmd-16-659-2023](https://doi.org/10.5194/gmd-16-659-2023)
 """
 struct Haverkamp{RealT}
     saturated_hydraulic_conductivity::RealT

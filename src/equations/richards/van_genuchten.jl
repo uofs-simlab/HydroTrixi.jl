@@ -5,9 +5,7 @@
     VanGenuchten(; saturated_hydraulic_conductivity, alpha, n, theta_s, theta_r,
                    m = 1 - 1 / n, pore_connectivity = 1 / 2)
 
-A van Genuchten-Mualem soil-hydraulic model,
-written in terms of the effective saturation following Ireson et al. (2023).
-For ``\psi < 0``, the water content and hydraulic conductivity are
+A van Genuchten-Mualem soil-hydraulic model, with parameters as specified in the constructor. For ``\psi < 0``, the water content and hydraulic conductivity are
 
 ```math
 \vartheta(\psi) = \theta_{\mathrm{r}}+
