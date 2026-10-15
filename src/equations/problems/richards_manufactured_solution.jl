@@ -66,12 +66,14 @@ end
 
 Return a one-dimensional manufactured-solution problem for the Richards equation.
 The manufactured pressure head is
+
 ```math
 \psi(z, t) =
 0.204\,\mathrm{m}\,\tanh\left[
 \frac{1}{2}\left(100\,\mathrm{m}^{-1}z + \frac{t}{12\,\mathrm{s}} - 15\right)
 \right] - 0.411\,\mathrm{m}.
 ```
+
 Here, ``z`` is depth measured positive downward on a column of length
 ``L=0.2\,\mathrm{m}``, and ``t`` is time in seconds.
 The default `boundary_conditions = :dirichlet_dirichlet` imposes this profile
@@ -87,18 +89,20 @@ problem = HydrologicProblemRichardsManufacturedSolution(
     boundary_conditions = :dirichlet_neumann)
 exact_solution = problem.initial_condition
 ```
+
 The manufactured solution is imposed through the source term
+
 ```math
 s(z,t) = c(\psi(z,t))\partial_t \psi(z,t)
 - \partial_z \left(\kappa(\psi(z,t))
-\left(\partial_z \psi(z,t) - 1\right)\right),
-\qquad c(\psi) \coloneqq \vartheta'(\psi),
+\left(\partial_z \psi(z,t) - 1\right)\right).
 ```
+
 The default setup uses the same Haverkamp parameters as
 [`HydrologicProblemCeliaHaverkamp`](@ref).
 The dimensionless `penalty_factor` is the coefficient ``C_\tau`` for the Dirichlet
 boundaries in either named choice. Its default value is one;
-setting it to zero omits the divergence-flux penalty term.
+setting it to zero omits the divergence flux penalty term.
 Custom boundary tuples retain their own penalty settings.
 
 The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds on
@@ -106,6 +110,7 @@ The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds
 mixed and pressure-head formulations of the Richards equation.
 
 # References
+
 - Keita, S., Beljadid, A., Bourgault, Y. (2021). Implicit and semi-implicit
   second-order time stepping methods for the Richards equation.
   [arXiv:2105.05224](https://arxiv.org/abs/2105.05224)

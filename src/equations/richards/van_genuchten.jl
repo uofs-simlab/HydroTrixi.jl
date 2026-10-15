@@ -8,20 +8,24 @@
 A van Genuchten-Mualem soil-hydraulic model,
 written in terms of the effective saturation following Ireson et al. (2023).
 For ``\psi < 0``, the water content and hydraulic conductivity are
+
 ```math
 \vartheta(\psi) = \theta_{\mathrm{r}}+
 (\theta_{\mathrm{s}}-\theta_{\mathrm{r}})
 \left(1+(\alpha_{\mathrm{V}}|\psi|)^{n_{\mathrm{V}}}\right)^{-m_{\mathrm{V}}},
-\qquad
+\quad
 \kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^{\ell_{\mathrm{V}}}
 \left(1-\left(1-S_{\mathrm{e}}(\psi)^{1/m_{\mathrm{V}}}\right)^{m_{\mathrm{V}}}\right)^2,
 ```
+
 where
+
 ```math
 S_{\mathrm{e}}(\psi) \coloneqq
 \frac{\vartheta(\psi)-\theta_{\mathrm{r}}}
 {\theta_{\mathrm{s}}-\theta_{\mathrm{r}}}.
 ```
+
 The inverse pressure-head scale ``\alpha_{\mathrm{V}}``, water-retention exponent
 ``n_{\mathrm{V}}``, derived shape parameter ``m_{\mathrm{V}}``, and pore-connectivity
 parameter ``\ell_{\mathrm{V}}`` correspond to `alpha`, `n`, `m`, and `pore_connectivity`,
@@ -35,6 +39,7 @@ For ``\psi\geq 0``, the model uses the saturated values ``S_{\mathrm{e}}(\psi)=1
 ``\vartheta(\psi)=\theta_{\mathrm{s}}``, and ``\kappa(\psi)=\kappa_{\mathrm{s}}``.
 
 # References
+
 - van Genuchten, M. Th. (1980).
   A closed-form equation for predicting the hydraulic conductivity of unsaturated soils.
   *Soil Science Society of America Journal*, 44(5), 892-898.

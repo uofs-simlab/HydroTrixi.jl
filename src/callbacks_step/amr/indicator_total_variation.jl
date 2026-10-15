@@ -7,21 +7,26 @@
 
 Compute the element-local total variation of the sensor selected by `variable`
 for a one-dimensional LGL-DGSEM discretization.
-On each element ``k``, the unnormalized total variation is
+On each element ``k``, the non-normalized DGSEM approximation to the total variation is
+given by
+
 ```math
 \mathcal{V}_k(t) \coloneqq \sum_{i=0}^N \omega_i
 \left|\sum_{j=0}^N D_{ij}v_{k,j}(t)\right|
 \approx \int_{-1}^1
 \left|\frac{\mathrm{d}}{\mathrm{d}\xi}v_k^N(\xi,t)\right|\mathrm{d}\xi,
 ```
+
 where ``N`` is the polynomial degree, ``\omega_i`` are the LGL quadrature weights, and
 ``D_{ij}`` are entries of the reference differentiation matrix.
 With `normalize = true`, we divide by the range of `variable` over all mesh nodes,
 recomputed on every indicator evaluation:
+
 ```math
 \eta_k(t) \coloneqq
 \frac{\mathcal{V}_k(t)}{v_{\max}(t)-v_{\min}(t)+\epsilon}.
 ```
+
 The regularization ``\epsilon`` is set by `normalization_epsilon` and defaults to
 `1.0e-11`. With `variable = water_content`, the sensor is
 ``v_{k,j}(t)=\vartheta(\psi_{k,j}(t))``, so ``v_{\min}(t)=\theta_{\min}(t)``
@@ -70,7 +75,7 @@ function (indicator::IndicatorTotalVariation)(u::AbstractArray{<:Any, 3},
                                               cache; kwargs...)
     (; variable, normalize, normalization_epsilon) = indicator
     (; alpha, minima, maxima, nodal_values_threaded) = indicator.cache
-    # Trixi's indicator array alpha stores ηₖ(t), or the unnormalized variation 𝒱ₖ(t)
+    # Trixi's indicator array alpha stores ηₖ(t), or the non-normalized variation 𝒱ₖ(t)
     (; derivative_matrix, weights) = dg.basis
     resize!(alpha, Trixi.nelements(dg, cache))
     if normalize

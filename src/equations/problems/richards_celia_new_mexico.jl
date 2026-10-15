@@ -4,21 +4,22 @@
 @doc raw"""
     HydrologicProblemCeliaNewMexico(; tspan = (0.0, 86_400.0), penalty_factor = 1)
 
-Return the New Mexico infiltration problem,
-the second one-dimensional Richards equation infiltration problem
+Construct the second one-dimensional Richards equation infiltration problem
 considered by Celia, Bouloutas, and Zarba (1990).
 Its soil parameters approximate the properties of a field site in New Mexico.
 
 The soil follows the van Genuchten-Mualem constitutive model
 (van Genuchten, 1980; Mualem, 1976), given by
+
 ```math
 S_{\mathrm{e}}(\psi) =
 \left(1 + (\alpha_{\mathrm{V}} |\psi|)^{n_{\mathrm{V}}}\right)^{-m_{\mathrm{V}}},
-\qquad
+\quad
 \kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^{\ell_{\mathrm{V}}}
 \left(1 -
 \left(1 - S_{\mathrm{e}}(\psi)^{1/m_{\mathrm{V}}}\right)^{m_{\mathrm{V}}}\right)^2,
 ```
+
 where ``m_{\mathrm{V}} = 1 - 1/n_{\mathrm{V}}`` and
 ``\vartheta(\psi) = \theta_{\mathrm{r}} +
 (\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}(\psi)``.
@@ -41,9 +42,10 @@ Celia et al. (1990), not the nearby statement placing a boundary at 60 cm.
 
 The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref).
 The dimensionless `penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty.
-Its default value is one; setting it to zero omits the additional divergence-flux penalty.
+Its default value is one; setting it to zero omits the additional divergence flux penalty.
 
 # References
+
 - van Genuchten, M. Th. (1980).
   A closed-form equation for predicting the hydraulic conductivity of unsaturated soils.
   *Soil Science Society of America Journal*, 44(5), 892-898.

@@ -148,22 +148,26 @@ RMS norm is configured automatically; `internalnorm` overrides it.
 previous, primary, and embedded solutions before forming and scaling the error.
 The default `nothing` compares stored entries directly.
 For water-content error control in the pressure-head formulation, for example, use:
+
 ```julia
 result = solve_implicit(ode; dt = 1.0e-2,
                         error_control_block = state_variable_block,
                         error_control_mapping = water_content,
                         abstol = 1.0e-8, reltol = 1.0e-5)
 ```
-For ``K^n`` elements and polynomial degree ``N``, the water-content error estimate is
+
+For ``K`` elements and polynomial degree ``N``, the water-content error estimate is
+
 ```math
-E^{n+1} \coloneqq \sqrt{\frac{1}{K^n(N+1)}
-\sum_{j=1}^{K^n(N+1)}
+E^{n+1} \coloneqq \sqrt{\frac{1}{K(N+1)}
+\sum_{j=1}^{K(N+1)}
 \left|
 \frac{\Theta_j^{n+1}-\widehat{\Theta}_j^{n+1}}
 {\texttt{atol}+\texttt{rtol}
 \max\left(|\Theta_j^n|,|\Theta_j^{n+1}|\right)}
 \right|^2}.
 ```
+
 The previous, primary, and embedded water-content blocks ``\boldsymbol{\Theta}^n``,
 ``\boldsymbol{\Theta}^{n+1}``, and ``\widehat{\boldsymbol{\Theta}}^{n+1}``
 are stored in mixed form or mapped through ``\vartheta(\psi)`` in pressure-head form,

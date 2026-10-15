@@ -5,16 +5,20 @@
     BoundaryConditionDirichletPenalty(boundary_value_function; penalty_factor=1)
 
 Dirichlet boundary condition for parabolic operators with the numerical trace
+
 ```math
 u^\star = u_b
 ```
+
 on the gradient pass and the numerical flux
+
 ```math
 f^\star = f_{\mathrm{inner}} - n_b C_\tau\,\tau(u_b,h,N)
 (u_{\mathrm{inner}} - u_b),
-\qquad
+\quad
 \tau(u,h,N) \coloneqq \frac{N(N+1)\mathcal{D}(u)}{h},
 ```
+
 on the divergence pass, where ``n_b \in \{-1, 1\}`` is the outward unit normal
 and ``\mathcal{D}(u_b)`` is the equation-dependent diffusion coefficient
 returned by `boundary_penalty_coefficient(u_b, equations)`.
@@ -26,19 +30,22 @@ with a scaling of ``N(N+1)/h`` when converted into a physical-space gradient.
 
 For [`RichardsEquation1D`](@ref), ``u_b`` is a prescribed top or bottom pressure head
 ``\psi_{\mathrm{T}}`` or ``\psi_{\mathrm{B}}``, and the penalty coefficient is
+
 ```math
 \tau(\psi,h,N) \coloneqq \frac{N(N+1)\kappa(\psi)}{h}.
 ```
+
 At the top boundary (`x_neg`), ``n_b=-1``, so the flux penalty is
 ``+C_\tau\tau(\psi_{\mathrm{T}},h,N)(\psi_{\mathrm{inner}}-\psi_{\mathrm{T}})``.
 At the bottom (`x_pos`), ``n_b=1``, so it is
 ``-C_\tau\tau(\psi_{\mathrm{B}},h,N)(\psi_{\mathrm{inner}}-\psi_{\mathrm{B}})``.
 Thus, the conductivity in each penalty is evaluated at the prescribed boundary head.
 The dimensionless `penalty_factor` is ``C_\tau`` and defaults to one.
-Setting it to zero omits this additional divergence-flux penalty
+Setting it to zero omits this additional divergence flux penalty
 while retaining the prescribed trace on the gradient pass.
 
 # References
+
 - Manzanero, J., Rueda-Ramírez, A. M., Rubio, G., Ferrer, E. (2018).
   The Bassi Rebay 1 scheme is a special case of the symmetric interior penalty formulation
   for discontinuous Galerkin discretisations with Gauss-Lobatto points.

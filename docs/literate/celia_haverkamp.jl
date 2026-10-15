@@ -2,10 +2,10 @@
 # CurrentModule = HydroTrixi
 # ```
 #
-# # Haverkamp infiltration problem
+# # Infiltration problem
 #
-# This tutorial runs the Haverkamp infiltration problem, the first Richards equation
-# infiltration problem in the following paper:
+# This tutorial runs the first Richards equation infiltration problem in the following
+# paper:
 #
 # Celia, M. A., Bouloutas, E. T., Zarba, R. L. (1990). A general
 # mass-conservative numerical solution for the unsaturated flow equation.

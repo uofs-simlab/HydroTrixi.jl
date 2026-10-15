@@ -12,17 +12,21 @@ The pressure head is ``\psi(z,t)``, the constitutive water-content function is
 The unit gravitational-gradient term follows from the downward-positive depth convention.
 
 The model supplies the spatial operator shared by the pressure-head formulation
+
 ```math
 c(\psi(z,t)) \partial_t \psi(z,t) =
 \partial_z f(\psi(z,t),\partial_z\psi(z,t)),
 ```
+
 where ``c(\psi) \coloneqq \vartheta'(\psi)``, and the mixed formulation
+
 ```math
 \partial_t \theta(z,t) =
 \partial_z f(\psi(z,t),\partial_z\psi(z,t)),
-\qquad
+\quad
 \theta(z,t) = \vartheta(\psi(z,t)).
 ```
+
 The temporal formulation and constitutive constraint are supplied by
 [`SemidiscretizationImplicit`](@ref). The hydraulic conductivity is supplied through
 `constitutive_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the
@@ -61,6 +65,13 @@ with water content first and pressure head second;
 any passive SFOM variables follow these blocks.
 Use [`state_variable_block`](@ref) to obtain the pressure-head block
 of a complete implicit solver vector before selecting a nodal state.
+
+# References
+
+- Ireson, A. M., Spiteri, R. J., Clark, M. P., Mathias, S. A. (2023).
+  A simple, efficient, mass-conservative approach to solving
+  Richards' equation (openRE, v1.0). *Geoscientific Model Development*, 16, 659-677.
+  [DOI: 10.5194/gmd-16-659-2023](https://doi.org/10.5194/gmd-16-659-2023)
 """
 @inline pressure_head(psi::Number) = psi
 @inline pressure_head(u) = u[1]

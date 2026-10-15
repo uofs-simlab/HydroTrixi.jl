@@ -4,18 +4,17 @@
 #
 # # Sparse Jacobian evaluation for implicit semidiscretizations
 #
-# `SemidiscretizationImplicit` supplies a sparse Jacobian prototype to
-# OrdinaryDiffEq.jl by default. The prototype determines the Jacobian storage, while the
-# time integration algorithm's `autodiff` setting determines how its entries are computed.
-# With adaptive mesh refinement, HydroTrixi.jl rebuilds the prototype and associated
-# Rosenbrock solver state whenever the mesh topology changes.
+# By default, `semidiscretize` supplies a sparse Jacobian prototype and a column
+# colouring to OrdinaryDiffEq.jl. The prototype specifies which matrix entries are stored.
+# The time integration algorithm's `autodiff` option selects how their values are computed.
 #
-# For the mixed Richards formulation, the state is
+# In mixed form, the state is
 # $\boldsymbol{y}=(\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}$, where
-# $\boldsymbol{\Theta}$ is water content, and $\boldsymbol{\Psi}$ is pressure head. Let
-# $\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)$ denote the spatial residual, and let
-# $\boldsymbol{\vartheta}(\boldsymbol{\Psi})$ denote the nodal constitutive map. The
-# residual and its Jacobian sparsity pattern are
+# $\boldsymbol{\Theta}$ contains nodal water contents and $\boldsymbol{\Psi}$ contains
+# pressure heads. Let $\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)$ denote the spatial
+# residual and $\boldsymbol{\vartheta}(\boldsymbol{\Psi})$ the water contents evaluated
+# from pressure head using the constitutive model. The residual and its Jacobian sparsity
+# pattern are
 #
 # ```math
 # \boldsymbol{\mathcal{F}}(\boldsymbol{y},t) =
@@ -23,7 +22,7 @@
 # \boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t) \\
 # \boldsymbol{\Theta}-\boldsymbol{\vartheta}(\boldsymbol{\Psi})
 # \end{bmatrix},
-# \qquad
+# \quad
 # \operatorname{pattern}\left(\frac{\partial\boldsymbol{\mathcal{F}}}
 # {\partial\boldsymbol{y}}\right)
 # =
@@ -31,14 +30,18 @@
 # \boldsymbol{0} & \boldsymbol{S} \\
 # \boldsymbol{I} & \boldsymbol{I}
 # \end{bmatrix},
-# \qquad
+# \quad
 # \boldsymbol{S} = \operatorname{pattern}\left(
 # \frac{\partial\boldsymbol{\mathcal{R}}}{\partial\boldsymbol{\Psi}}\right).
 # ```
 #
-# `jac_prototype` stores zeros at the coordinates in this pattern. Entries arising only
-# from the temporal mass matrix $\boldsymbol{M}$ are added by OrdinaryDiffEq.jl when it
-# constructs the Rosenbrock matrix
+# The lower-right $\boldsymbol{I}$ denotes a diagonal sparsity pattern. The corresponding
+# Jacobian block contains the negative nodal water capacities.
+#
+# `jac_prototype` stores explicit zeros at the positions allowed by this pattern.
+# OrdinaryDiffEq.jl fills these positions with derivative values and combines the Jacobian
+# with the mass matrix $\boldsymbol{M}$ to form the Rosenbrock matrix:
+#
 # ```math
 # \boldsymbol{M}-\gamma\Delta t^n
 # \frac{\partial\boldsymbol{\mathcal{F}}}{\partial\boldsymbol{y}}
@@ -73,11 +76,10 @@ semi = SemidiscretizationImplicit(mesh, problem, solver;
 ode = semidiscretize(semi, problem.tspan);
 
 # For this one-dimensional mixed Richards discretization, the Jacobian prototype has
-# $K(N+1)^2 + 2(N+1)(K-1) + 2K(N+1)$ stored entries. The first term contains dense
-# element-local entries of
-# $\partial_{\boldsymbol{\Psi}}\boldsymbol{\mathcal{R}}$, the second term contains
-# LDG interface entries, and the third term contains the two constitutive diagonal
-# blocks. We verify the prototype size, number of stored entries, and stored values:
+# $K(N+1)^2 + 2(N+1)(K-1) + 2K(N+1)$ stored entries. The three terms count the
+# element-local spatial couplings, the couplings across element interfaces, and the two
+# diagonal blocks from the constitutive constraint. We check the matrix dimensions,
+# stored-entry count, and zero initialization below.
 
 mesh, equations, solver, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
 n_nodes = Trixi.nnodes(solver)
@@ -94,12 +96,9 @@ jac_prototype = ode.f.jac_prototype
 
 # ## Column colouring
 #
-# A column colouring groups Jacobian columns whose structural row supports are disjoint
-# into one compressed seed direction. Forward-mode automatic differentiation propagates
-# several colour directions as separate components of the same dual numbers. ForwardDiff.jl
-# batches up to 12 directions by default, so all ten colours used here are evaluated in one
-# residual evaluation. HydroTrixi.jl supplies the deterministic colouring in `colorvec`
-# together with the Jacobian prototype:
+# Columns can share a colour when they have no stored entries in the same row. Their
+# derivatives can then be recovered from a single differentiation direction. HydroTrixi.jl
+# supplies the colour assigned to each column in `ode.f.colorvec`.
 
 column_colors = ode.f.colorvec
 n_spatial_colors = 2 * n_nodes + 1
@@ -110,10 +109,9 @@ n_colors = maximum(column_colors)
         mod1.(1:n_state_dofs, n_spatial_colors)
 @assert n_colors == n_spatial_colors + 1
 
-# The pressure-head columns require $2N+3$ colours, assigned cyclically in spatial storage
-# order. The water-content columns each have a single structural entry in a distinct row,
-# so they all share one additional colour. We verify the defining property of the colouring:
-# every row has distinct colours among its structurally nonzero columns.
+# The pressure-head columns use $2N+3$ colours, repeated in storage order. The water-content
+# columns share one additional colour because their entries occupy distinct rows. We check
+# that each row contains at most one stored entry of each colour.
 
 row_indices, column_indices, _ = findnz(jac_prototype)
 for row in axes(jac_prototype, 1)
@@ -122,7 +120,7 @@ for row in axes(jac_prototype, 1)
 end
 
 # To visualize the sparsity pattern and colouring together, we assign each stored Jacobian
-# entry the colour of its column. The black lines separate the water-content and 
+# entry the colour of its column. The black lines separate the water-content and
 # pressure-head blocks.
 
 colored_pattern = fill(NaN, size(jac_prototype))
@@ -145,3 +143,7 @@ println("Saved $(n_colors)-colour Jacobian colouring with $(nnz(jac_prototype)) 
         "to " * figure_path)
 
 # ![Sparse Jacobian column colouring](../assets/generated/richards_jacobian_sparsity/coloring.png)
+#
+# !!! note "Adaptive mesh refinement"
+#     HydroTrixi.jl rebuilds the prototype and associated Rosenbrock solver state whenever
+#     the mesh topology changes.

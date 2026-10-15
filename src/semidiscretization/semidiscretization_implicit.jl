@@ -36,16 +36,19 @@ the solver flux output method (SFOM) proposed by Ireson et al. (2023).
 For a Richards column on ``[0,L]``, measuring depth positive downward,
 denote these variables by
 ``F_{\mathrm{T}}`` and ``F_{\mathrm{B}}``, satisfying
+
 ```math
-\dot{F}_{\mathrm{T}}(t)=f_{\mathrm{T}}^\star(t), \qquad
-\dot{F}_{\mathrm{B}}(t)=f_{\mathrm{B}}^\star(t), \qquad
+\dot{F}_{\mathrm{T}}(t)=f_{\mathrm{T}}^\star(t), \quad
+\dot{F}_{\mathrm{B}}(t)=f_{\mathrm{B}}^\star(t), \quad
 F_{\mathrm{T}}(t^0)=F_{\mathrm{B}}(t^0)=0,
 ```
+
 where ``f_{\mathrm{T}}^\star`` and ``f_{\mathrm{B}}^\star`` are the numerical fluxes at
 the soil surface and bottom of the column, respectively. The returned named-tuple keys
 `x_neg` and `x_pos` represent these top and bottom quantities in the Julia API.
 
 # References
+
 - Ireson, A. M., Spiteri, R. J., Clark, M. P., Mathias, S. A. (2023).
   A simple, efficient, mass-conservative approach to solving
   Richards' equation (openRE, v1.0). *Geoscientific Model Development*, 16, 659-677.

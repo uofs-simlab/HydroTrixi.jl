@@ -7,20 +7,24 @@
 A Haverkamp constitutive model for the Richards equation,
 written in the form used by Celia et al. (1990) and Ireson et al. (2023).
 For ``\psi < 0``, the water content and hydraulic conductivity are
+
 ```math
 \vartheta(\psi) = \theta_{\mathrm{r}} +
 \frac{\theta_{\mathrm{s}}-\theta_{\mathrm{r}}}
 {1 + (a_{\mathrm{H}}|\psi|)^{\beta_{\mathrm{H}}}},
-\qquad
+\quad
 \kappa(\psi) = \frac{\kappa_{\mathrm{s}}}
 {1 + (b_{\mathrm{H}}|\psi|)^{\gamma_{\mathrm{H}}}},
 ```
+
 and the effective saturation is
+
 ```math
 S_{\mathrm{e}}(\psi) =
 \frac{\vartheta(\psi)-\theta_{\mathrm{r}}}
 {\theta_{\mathrm{s}}-\theta_{\mathrm{r}}}.
 ```
+
 The inverse pressure-head scales ``a_{\mathrm{H}}`` and ``b_{\mathrm{H}}``
 correspond to the keywords `a` and `b`.
 The water-retention exponent ``\beta_{\mathrm{H}}`` and hydraulic-conductivity exponent
@@ -32,6 +36,7 @@ For ``\psi\geq 0``, the model uses the saturated values
 ``\vartheta(\psi)=\theta_{\mathrm{s}}`` and ``\kappa(\psi)=\kappa_{\mathrm{s}}``.
 
 # References
+
 - Haverkamp, R., Vauclin, M., Touma, J., Wierenga, P. J., Vachaud, G. (1977).
   A comparison of numerical simulation models for one-dimensional infiltration.
   *Soil Science Society of America Journal*, 41(2), 285-294.
