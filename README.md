@@ -5,6 +5,10 @@
 [![docs-dev](https://img.shields.io/badge/docs-dev-blueviolet.svg)](https://tjbmontoya.com/HydroTrixi.jl/dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/LICENSE)
 
+![Pressure-head evolution and adaptive mesh refinement for the New Mexico infiltration benchmark](docs/src/assets/images/richards_celia_new_mexico_pressure_head.gif)
+
+The Celia et al. New Mexico infiltration benchmark, using the mixed formulation with water-content solution transfer.
+
 **HydroTrixi.jl** is an adaptive discontinuous spectral-element solver for hydrologic models based on [Trixi.jl](https://github.com/trixi-framework/Trixi.jl) [(Ranocha et al. 2022)](#references), providing the following specialized capabilities:
 
 - Implicit temporal operator formulations using algebraic constitutive constraints or capacity functions to support mixed and pressure-head formulations of the Richards equation, respectively
