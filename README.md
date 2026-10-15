@@ -17,7 +17,7 @@
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes, following [Ireson et al. (2023)](#references)
 - Reusable tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases
 
-The following manuscript, available as an [arXiv preprint](https://arxiv.org/abs/2610.17031), describes the methods used in HydroTrixi.jl to obtain mass-conservative solutions of the Richards equation:
+The following manuscript, available as an [arXiv preprint](https://arxiv.org/abs/2610.17031), describes the methods used in HydroTrixi.jl to obtain mass-conservative solutions of the Richards equation under spatial and temporal adaptivity:
 
 ```bibtex
 @misc{MontoyaSpiteriAdaptiveRichards2026,
