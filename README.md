@@ -4,6 +4,7 @@
 [![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://tjbmontoya.com/HydroTrixi.jl/stable)
 [![docs-dev](https://img.shields.io/badge/docs-dev-blueviolet.svg)](https://tjbmontoya.com/HydroTrixi.jl/dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/uofs-simlab/HydroTrixi.jl/blob/main/LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23383242.svg)](https://doi.org/10.5281/zenodo.23383242)
 
 ![Pressure-head evolution and adaptive mesh refinement for the New Mexico infiltration benchmark](docs/src/assets/images/richards_celia_new_mexico_pressure_head.gif)
 
