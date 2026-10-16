@@ -13,7 +13,7 @@
 - Implicit temporal operator formulations using algebraic constitutive constraints or capacity functions to support mixed and pressure-head formulations of the Richards equation, respectively
 - General choice of nonlinear constitutive models for soil hydraulic properties (van Genuchten-Mualem, Haverkamp, or add your own)
 - Extended parabolic boundary conditions, including penalty-type Dirichlet fluxes that depend on the interior pressure head, interior flux, and prescribed boundary head
-- Implicit time integration using adaptive Rosenbrock-Wanner methods with sparse graph-coloured Jacobian evaluation and forward-mode automatic differentiation
+- Implicit time integration using adaptive Rosenbrock-Wanner methods from [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) with sparse graph-coloured Jacobian evaluation and forward-mode automatic differentiation through [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl)
 - Adaptive mesh refinement and coarsening with configurable solution-transfer variables and a total-variation-based refinement indicator for front tracking
 - Solver flux output method (SFOM) diagnostics for time-integrated boundary fluxes, following [Ireson et al. (2023)](#references)
 - Reusable tools to facilitate problem setup and visualization, with examples for standard hydrologic benchmark cases
