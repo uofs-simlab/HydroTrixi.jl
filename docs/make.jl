@@ -55,6 +55,7 @@ prepare_generated_docs!()
 generate_tutorials!()
 
 makedocs(; modules = [HydroTrixi], repo = Remotes.GitHub("uofs-simlab", "HydroTrixi.jl"),
+         checkdocs = :exports,
          sitename = "HydroTrixi.jl",
          format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true",
                                   canonical = "https://tjbmontoya.com/HydroTrixi.jl",
