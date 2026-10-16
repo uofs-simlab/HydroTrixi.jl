@@ -96,7 +96,7 @@ end
     u_ode = last(sol.u)
     GC.@preserve u_ode begin
         u = Trixi.wrap_array(u_ode, semi)
-        arguments = (u, u, last(sol.t), semi.mesh, semi.equations,
+        arguments = (Trixi.trixi_backend(u), u, u, last(sol.t), semi.mesh, semi.equations,
                      semi.boundary_conditions, semi.source_terms, semi.solver,
                      semi.solver_parabolic, semi.cache, semi.cache_parabolic)
         @test which(Trixi.rhs_parabolic!, typeof(arguments)).module === Trixi

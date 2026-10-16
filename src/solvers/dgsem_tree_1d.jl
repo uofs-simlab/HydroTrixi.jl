@@ -6,6 +6,7 @@
 # cache.boundaries.u retains the boundary values of u_transformed. This allows our extended
 # calc_boundary_flux_by_direction_divergence! to extract the interior-side values from
 # cache.boundaries.u as the local variable u_inner, and pass it to
+#
 # boundary_flux_divergence(boundary_condition, flux_inner, u_inner, orientation,
 #                          direction, x, t, equations_parabolic, penalty_scale).
 #
@@ -88,7 +89,7 @@ end
 
 # Version of rhs_parabolic! that allows both the interior-side solution and flux to be
 # available at the boundary for use in the boundary condition
-function Trixi.rhs_parabolic!(du, u, t, mesh::Trixi.TreeMesh{1},
+function Trixi.rhs_parabolic!(backend::Nothing, du, u, t, mesh::Trixi.TreeMesh{1},
                               equations_parabolic::Trixi.AbstractEquationsParabolic{1},
                               boundary_conditions, source_terms,
                               solver::Trixi.DGSEM{<:Trixi.LobattoLegendreBasis},
@@ -102,8 +103,9 @@ function Trixi.rhs_parabolic!(du, u, t, mesh::Trixi.TreeMesh{1},
     end
 
     Trixi.@trixi_timeit Trixi.timer() "calculate gradient" begin
-        Trixi.calc_gradient!(gradients, u_transformed, t, mesh, equations_parabolic,
-                             boundary_conditions, solver, solver_parabolic, cache)
+        Trixi.calc_gradient!(backend, gradients, u_transformed, t, mesh,
+                             equations_parabolic, boundary_conditions, solver,
+                             solver_parabolic, cache)
     end
 
     Trixi.@trixi_timeit Trixi.timer() "calculate parabolic fluxes" begin

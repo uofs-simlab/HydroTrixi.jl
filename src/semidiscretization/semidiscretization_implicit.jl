@@ -520,9 +520,10 @@ function rhs_spatial!(du_ode, u_ode, semi_base, cache_parabolic::CacheParabolic1
     GC.@preserve du_ode u_ode begin
         u = unsafe_wrap_block(u_ode, mesh, equations, solver, cache)
         du = unsafe_wrap_block(du_ode, mesh, equations, solver, cache)
+        backend = Trixi.trixi_backend(u)
         time_start = time_ns()
         Trixi.@trixi_timeit Trixi.timer() "parabolic rhs!" begin
-            Trixi.rhs_parabolic!(du, u, t, mesh, equations, boundary_conditions,
+            Trixi.rhs_parabolic!(backend, du, u, t, mesh, equations, boundary_conditions,
                                   source_terms, solver, solver_parabolic, cache,
                                   cache_parabolic)
         end

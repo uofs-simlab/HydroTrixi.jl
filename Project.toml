@@ -37,7 +37,7 @@ PreallocationTools = "1"
 SciMLBase = "3.55"
 SparseArrays = "1"
 Test = "1"
-Trixi = "0.16.24"
+Trixi = "0.17"
 TrixiTest = "0.2.9"
 julia = "1.10"
 
