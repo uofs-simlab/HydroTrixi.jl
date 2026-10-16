@@ -5,16 +5,18 @@
 # # Sparse Jacobian evaluation for implicit semidiscretizations
 #
 # By default, `semidiscretize` supplies a sparse Jacobian prototype and a column
-# colouring to OrdinaryDiffEq.jl. The prototype specifies which matrix entries are stored.
-# The time integration algorithm's `autodiff` option selects how their values are computed.
+# colouring to OrdinaryDiffEq.jl. The prototype specifies which structurally nonzero matrix
+# entries are stored, while the time integration algorithm's `autodiff` option selects how
+# their values are computed (e.g., via finite differences or automatic differentiation).
 #
-# In mixed form, the state is
+# In mixed form, the state vector (not including passive diagnostic variables) is
 # $\boldsymbol{y}=(\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}$, where
-# $\boldsymbol{\Theta}$ contains nodal water contents and $\boldsymbol{\Psi}$ contains
-# pressure heads. Let $\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)$ denote the spatial
-# residual and $\boldsymbol{\vartheta}(\boldsymbol{\Psi})$ the water contents evaluated
+# $\boldsymbol{\Theta}$ contains nodal water-content values and $\boldsymbol{\Psi}$
+# contains the nodal pressure-head values.
+# Let $\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)$ denote the spatial
+# residual and $\boldsymbol{\vartheta}(\boldsymbol{\Psi})$ the water content evaluated
 # from pressure head using the constitutive model. The residual and its Jacobian sparsity
-# pattern are
+# pattern are then given by
 #
 # ```math
 # \boldsymbol{\mathcal{F}}(\boldsymbol{y},t) =
@@ -32,15 +34,15 @@
 # \end{bmatrix},
 # \quad
 # \boldsymbol{S} = \operatorname{pattern}\left(
-# \frac{\partial\boldsymbol{\mathcal{R}}}{\partial\boldsymbol{\Psi}}\right).
+# \frac{\partial\boldsymbol{\mathcal{R}}}{\partial\boldsymbol{\Psi}}\right),
 # ```
 #
-# The lower-right $\boldsymbol{I}$ denotes a diagonal sparsity pattern. The corresponding
-# Jacobian block contains the negative nodal water capacities.
+# where the lower-right $\boldsymbol{I}$ denotes a diagonal sparsity pattern.
+# The corresponding Jacobian block contains the negative nodal water capacities.
 #
-# `jac_prototype` stores explicit zeros at the positions allowed by this pattern.
-# OrdinaryDiffEq.jl fills these positions with derivative values and combines the Jacobian
-# with the mass matrix $\boldsymbol{M}$ to form the Rosenbrock matrix:
+# The prototype `jac_prototype` stores explicit zeros at the positions allowed by this
+# pattern. OrdinaryDiffEq.jl fills these positions with derivative values and combines the
+# Jacobian with the mass matrix $\boldsymbol{M}$ to form the Rosenbrock matrix:
 #
 # ```math
 # \boldsymbol{M}-\gamma\Delta t^n
@@ -48,8 +50,8 @@
 # (\boldsymbol{y}^n,t^n).
 # ```
 #
-# We now construct and visualize this pattern for a small mixed Richards problem with $K=4$
-# elements and polynomial degree $N=3$, following
+# We now construct and visualize the sparsity pattern for a small mixed Richards problem
+# with $K=4$ elements and polynomial degree $N=3$, following
 # `examples/elixirs/elixir_richards_manufactured_solution.jl`:
 
 using CairoMakie
@@ -94,11 +96,20 @@ jac_prototype = ode.f.jac_prototype
 @assert nnz(jac_prototype) == expected_nonzeros
 @assert all(iszero, nonzeros(jac_prototype))
 
-# ## Column colouring
+# Column colouring groups Jacobian columns so that their derivatives can be computed
+# simultaneously when their derivatives do not interfere with each other.
+# Each column corresponds to one entry of the state vector, and its stored entries mark
+# the residual components that may depend on that entry. Columns receive the same
+# colour (an integer group label) only when their stored entries occupy non-overlapping
+# rows. Thus, no residual component depends on more than one variable of a given colour.
 #
-# Columns can share a colour when they have no stored entries in the same row. Their
-# derivatives can then be recovered from a single differentiation direction. HydroTrixi.jl
-# supplies the colour assigned to each column in `ode.f.colorvec`.
+# With forward-mode automatic differentiation, we assign a derivative of one to all state
+# variables of one colour and zero to the others. The resulting directional derivative
+# is the sum of the Jacobian columns in that group. Since these columns have disjoint
+# row supports, the sparsity pattern identifies which column each entry belongs to.
+# This requires one derivative direction per colour rather than per state variable;
+# finite differences use the same grouping for simultaneous perturbations.
+# HydroTrixi.jl supplies the colour assigned to each column in `ode.f.colorvec`.
 
 column_colors = ode.f.colorvec
 n_spatial_colors = 2 * n_nodes + 1
@@ -110,7 +121,8 @@ n_colors = maximum(column_colors)
 @assert n_colors == n_spatial_colors + 1
 
 # The pressure-head columns use $2N+3$ colours, repeated in storage order. The water-content
-# columns share one additional colour because their entries occupy distinct rows. We check
+# columns share one additional colour because their entries occupy distinct rows. With
+# $K=4$ and $N=3$, this gives ten derivative directions for 32 state variables. We check
 # that each row contains at most one stored entry of each colour.
 
 row_indices, column_indices, _ = findnz(jac_prototype)

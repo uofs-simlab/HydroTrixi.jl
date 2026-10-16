@@ -4,37 +4,21 @@
 @doc raw"""
     HydrologicProblemCeliaHaverkamp(; tspan = (0.0, 360.0), penalty_factor = 1)
 
-Construct the first one-dimensional Richards equation infiltration problem
-considered by Celia, Bouloutas, and Zarba (1990),
-as a `HydrologicProblem` for HydroTrixi.jl semidiscretizations.
+Construct the first one-dimensional Richards equation infiltration problem considered by
+Celia, Bouloutas, and Zarba (1990), as a `HydrologicProblem` for HydroTrixi.jl
+semidiscretizations.
 
-The problem uses the constitutive model of Haverkamp et al. (1977), given by
+The problem uses the [`Haverkamp`](@ref) constitutive model (Haverkamp et al., 1977).
 
-```math
-\vartheta(\psi) = \theta_{\mathrm{r}} +
-                  (\theta_{\mathrm{s}} - \theta_{\mathrm{r}})
-\frac{1}{1 + (a_{\mathrm{H}}|\psi|)^{\beta_{\mathrm{H}}}},
-\quad
-\kappa(\psi) = \frac{\kappa_{\mathrm{s}}}
-{1 + (b_{\mathrm{H}}|\psi|)^{\gamma_{\mathrm{H}}}},
-```
+The setup uses depth ``z`` in metres, positive downward on ``z \in [0, 0.4]``, and time in
+seconds, with the default interval ``t \in [0, 360]``. The pressure head is initialized as
+``\psi(z,0)=-0.615`` m. The Dirichlet data are ``\psi_{\mathrm{T}}(t)=-0.207`` m at the soil
+surface (`x_neg`) and ``\psi_{\mathrm{B}}(t)=-0.615`` m at the bottom of the column
+(`x_pos`).
 
-for ``\psi < 0``, with saturated values ``\vartheta(\psi) = \theta_{\mathrm{s}}``
-and ``\kappa(\psi) = \kappa_{\mathrm{s}}`` for ``\psi \ge 0``.
-The parameters ``a_{\mathrm{H}}``, ``b_{\mathrm{H}}``, ``\beta_{\mathrm{H}}``,
-and ``\gamma_{\mathrm{H}}`` correspond to the [`Haverkamp`](@ref) keywords
-`a`, `b`, `beta`, and `gamma`, respectively.
-
-The setup uses depth ``z`` in metres, positive downward on ``z \in [0, 0.4]``,
-and time in seconds, with the default interval ``t \in [0, 360]``.
-The pressure head is initialized as ``\psi(z,0)=-0.615`` m.
-The Dirichlet data are ``\psi_{\mathrm{T}}(t)=-0.207`` m at the soil surface (`x_neg`)
-and ``\psi_{\mathrm{B}}(t)=-0.615`` m at the bottom of the column (`x_pos`).
-
-The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref).
-The dimensionless `penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty.
-Its default value is one;
-setting it to zero omits the additional divergence flux penalty.
+The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref). The dimensionless
+`penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty. Its default value is
+one; setting it to zero omits the additional divergence flux penalty.
 
 The returned problem setup contains the fields `equations`, `state_to_evolved`,
 `evolved_to_state`, `initial_condition`, `boundary_conditions`, `domain`, and `tspan`.

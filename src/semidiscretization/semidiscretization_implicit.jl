@@ -10,12 +10,12 @@ abstract type AbstractTemporalOperator end
 @doc raw"""
     AbstractPassiveVariables
 
-Abstract supertype for passive variable configurations
-used for diagnostics by [`SemidiscretizationImplicit`](@ref).
-Passive variables refer to additional scalar variables appended to the physical ODE or DAE
-state that are integrated by the time integrator but do not affect the physical residual.
-For example, a passive variable can store a cumulative numerical boundary flux
-for diagnostic purposes (see [`PassiveVariablesBoundaryFlux1D`](@ref)).
+Abstract supertype for passive variable configurations used for diagnostics by
+[`SemidiscretizationImplicit`](@ref). Passive variables refer to additional scalar variables
+appended to the physical ODE or DAE state that are integrated by the time integrator but do
+not affect the physical residual. For example, a passive variable can store a cumulative
+numerical boundary flux for diagnostic purposes (see
+[`PassiveVariablesBoundaryFlux1D`](@ref)).
 """
 abstract type AbstractPassiveVariables end
 
@@ -30,12 +30,11 @@ struct NoPassiveVariables <: AbstractPassiveVariables end
 @doc raw"""
     PassiveVariablesBoundaryFlux1D()
 
-Append two passive scalar variables that store the cumulative numerical boundary fluxes
-at the negative and positive boundaries of a one-dimensional scalar problem, following
-the solver flux output method (SFOM) proposed by Ireson et al. (2023).
-For a Richards column on ``[0,L]``, measuring depth positive downward,
-denote these variables by
-``F_{\mathrm{T}}`` and ``F_{\mathrm{B}}``, satisfying
+Append two passive scalar variables that store the cumulative numerical boundary fluxes at
+the negative and positive boundaries of a one-dimensional scalar problem, following the
+solver flux output method (SFOM) proposed by Ireson et al. (2023). For a Richards column on
+``[0,L]``, measuring depth positive downward, denote these variables by ``F_{\mathrm{T}}``
+and ``F_{\mathrm{B}}``, satisfying
 
 ```math
 \dot{F}_{\mathrm{T}}(t)=f_{\mathrm{T}}^\star(t), \quad
@@ -68,24 +67,25 @@ A semidiscretization wrapper for the constant mass-matrix system
 \boldsymbol{\mathcal{F}}(\boldsymbol{y}(t),t).
 ```
 arising from a physical system that may not be expressed explicitly in terms of the time
-derivative of the state variables.
-The `TemporalOperator` type may be
+derivative of the state variables. The `TemporalOperator` type may be
 [`TemporalOperatorStandard`](@ref), [`TemporalOperatorConstitutive`](@ref), or
-[`TemporalOperatorCapacity`](@ref),
-which determine the structure of the DAE mass matrix
-and the partitioning of the state variables, and correspond to time-derivative terms
-in PDEs of the form ``\partial_t u = \mathcal{R}(u, t)``,
+[`TemporalOperatorCapacity`](@ref), which determine the structure of the DAE mass matrix and
+the partitioning of the state variables, and correspond to time-derivative terms in PDEs of
+the form ``\partial_t u = \mathcal{R}(u, t)``,
 ``\partial_t \vartheta(u) = \mathcal{R}(u, t)``, or
-``c(u)\partial_t u = \mathcal{R}(u, t)``, respectively,
-where ``\mathcal{R}`` denotes a generic spatial operator.
-The `PassiveVariables` type may be [`NoPassiveVariables`](@ref)
-or [`PassiveVariablesBoundaryFlux1D`](@ref), the latter of which appends
-two passive scalar variables to the ODE state that store the time-integrated boundary fluxes
-for a one-dimensional scalar problem.
+``c(u)\partial_t u = \mathcal{R}(u, t)``, respectively, where ``\mathcal{R}`` denotes a
+generic spatial operator. The `PassiveVariables` type may be [`NoPassiveVariables`](@ref) or
+[`PassiveVariablesBoundaryFlux1D`](@ref), the latter of which appends two passive scalar
+variables to the ODE state that store the time-integrated boundary fluxes for a
+one-dimensional scalar problem.
 
 For one-dimensional parabolic `TreeMesh` discretizations with a Lobatto-Legendre `DGSEM`,
-the wrapper adds boundary-flux storage without replacing `semi_base`.
-Its spatial operator retains both the interior solution and flux at each boundary.
+the wrapper adds boundary-flux storage without replacing `semi_base`. Its spatial operator
+retains both the interior solution and flux at each boundary. Other base discretizations,
+including hyperbolic and multidimensional parabolic systems, do not create a
+`CacheParabolic1D`, and the implicit wrapper's `cache_parabolic` field is `nothing`. Their
+spatial operator is evaluated by `Trixi.default_rhs(semi_base)`, using `semi_base.cache`
+and, for parabolic systems, `semi_base.cache_parabolic`.
 
 !!! note
     The constant DAE mass matrix ``\boldsymbol{M}``, constructed by `dae_mass_matrix`,
@@ -135,8 +135,8 @@ Temporal operator for the standard semi-discrete form
 ```
 Before passive variables are appended, the [`SemidiscretizationImplicit`](@ref) state
 satisfies ``\boldsymbol{y} = \boldsymbol{u}``,
-``\boldsymbol{\mathcal{F}} = \boldsymbol{\mathcal{R}}``,
-and the DAE mass matrix is the identity.
+``\boldsymbol{\mathcal{F}} = \boldsymbol{\mathcal{R}}``, and the DAE mass matrix is the
+identity.
 """
 struct TemporalOperatorStandard <: AbstractTemporalOperator end
 
@@ -158,20 +158,20 @@ Temporal operator for a [`SemidiscretizationImplicit`](@ref) that takes the form
 \boldsymbol{\vartheta}(\boldsymbol{u}_\mathrm{state})
 \end{bmatrix}.
 ```
-Here, ``\boldsymbol{\mathcal{R}}`` is the spatial operator,
-and ``\boldsymbol{\vartheta}`` is `state_to_evolved`, the generic constitutive map.
-Thus, ``\boldsymbol{y}`` contains distinct blocks
-ordered as evolved variables followed by state variables.
-Passive variables, when present, are appended after both blocks.
-By default, adaptive mesh refinement transfers the evolved block
-and reconstructs the state block with `evolved_to_state`.
-With `transfer_state = true`, it transfers the state block
-and reconstructs the evolved block with `state_to_evolved`.
+Here, ``\boldsymbol{\mathcal{R}}`` is the spatial operator, and ``\boldsymbol{\vartheta}``
+is `state_to_evolved`, the generic constitutive map. Thus, ``\boldsymbol{y}`` contains
+distinct blocks ordered as evolved variables followed by state variables. Passive variables,
+when present, are appended after both blocks. By default, adaptive mesh refinement transfers
+the evolved block and reconstructs the state block with
+`evolved_to_state(value, equations)`. Using AMR with `transfer_state = false` therefore
+requires a callable `evolved_to_state`; the default `nothing` does not support this
+reconstruction. With `transfer_state = true`, AMR transfers the state block and reconstructs
+the evolved block with `state_to_evolved(value, equations)`.
 
 For the mixed Richards formulation, these generic blocks are
 ``\boldsymbol{u}_{\mathrm{evolved}}=\boldsymbol{\Theta}`` and
-``\boldsymbol{u}_{\mathrm{state}}=\boldsymbol{\Psi}``, while the spatial and
-constitutive maps are ``\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)`` and
+``\boldsymbol{u}_{\mathrm{state}}=\boldsymbol{\Psi}``, while the spatial and constitutive
+maps are ``\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)`` and
 ``\boldsymbol{\vartheta}(\boldsymbol{\Psi})``, respectively.
 """
 struct TemporalOperatorConstitutive{StateToEvolved, EvolvedToState} <:
@@ -197,18 +197,16 @@ variable directly and applies a nodal capacity function to the spatial operator,
 \boldsymbol{C}(\boldsymbol{u}(t))^{-1}
 \boldsymbol{\mathcal{R}}(\boldsymbol{u}(t),t).
 ```
-The capacity must be strictly positive at all nodal states.
-Before passive variables are appended,
-the stored state satisfies ``\boldsymbol{y} = \boldsymbol{u}``,
-the residual is ``\boldsymbol{\mathcal{F}} = \boldsymbol{C}^{-1}\boldsymbol{\mathcal{R}}``,
-and the DAE mass matrix is the identity.
-The optional adaptive mesh refinement transfer maps convert the state variables
-to the transferred variables before mesh adaptation and reconstruct the state afterwards.
+The capacity must be strictly positive at all nodal states. Before passive variables are
+appended, the stored state satisfies ``\boldsymbol{y} = \boldsymbol{u}``, the residual is
+``\boldsymbol{\mathcal{F}} = \boldsymbol{C}^{-1}\boldsymbol{\mathcal{R}}``, and the DAE mass
+matrix is the identity. The optional adaptive mesh refinement transfer maps convert the
+state variables to the transferred variables before mesh adaptation and reconstruct the
+state afterwards.
 
-For the pressure-head Richards formulation, ``\boldsymbol{u}=\boldsymbol{\Psi}``
-and the right-hand side is
-``\boldsymbol{C}(\boldsymbol{\Psi})^{-1}
-\boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)``.
+For the pressure-head Richards formulation, ``\boldsymbol{u}=\boldsymbol{\Psi}`` and the
+right-hand side is
+``\boldsymbol{C}(\boldsymbol{\Psi})^{-1} \boldsymbol{\mathcal{R}}(\boldsymbol{\Psi},t)``.
 """
 struct TemporalOperatorCapacity{CapacityFunction, TransferVariables, TransferToState} <:
        AbstractTemporalOperator
@@ -261,7 +259,8 @@ struct CacheImplicit{Cache, TemporalOperator <: AbstractTemporalOperator,
     passive_variables::PassiveVariables
 end
 
-# Most properties are inherited from the base semidiscretization.
+# Read semi.performance_counter from semi.semi_base.performance_counter.
+# Read all other properties directly from semi's own fields.
 @inline function Base.getproperty(semi::SemidiscretizationImplicit, field::Symbol)
     if field === :performance_counter
         return getproperty(getfield(semi, :semi_base), field)
@@ -349,8 +348,8 @@ end
 
 Return the block containing the state variables supplied to the spatial operator. For
 [`TemporalOperatorStandard`](@ref) and [`TemporalOperatorCapacity`](@ref), this is the
-complete physical state. For [`TemporalOperatorConstitutive`](@ref),
-this is the second half of the physical state.
+complete physical state. For [`TemporalOperatorConstitutive`](@ref), this is the second half
+of the physical state.
 
 The returned block aliases its input and must not be assumed to be an independent copy.
 The `semi` method also excludes appended passive diagnostic variables.
@@ -379,66 +378,138 @@ end
     return state_variable_block(u_physical, semi.operator_temporal)
 end
 
-# Error analysis compares u for all temporal formulations
+# Evaluate error norms using state_variable_block, which contains pressure head for
+# Richards in both temporal formulations. The function func selects the quantity
+# compared with the reference solution.
 function Trixi.calc_error_norms(func, u_ode, t, analyzer,
                                 semi::SemidiscretizationImplicit, cache_analysis)
     state_variable = state_variable_block(u_ode, semi)
     semi_base = semi.semi_base
     mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi_base)
     GC.@preserve u_ode begin
-        u = wrap_array_implicit(state_variable, mesh, equations, dg, cache)
+        u = unsafe_wrap_block(state_variable, mesh, equations, dg, cache)
         return Trixi.calc_error_norms(func, u, t, analyzer, mesh, equations,
                                       semi_base.initial_condition, dg, cache,
                                       cache_analysis)
     end
 end
 
-# Native wrapping accepts contiguous block views of resizable ODE storage.
-# Pointer-backed arrays do not mark the resizable ODE vector as shared storage.
-@inline function wrap_array_implicit(u_ode::SubArray{<:Any, 1, <:Array,
-                                                    <:Tuple{<:AbstractUnitRange}, true},
-                                     mesh, equations, dg, cache)
-    return Trixi.wrap_array_native(u_ode, mesh, equations, dg, cache)
+"""
+    unsafe_vector_alias(u_block)
+
+Return a `Vector` sharing the entries and element type of `u_block`, without copying. An
+input `Vector` is returned unchanged; a view of consecutive array entries is exposed through
+a new vector alias.
+
+For a view `u_block` into the ODE vector `u_ode`, the returned `u_vector` points into
+`u_ode`'s memory but holds no Julia reference to `u_ode`. The garbage collector may free
+this memory after the last direct use of `u_ode`, even while `u_vector` is still being
+used. Preserve `u_ode` with `GC.@preserve` throughout this call and all uses of `u_vector`.
+Do not resize `u_ode` during that time.
+
+```julia
+GC.@preserve u_ode begin
+    u_block = state_variable_block(u_ode, semi)
+    u_vector = unsafe_vector_alias(u_block)
+    # All reading and writing through u_vector goes here.
+end
+```
+"""
+@inline function unsafe_vector_alias(u_block::Vector)
+    return u_block
 end
 
-@inline function wrap_array_implicit(u_ode, mesh, equations, dg, cache)
-    return Trixi.wrap_array(u_ode, mesh, equations, dg, cache)
+@inline function unsafe_vector_alias(u_block::SubArray{<:Any, 1, <:Array,
+                                                      <:Tuple{<:AbstractUnitRange}, true})
+    # Trixi's plain-array wrapping path needs concrete Vector storage.
+    # The pointer includes u_block's offset; own = false prevents the returned Vector
+    # from freeing the memory belonging to parent(u_block).
+    return unsafe_wrap(Vector{eltype(u_block)}, pointer(u_block), length(u_block);
+                       own = false)
 end
 
-# Native spatial entry points expect vector storage even for implicit state blocks.
-# The caller preserves the source view while this non-owning alias is consumed.
-@inline function wrap_vector_implicit(u_ode::SubArray{<:Any, 1, <:Array,
-                                                     <:Tuple{<:AbstractUnitRange}, true})
-    return unsafe_wrap(Vector{eltype(u_ode)}, pointer(u_ode), length(u_ode))
+"""
+    unsafe_wrap_block(u_block, mesh, equations, dg, cache)
+
+Wrap a `Vector` or a view of consecutive array entries in Trixi.jl's
+`(variable, node..., element)` layout without copying, and without changing the element
+type. Select the required block (e.g., `evolved_variable_block(u_ode, semi)` or
+`state_variable_block(u_ode, semi)`) and exclude passive variables before calling this
+function.
+
+For a block selected from the ODE vector `u_ode`, the returned nodal array `u` does not
+automatically keep `u_ode` alive. Therefore, you must explicitly keep `u_ode` alive
+throughout the use of `u` to prevent the garbage collector from freeing its memory
+prematurely. This also applies when `u_block` is `u_ode` itself. Preserve `u_ode` with
+`GC.@preserve` throughout this call and all uses of `u` and do not resize `u_ode` during
+that time, for example:
+
+```julia
+mesh, equations, dg, cache = Trixi.mesh_equations_solver_cache(semi.semi_base)
+GC.@preserve u_ode begin
+    u_block = state_variable_block(u_ode, semi)
+    u = unsafe_wrap_block(u_block, mesh, equations, dg, cache)
+    # All reading and writing through the returned nodal array u goes here.
+end
+```
+"""
+@inline function unsafe_wrap_block(u_block::AbstractVector, mesh, equations, dg, cache)
+    # Expose the block as concrete Vector storage for Trixi
+    u_vector = unsafe_vector_alias(u_block)
+
+    # Trixi.wrap_array returns a multidimensional PtrArray over u_vector's entries
+    # when supported. If eltype(u_block) <: ForwardDiff.Dual, it returns a plain Array
+    # instead, since LoopVectorization does not support dual numbers. Neither path copies
+    # entries.
+    return Trixi.wrap_array(u_vector, mesh, equations, dg, cache)
 end
 
-@inline wrap_vector_implicit(u_ode) = u_ode
-
-# Standard and capacity analysis use u directly
+# Standard and capacity formulations expose the physical state for analysis, excluding
+# passive variables. For Richards in capacity form, this state is pressure head.
+# Use GC.@preserve on u_ode throughout this call and all uses of the returned array
+# to keep u_ode's storage alive.
 @inline function Trixi.wrap_array(u_ode::AbstractVector, mesh::Trixi.AbstractMesh,
                                   equations, dg::Trixi.DGSEM,
                                   cache::CacheImplicit{<:Any,
                                                        <:Union{TemporalOperatorStandard,
                                                                TemporalOperatorCapacity}})
+    # Extract a view of the physical variables from the ODE vector (i.e., no passive vars)
     u_physical = physical_variable_view(u_ode, cache.passive_variables)
-    return wrap_array_implicit(u_physical, mesh, equations, dg, cache.cache_base)
+
+    # Make the physical-variable view into a vector without copying values, and then pass
+    # the flat vector to Trixi.jl's Trixi.wrap_array, which converts it into the
+    # multidimensional layout expected by the spatial operators.
+    return unsafe_wrap_block(u_physical, mesh, equations, dg, cache.cache_base)
 end
 
-# Constitutive analysis uses the evolved block as the conserved variable
+# Analysis with TemporalOperatorConstitutive uses the evolved block as the conserved
+# variable. Use GC.@preserve on u_ode throughout this call and all uses of the returned
+# array to prevent the garbage collector from freeing its memory prematurely.
 @inline function Trixi.wrap_array(u_ode::AbstractVector, mesh::Trixi.AbstractMesh,
                                   equations, dg::Trixi.DGSEM,
                                   cache::CacheImplicit{<:Any,
                                                        <:TemporalOperatorConstitutive})
+    # Extract a view of the physical variables from the ODE vector (i.e., no passive vars)
     u_physical = physical_variable_view(u_ode, cache.passive_variables)
+
+    # Get a view of only the evolved (i.e., differential) variable block
     evolved_variable = evolved_variable_block(u_physical, cache.operator_temporal)
-    return wrap_array_implicit(evolved_variable, mesh, equations, dg, cache.cache_base)
+
+    # Make the evolved-variable view into a vector without copying values, and then pass
+    # the flat vector to Trixi.jl's Trixi.wrap_array, which converts it into the
+    # multidimensional layout expected by the spatial operators.
+    return unsafe_wrap_block(evolved_variable, mesh, equations, dg, cache.cache_base)
 end
 
-# Preserve native spatial operators outside the owned parabolic cache path
+# Dispatch here when semi.cache_parabolic is nothing, so the implicit wrapper has no
+# HydroTrixi CacheParabolic1D (e.g. for hyperbolic or multidimensional parabolic systems).
+# Trixi.default_rhs(semi_base) still uses semi_base.cache and, for parabolic systems,
+# semi_base.cache_parabolic.
 @inline function rhs_spatial!(du_ode, u_ode, semi_base, ::Nothing, t)
+    # Preserve the blocks while the native RHS wraps and uses these flat vector aliases.
     GC.@preserve du_ode u_ode begin
-        du = wrap_vector_implicit(du_ode)
-        u = wrap_vector_implicit(u_ode)
+        du = unsafe_vector_alias(du_ode)
+        u = unsafe_vector_alias(u_ode)
         return Trixi.default_rhs(semi_base)(du, u, semi_base, t)
     end
 end
@@ -447,8 +518,8 @@ function rhs_spatial!(du_ode, u_ode, semi_base, cache_parabolic::CacheParabolic1
     (; mesh, equations, boundary_conditions, source_terms, solver, solver_parabolic,
        cache) = semi_base
     GC.@preserve du_ode u_ode begin
-        u = wrap_array_implicit(u_ode, mesh, equations, solver, cache)
-        du = wrap_array_implicit(du_ode, mesh, equations, solver, cache)
+        u = unsafe_wrap_block(u_ode, mesh, equations, solver, cache)
+        du = unsafe_wrap_block(du_ode, mesh, equations, solver, cache)
         time_start = time_ns()
         Trixi.@trixi_timeit Trixi.timer() "parabolic rhs!" begin
             Trixi.rhs_parabolic!(du, u, t, mesh, equations, boundary_conditions,
@@ -460,12 +531,13 @@ function rhs_spatial!(du_ode, u_ode, semi_base, cache_parabolic::CacheParabolic1
     return nothing
 end
 
-# Default operator hooks correspond to the standard semi-discrete form `∂_t u = ℛ(u, t)`.
+# Default operator hooks correspond to the standard semi-discrete form ∂_t u = ℛ(u, t)
 @inline function nvariables_total(::AbstractTemporalOperator,
                                   semi_base)
     return Trixi.nvariables(semi_base)
 end
 
+# Fallback for the default implicit right-hand side operator (just uses the spatial RHS)
 @inline function rhs_implicit!(du_ode, u_ode, ::AbstractTemporalOperator,
                                semi_base, cache_parabolic, t)
     return rhs_spatial!(du_ode, u_ode, semi_base, cache_parabolic, t)
@@ -484,7 +556,7 @@ function rhs_implicit!(du_ode, u_ode, operator_temporal::TemporalOperatorCapacit
     (; equations) = semi_base
     capacity_function = operator_temporal.capacity_function
 
-    # Apply the nodal capacity after assembling the spatial residual
+    # Divide by the nodal capacity after assembling the spatial residual
     @inbounds for i in eachindex(du_ode, u_ode)
         du_ode[i] /= capacity_function(u_ode[i], equations)
     end
@@ -618,7 +690,7 @@ function compute_physical_coefficients!(u_physical, t, semi_base,
                                         ::Union{TemporalOperatorStandard,
                                                 TemporalOperatorCapacity})
     GC.@preserve u_physical begin
-        return Trixi.compute_coefficients!(wrap_vector_implicit(u_physical), t, semi_base)
+        return Trixi.compute_coefficients!(unsafe_vector_alias(u_physical), t, semi_base)
     end
 end
 
@@ -629,7 +701,7 @@ function compute_physical_coefficients!(u_physical, t,
     evolved_variable = evolved_variable_block(u_physical, operator_temporal)
     state_variable = state_variable_block(u_physical, operator_temporal)
     GC.@preserve u_physical begin
-        Trixi.compute_coefficients!(wrap_vector_implicit(state_variable), t, semi_base)
+        Trixi.compute_coefficients!(unsafe_vector_alias(state_variable), t, semi_base)
     end
     equations = semi_base.equations
     state_to_evolved = operator_temporal.state_to_evolved
@@ -641,7 +713,7 @@ function compute_physical_coefficients!(u_physical, t,
     return nothing
 end
 
-# Call compute_physical_coefficients then vcat with the passive variables.
+# Call compute_physical_coefficients then vcat with the passive variables
 function Trixi.compute_coefficients(t, semi::SemidiscretizationImplicit)
     coefficients_physical = compute_physical_coefficients(t, semi.semi_base,
                                                           semi.operator_temporal)
@@ -693,15 +765,14 @@ controls which Jacobian information HydroTrixi.jl supplies to SciML. See
 [`DenseJacobian`](@ref) and [`SparseJacobian`](@ref) for the available strategies.
 
 !!! warning
-    `SparseJacobian()` supports only serial, nonperiodic, scalar,
-    one-dimensional `TreeMesh` problems using a Lobatto-Legendre `DGSEM` and
-    `ParabolicFormulationLocalDG` with any penalty parameter.
-    The supported temporal operators are
+    `SparseJacobian()` supports only serial, nonperiodic, scalar, one-dimensional `TreeMesh`
+    problems using a Lobatto-Legendre `DGSEM` and `ParabolicFormulationLocalDG` with any
+    penalty parameter. The supported temporal operators are
     [`TemporalOperatorStandard`](@ref), [`TemporalOperatorCapacity`](@ref), and
     [`TemporalOperatorConstitutive`](@ref); the supported passive variable types are
-    [`NoPassiveVariables`](@ref) and [`PassiveVariablesBoundaryFlux1D`](@ref).
-    MPI execution and periodic meshes are rejected explicitly;
-    other configurations are unsupported and fail through ordinary Julia dispatch.
+    [`NoPassiveVariables`](@ref) and [`PassiveVariablesBoundaryFlux1D`](@ref). MPI execution
+    and periodic meshes are rejected explicitly; other configurations are unsupported and
+    fail through ordinary Julia dispatch.
 """
 function Trixi.semidiscretize(semi::SemidiscretizationImplicit, tspan; reset_threads = true,
                               jacobian = SparseJacobian())

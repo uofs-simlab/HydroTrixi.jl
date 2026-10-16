@@ -19,9 +19,15 @@ This callback therefore evaluates each quantity in `full_state_analysis_integral
 Trixi.analyze(quantity, du_ode, u_ode, t, semi)
 ```
 
-where `du_ode` and `u_ode` are the complete solver vectors, including any algebraic or
-passive variables appended by the semidiscretization. Ordinary analysis errors and
-integrals continue to use `Trixi.AnalysisCallback` unchanged.
+Here, `u_ode` contains the complete solver state, including algebraic and passive variables.
+The buffer `du_ode` contains the right-hand side evaluated by
+`integrator.f(du_ode, u_ode, semi, t)`. For the mixed-form Richards equation, its first
+block contains the water-content time derivative, and its second block contains the
+constitutive residual ``\boldsymbol{\Theta}-\boldsymbol{\vartheta}(\boldsymbol{\Psi})``. The
+second block therefore does not contain pressure-head time derivatives. Passive entries
+contain the rates of the corresponding diagnostic variables.
+
+Ordinary analysis errors and integrals continue to use `Trixi.AnalysisCallback`.
 
 The callback owns only adapters for routing the complete state. The numerical arrays
 remain owned by the integrator and are refreshed in the adapters immediately before each

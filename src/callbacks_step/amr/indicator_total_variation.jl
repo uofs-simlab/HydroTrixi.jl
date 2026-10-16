@@ -5,10 +5,9 @@
     IndicatorTotalVariation(semi; variable, normalize = false,
                             normalization_epsilon = 1.0e-11)
 
-Compute the element-local total variation of the sensor selected by `variable`
-for a one-dimensional LGL-DGSEM discretization.
-On each element ``k``, the non-normalized DGSEM approximation to the total variation is
-given by
+Compute the element-local total variation of the sensor selected by `variable` for a
+one-dimensional LGL-DGSEM discretization. On each element ``k``, the non-normalized DGSEM
+approximation to the total variation is given by
 
 ```math
 \mathcal{V}_k(t) \coloneqq \sum_{i=0}^N \omega_i
@@ -18,27 +17,26 @@ given by
 ```
 
 where ``N`` is the polynomial degree, ``\omega_i`` are the LGL quadrature weights, and
-``D_{ij}`` are entries of the reference differentiation matrix.
-With `normalize = true`, we divide by the range of `variable` over all mesh nodes,
-recomputed on every indicator evaluation:
+``D_{ij}`` are entries of the reference differentiation matrix. With `normalize = true`, we
+divide by the range of `variable` over all mesh nodes, recomputed on every indicator
+evaluation:
 
 ```math
 \eta_k(t) \coloneqq
 \frac{\mathcal{V}_k(t)}{v_{\max}(t)-v_{\min}(t)+\epsilon}.
 ```
 
-The regularization ``\epsilon`` is set by `normalization_epsilon` and defaults to
-`1.0e-11`. With `variable = water_content`, the sensor is
-``v_{k,j}(t)=\vartheta(\psi_{k,j}(t))``, so ``v_{\min}(t)=\theta_{\min}(t)``
-and ``v_{\max}(t)=\theta_{\max}(t)``.
-In both Richards formulations,
-this sensor is evaluated from the spatial pressure-head state.
-Constant fields have zero indicator.
-Extrema use the current nodal solution over all MPI ranks,
-without adding boundary values or interelement jumps.
-The normalized indicator is dimensionless;
-with `normalize = false`, the function returns ``\mathcal{V}_k``,
-which has the same units as `variable`.
+The regularization ``\epsilon`` is set by `normalization_epsilon` and defaults to `1.0e-11`.
+With `variable = water_content`, the sensor is ``v_{k,j}(t)=\vartheta(\psi_{k,j}(t))``, so
+``v_{\min}(t)=\theta_{\min}(t)`` and ``v_{\max}(t)=\theta_{\max}(t)``. In both Richards
+formulations, this sensor is evaluated from the spatial pressure-head state. In exact
+arithmetic, an element with constant nodal sensor values has zero indicator. With
+`normalize = true`, subtracting the first nodal value before differentiation gives exactly
+zero for such an element. With `normalize = false`, floating-point roundoff can leave a
+small nonzero indicator. Extrema use the current nodal solution over all MPI ranks, without
+adding boundary values or interelement jumps. The normalized indicator is dimensionless;
+with `normalize = false`, the function returns ``\mathcal{V}_k``, which has the same units
+as `variable`.
 """
 struct IndicatorTotalVariation{RealT <: Real, Variable, Cache} <: Trixi.AbstractIndicator
     variable             ::Variable

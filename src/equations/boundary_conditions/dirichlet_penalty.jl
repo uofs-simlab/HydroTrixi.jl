@@ -19,13 +19,13 @@ f^\star = f_{\mathrm{inner}} - n_b C_\tau\,\tau(u_b,h,N)
 \tau(u,h,N) \coloneqq \frac{N(N+1)\mathcal{D}(u)}{h},
 ```
 
-on the divergence pass, where ``n_b \in \{-1, 1\}`` is the outward unit normal
-and ``\mathcal{D}(u_b)`` is the equation-dependent diffusion coefficient
-returned by `boundary_penalty_coefficient(u_b, equations)`.
-The solver supplies the polynomial degree ``N`` and boundary-cell size ``h``.
-Since the endpoint weight of the collocated Legendre-Gauss-Lobatto rule on ``[-1, 1]``
-is ``2/(N(N+1))`` and the inverse Jacobian of the affine map from the reference cell
-to the physical boundary cell is ``2/h``, jumps in the numerical trace get lifted
+on the divergence pass, where ``n_b \in \{-1, 1\}`` is the outward unit normal and
+``\mathcal{D}(u_b)`` is the equation-dependent diffusion coefficient returned by
+`boundary_penalty_coefficient(u_b, equations)`. The solver supplies `penalty_scale` as
+``N(N+1)/h``, where ``N`` is the polynomial degree and ``h`` is the size of the boundary
+element. Since the endpoint weight of the collocated Legendre-Gauss-Lobatto rule on
+``[-1, 1]`` is ``2/(N(N+1))`` and the inverse Jacobian of the affine map from the reference
+element to the physical boundary element is ``2/h``, jumps in the numerical trace get lifted
 with a scaling of ``N(N+1)/h`` when converted into a physical-space gradient.
 
 For [`RichardsEquation1D`](@ref), ``u_b`` is a prescribed top or bottom pressure head
@@ -36,13 +36,12 @@ For [`RichardsEquation1D`](@ref), ``u_b`` is a prescribed top or bottom pressure
 ```
 
 At the top boundary (`x_neg`), ``n_b=-1``, so the flux penalty is
-``+C_\tau\tau(\psi_{\mathrm{T}},h,N)(\psi_{\mathrm{inner}}-\psi_{\mathrm{T}})``.
-At the bottom (`x_pos`), ``n_b=1``, so it is
-``-C_\tau\tau(\psi_{\mathrm{B}},h,N)(\psi_{\mathrm{inner}}-\psi_{\mathrm{B}})``.
-Thus, the conductivity in each penalty is evaluated at the prescribed boundary head.
-The dimensionless `penalty_factor` is ``C_\tau`` and defaults to one.
-Setting it to zero omits this additional divergence flux penalty
-while retaining the prescribed trace on the gradient pass.
+``+C_\tau\tau(\psi_{\mathrm{T}},h,N)(\psi_{\mathrm{inner}}-\psi_{\mathrm{T}})``. At the
+bottom (`x_pos`), ``n_b=1``, so it is
+``-C_\tau\tau(\psi_{\mathrm{B}},h,N)(\psi_{\mathrm{inner}}-\psi_{\mathrm{B}})``. Thus, the
+conductivity in each penalty is evaluated at the prescribed boundary head. The dimensionless
+`penalty_factor` is ``C_\tau`` and defaults to one. Setting it to zero omits this additional
+divergence flux penalty while retaining the prescribed trace on the gradient pass.
 
 # References
 
@@ -90,8 +89,10 @@ end
     return Trixi.max_diffusivity(equations)
 end
 
-# The implicit 1D TreeMesh DGSEM calls this hook with both the interior solution and flux,
-# which is unavailable in Trixi's standard boundary condition call signature.
+# Trixi's standard 1D divergence boundary call passes nothing as u_inner because
+# cache.boundaries.u has been overwritten with parabolic fluxes.
+# HydroTrixi's 1D TreeMesh DGSEM retains the interior state and supplies it as
+# u_inner, together with flux_inner and the penalty_scale for the boundary element.
 @inline function boundary_flux_divergence(boundary_condition::BoundaryConditionDirichletPenalty,
                                           flux_inner, u_inner, orientation, direction,
                                           x, t,

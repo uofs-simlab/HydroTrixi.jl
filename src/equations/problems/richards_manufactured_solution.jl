@@ -1,7 +1,7 @@
 @muladd begin
 #! format: noindent
 
-# Manufactured pressure head used by `HydrologicProblemRichardsManufacturedSolution`
+# Manufactured pressure head used by HydrologicProblemRichardsManufacturedSolution
 function richards_manufactured_solution(x, t, equations)
     psi, _, _, _ = richards_manufactured_profile(x, t)
     return Trixi.SVector(psi)
@@ -74,15 +74,13 @@ The manufactured pressure head is
 \right] - 0.411\,\mathrm{m}.
 ```
 
-Here, ``z`` is depth measured positive downward on a column of length
-``L=0.2\,\mathrm{m}``, and ``t`` is time in seconds.
-The default `boundary_conditions = :dirichlet_dirichlet` imposes this profile
-at both boundaries using penalty Dirichlet conditions.
-With `:dirichlet_neumann`,
-the top boundary (`x_neg`) uses the same penalty Dirichlet condition
-and the bottom (`x_pos`) imposes the exact flux ``f(\psi(L,t),\partial_z\psi(L,t))``.
-A custom `(; x_neg, x_pos)` tuple overrides both boundaries;
-`nothing` selects the default pair.
+Here, ``z`` is depth measured positive downward on a column of length ``L=0.2\,\mathrm{m}``,
+and ``t`` is time in seconds. The default `boundary_conditions = :dirichlet_dirichlet`
+imposes this profile at both boundaries using penalty Dirichlet conditions. With
+`:dirichlet_neumann`, the top boundary (`x_neg`) uses the same penalty Dirichlet condition
+and the bottom (`x_pos`) imposes the exact flux ``f(\psi(L,t),\partial_z\psi(L,t))``. A
+custom `(; x_neg, x_pos)` tuple overrides both boundaries; `nothing` selects the default
+pair.
 
 ```julia
 problem = HydrologicProblemRichardsManufacturedSolution(
@@ -99,11 +97,10 @@ s(z,t) = c(\psi(z,t))\partial_t \psi(z,t)
 ```
 
 The default setup uses the same Haverkamp parameters as
-[`HydrologicProblemCeliaHaverkamp`](@ref).
-The dimensionless `penalty_factor` is the coefficient ``C_\tau`` for the Dirichlet
-boundaries in either named choice. Its default value is one;
-setting it to zero omits the divergence flux penalty term.
-Custom boundary tuples retain their own penalty settings.
+[`HydrologicProblemCeliaHaverkamp`](@ref). The dimensionless `penalty_factor` is the
+coefficient ``C_\tau`` for the Dirichlet boundaries in either named choice. Its default
+value is one; setting it to zero omits the divergence flux penalty term. Custom boundary
+tuples retain their own penalty settings.
 
 The problem uses depth ``z`` in metres on ``z \in [0, 0.2]`` and time in seconds on
 ``t \in [0, 120]`` by default. It is intended for regression and convergence checks of

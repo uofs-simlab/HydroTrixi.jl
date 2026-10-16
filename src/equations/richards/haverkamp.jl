@@ -4,9 +4,9 @@
 @doc raw"""
     Haverkamp(; saturated_hydraulic_conductivity, a, beta, b, gamma, theta_s, theta_r)
 
-A Haverkamp constitutive model for the Richards equation,
-written in the form used by Celia et al. (1990), using the parameters specified in the
-constructor. For ``\psi < 0``, the water content and hydraulic conductivity are
+A Haverkamp constitutive model for the Richards equation, written in the form used by Celia
+et al. (1990), using the parameters specified in the constructor. For ``\psi < 0``, the
+water content and hydraulic conductivity are
 
 ```math
 \vartheta(\psi) = \theta_{\mathrm{r}} +
@@ -25,13 +25,11 @@ S_{\mathrm{e}}(\psi) =
 {\theta_{\mathrm{s}}-\theta_{\mathrm{r}}}.
 ```
 
-The inverse pressure-head scales ``a_{\mathrm{H}}`` and ``b_{\mathrm{H}}``
-correspond to the keywords `a` and `b`.
-The water-retention exponent ``\beta_{\mathrm{H}}`` and hydraulic-conductivity exponent
-``\gamma_{\mathrm{H}}`` correspond to `beta` and `gamma`.
-The parameters ``\kappa_{\mathrm{s}}``, ``\theta_{\mathrm{s}}``, and
-``\theta_{\mathrm{r}}`` correspond to `saturated_hydraulic_conductivity`, `theta_s`, and
-`theta_r`, respectively.
+The inverse pressure-head scales ``a_{\mathrm{H}}`` and ``b_{\mathrm{H}}`` correspond to the
+keywords `a` and `b`. The water-retention exponent ``\beta_{\mathrm{H}}`` and
+hydraulic-conductivity exponent ``\gamma_{\mathrm{H}}`` correspond to `beta` and `gamma`.
+The parameters ``\kappa_{\mathrm{s}}``, ``\theta_{\mathrm{s}}``, and ``\theta_{\mathrm{r}}``
+correspond to `saturated_hydraulic_conductivity`, `theta_s`, and `theta_r`, respectively.
 For ``\psi\geq 0``, the model uses the saturated values
 ``\vartheta(\psi)=\theta_{\mathrm{s}}`` and ``\kappa(\psi)=\kappa_{\mathrm{s}}``.
 

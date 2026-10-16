@@ -102,7 +102,8 @@ end
         @test which(Trixi.rhs_parabolic!, typeof(arguments)).module === Trixi
     end
 
-    # Non-parabolic discretizations use the native spatial fallback.
+    # A wrapped hyperbolic system has no HydroTrixi boundary cache. The nothing path
+    # must still reproduce Trixi's native hyperbolic RHS.
     equations_hyperbolic = Trixi.LinearScalarAdvectionEquation1D(1.0)
     semi_hyperbolic = Trixi.SemidiscretizationHyperbolic(mesh, equations_hyperbolic,
                                                         initial_condition, solver;
@@ -121,6 +122,8 @@ end
 end
 
 @trixi_testset "elixir_diffusion_1d_dirichlet_dirichlet.jl native 2D AMR" begin
+    # The wrapper has no additional boundary cache in 2D, but the base parabolic cache
+    # must remain usable by the implicit RHS after refinement and coarsening.
     # The exact profile is independent of y, so it also solves the 2D diffusion equation.
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixirs",
                                  "elixir_diffusion_1d_dirichlet_dirichlet.jl"),

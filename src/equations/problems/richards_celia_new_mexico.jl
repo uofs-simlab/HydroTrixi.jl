@@ -4,45 +4,27 @@
 @doc raw"""
     HydrologicProblemCeliaNewMexico(; tspan = (0.0, 86_400.0), penalty_factor = 1)
 
-Construct the second one-dimensional Richards equation infiltration problem
-considered by Celia, Bouloutas, and Zarba (1990).
-Its soil parameters approximate the properties of a field site in New Mexico.
+Construct the second one-dimensional Richards equation infiltration problem considered by
+Celia, Bouloutas, and Zarba (1990). Its soil parameters approximate the properties of a
+field site in New Mexico.
 
-The soil follows the van Genuchten-Mualem constitutive model
-(van Genuchten, 1980; Mualem, 1976), given by
-
-```math
-S_{\mathrm{e}}(\psi) =
-\left(1 + (\alpha_{\mathrm{V}} |\psi|)^{n_{\mathrm{V}}}\right)^{-m_{\mathrm{V}}},
-\quad
-\kappa(\psi) = \kappa_{\mathrm{s}} S_{\mathrm{e}}(\psi)^{\ell_{\mathrm{V}}}
-\left(1 -
-\left(1 - S_{\mathrm{e}}(\psi)^{1/m_{\mathrm{V}}}\right)^{m_{\mathrm{V}}}\right)^2,
-```
-
-where ``m_{\mathrm{V}} = 1 - 1/n_{\mathrm{V}}`` and
-``\vartheta(\psi) = \theta_{\mathrm{r}} +
-(\theta_{\mathrm{s}} - \theta_{\mathrm{r}})S_{\mathrm{e}}(\psi)``.
-The parameter values are
+The soil follows the van Genuchten-Mualem constitutive model [`VanGenuchten`](@ref)
+(van Genuchten, 1980; Mualem, 1976), with parameter values
 ``\alpha_{\mathrm{V}} = 3.35\,\mathrm{m}^{-1}``, ``n_{\mathrm{V}} = 2``,
 ``\ell_{\mathrm{V}} = 0.5``,
 ``\kappa_{\mathrm{s}} = 9.22 \times 10^{-5}\,\mathrm{m}\,\mathrm{s}^{-1}``,
 ``\theta_{\mathrm{s}} = 0.368``, and ``\theta_{\mathrm{r}} = 0.102``.
-The parameters ``\alpha_{\mathrm{V}}``, ``n_{\mathrm{V}}``, ``m_{\mathrm{V}}``,
-and ``\ell_{\mathrm{V}}`` correspond to the [`VanGenuchten`](@ref) keywords
-`alpha`, `n`, `m`, and `pore_connectivity`, respectively.
 
-Depth ``z`` is measured in metres, positive downward on ``z \in [0, 1]``,
-and time is measured in seconds, with the default interval ``t \in [0, 86400]`` (one day).
-The initial pressure head is ``\psi(z,0)=-10`` m.
-The Dirichlet data are ``\psi_{\mathrm{T}}(t)=-0.75`` m at the soil surface (`x_neg`)
-and ``\psi_{\mathrm{B}}(t)=-10`` m at the column bottom (`x_pos`).
-This one-metre domain follows the depth axis used for the final profiles in Figure 3 of
-Celia et al. (1990), not the nearby statement placing a boundary at 60 cm.
+Depth ``z`` is measured in metres, positive downward on ``z \in [0, 1]``, and time is
+measured in seconds, with the default interval ``t \in [0, 86400]`` (one day). The initial
+pressure head is ``\psi(z,0)=-10`` m. The Dirichlet data are ``\psi_{\mathrm{T}}(t)=-0.75``
+m at the soil surface (`x_neg`) and ``\psi_{\mathrm{B}}(t)=-10`` m at the column bottom
+(`x_pos`). This one-metre domain follows the depth axis used for the final profiles in
+Figure 3 of Celia et al. (1990), not the nearby statement placing a boundary at 60 cm.
 
-The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref).
-The dimensionless `penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty.
-Its default value is one; setting it to zero omits the additional divergence flux penalty.
+The Dirichlet boundaries use [`BoundaryConditionDirichletPenalty`](@ref). The dimensionless
+`penalty_factor` is the coefficient ``C_\tau`` in the boundary penalty. Its default value is
+one; setting it to zero omits the additional divergence flux penalty.
 
 # References
 

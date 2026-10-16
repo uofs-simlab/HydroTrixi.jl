@@ -240,8 +240,8 @@ function (amr_callback::AMRCallbackImplicit)(u_ode::AbstractVector,
     # Evaluate the controller on the physical state represented on the current mesh.
     # Trixi's lambda stores signed markings: +1 to refine, -1 to coarsen, and 0 to retain.
     lambda = GC.@preserve u_ode begin
-        u_state = wrap_array_implicit(state_variable_block(u_ode, semi), mesh, equations,
-                                       dg, cache)
+        u_state = unsafe_wrap_block(state_variable_block(u_ode, semi), mesh, equations,
+                                    dg, cache)
         amr_callback.controller(u_state, mesh, equations, dg, cache; t = t, iter = iter)
     end
     leaf_cell_ids = Trixi.leaf_cells(mesh.tree)
@@ -362,7 +362,7 @@ function resize_after_amr!(u_ode, transferred_ode, passive_ode,
     equations = semi.semi_base.equations
     transfer_to_state = operator_temporal.transfer_to_state
 
-    # Reconstruct the pressure head state from the transferred variable
+    # Reconstruct state_variable from transferred_ode using transfer_to_state.
     @inbounds for i in eachindex(state_variable, transferred_ode)
         state_variable[i] = transfer_to_state(transferred_ode[i], equations)
     end

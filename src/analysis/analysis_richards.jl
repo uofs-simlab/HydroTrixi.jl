@@ -52,12 +52,12 @@ Analysis integral for the time derivative of water storage per unit cross-sectio
 \boldsymbol{\theta}_k(t).
 ```
 
-For the mixed formulation, ``\boldsymbol{\theta}_k`` is evolved directly.
-For the pressure-head formulation,
+For the mixed formulation, ``\boldsymbol{\theta}_k`` is evolved directly. For the
+pressure-head formulation,
 ``\boldsymbol{\theta}_k=\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` and this quantity
-integrates ``\boldsymbol{C}_k\dot{\boldsymbol{\psi}}_k``, where
-``\boldsymbol{C}_k`` contains the nodal values of [`water_capacity`](@ref).
-The two expressions agree when the constitutive constraint
+integrates ``\boldsymbol{C}_k\dot{\boldsymbol{\psi}}_k``, where ``\boldsymbol{C}_k``
+contains the nodal values of [`water_capacity`](@ref). The two expressions agree when the
+constitutive constraint
 ``\boldsymbol{\theta}_k=\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` is satisfied.
 """
 function water_content_timederivative end
@@ -128,12 +128,11 @@ F_{\mathrm{B}}(t)-F_{\mathrm{T}}(t)
 
 where ``F_{\mathrm{T}}`` and ``F_{\mathrm{B}}`` are the passive SFOM variables satisfying
 ``\dot{F}_{\mathrm{T}}=f_{\mathrm{T}}^\star`` and
-``\dot{F}_{\mathrm{B}}=f_{\mathrm{B}}^\star``, respectively, and
-``\boldsymbol{\theta}_k`` is the nodal water-content vector,
-stored directly in mixed form and evaluated as
-``\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` in pressure-head form.
-The Julia named-tuple keys `x_neg` and `x_pos` represent the top and bottom boundaries.
-This function returns the negative of the semi-discrete invariant for source-free problems:
+``\dot{F}_{\mathrm{B}}=f_{\mathrm{B}}^\star``, respectively, and ``\boldsymbol{\theta}_k``
+is the nodal water-content vector, stored directly in mixed form and evaluated as
+``\boldsymbol{\vartheta}(\boldsymbol{\psi}_k)`` in pressure-head form. The Julia named-tuple
+keys `x_neg` and `x_pos` represent the top and bottom boundaries. This function returns the
+negative of the semi-discrete invariant for source-free problems:
 
 ```math
 \sum_{k=1}^{K}J_k\boldsymbol{1}^{\mathrm{T}}\boldsymbol{W}
@@ -141,23 +140,21 @@ This function returns the negative of the semi-discrete invariant for source-fre
 ```
 
 In mixed form, Rosenbrock-Wanner integration preserves this invariant in exact arithmetic,
-and water-content transfer preserves it across mesh changes.
-Numerical calculations are subject to roundoff;
-the pressure-head formulation has no corresponding fully discrete conservation guarantee.
-The change in `mass_balance` from initialization gives the signed bias error
-``\epsilon_{\mathrm{b}}(t^n)`` documented by [`mass_bias`](@ref).
+and water-content transfer preserves it across mesh changes. Numerical calculations are
+subject to roundoff; the pressure-head formulation has no corresponding fully discrete
+conservation guarantee. The change in `mass_balance` from initialization gives the signed
+bias error ``\epsilon_{\mathrm{b}}(t^n)`` documented by [`mass_bias`](@ref).
 
-This expression accounts only for boundary fluxes. For a volume source ``s(z,t)`` added
-to the right-hand side of the Richards equation, an invariant also requires adding its
-cumulative contribution ``\int_{t^0}^{t}\int_0^L s(z,\tau)\,\mathrm{d}z\,\mathrm{d}\tau``
-to `mass_balance`, using the spatial quadrature and time-integration stages of the solver.
-Without that contribution, this diagnostic need not remain constant
-for source-driven problems such as the manufactured solution.
+This expression accounts only for boundary fluxes. For a volume source ``s(z,t)`` added to
+the right-hand side of the Richards equation, an invariant also requires adding its
+cumulative contribution ``\int_{t^0}^{t}\int_0^L s(z,\tau)\,\mathrm{d}z\,\mathrm{d}\tau`` to
+`mass_balance`, using the spatial quadrature and time-integration stages of the solver.
+Without that contribution, this diagnostic need not remain constant for source-driven
+problems such as the manufactured solution.
 
 This solver flux output method diagnostic requires [`PassiveVariablesBoundaryFlux1D`](@ref),
-which advances the integrated numerical boundary fluxes
-with the same time-integration stages, time steps,
-and step-acceptance decisions as the physical state.
+which advances the integrated numerical boundary fluxes with the same time-integration
+stages, time steps, and step-acceptance decisions as the physical state.
 
 # References
 
@@ -186,8 +183,8 @@ Trixi.pretty_form_utf(::typeof(mass_balance)) = "mass balance"
 @doc raw"""
     mass_bias(u_ode, semi::SemidiscretizationImplicit, initial_water_content)
 
-Return the signed bias error relative to the initial water storage
-per unit cross-sectional area `initial_water_content`:
+Return the signed bias error relative to the initial water storage per unit cross-sectional
+area `initial_water_content`:
 
 ```math
 \epsilon_{\mathrm{b}}(t^n) =
@@ -202,11 +199,10 @@ per unit cross-sectional area `initial_water_content`:
 \right).
 ```
 
-This method assumes the initialization ``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``.
-For complete saved time histories, prefer [`mass_bias_history`](@ref),
-which differences [`mass_balance`](@ref)
-and therefore also supports nonzero initial SFOM variables.
-The source-free scope of [`mass_balance`](@ref) also applies to this mass bias.
+This method assumes the initialization ``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``. For complete
+saved time histories, prefer [`mass_bias_history`](@ref), which differences
+[`mass_balance`](@ref) and therefore also supports nonzero initial SFOM variables. The
+source-free scope of [`mass_balance`](@ref) also applies to this mass bias.
 
 # References
 
@@ -235,12 +231,16 @@ The solution must use a [`SemidiscretizationImplicit`](@ref) with
 [`PassiveVariablesBoundaryFlux1D`](@ref). By default, the first saved state must be at the
 initial time ``t^0``. When it is not available, pass `initial_water_content` explicitly;
 this assumes ``F_{\mathrm{T}}^0=F_{\mathrm{B}}^0=0``.
-Solution postprocessing requires a fixed state layout;
-for AMR solutions, use the analysis-file method instead.
+
+The method `mass_bias_history(sol; initial_water_content = nothing)` integrates every saved
+state using the mesh and spatial integration weights currently stored in `sol.prob.p`. Every
+saved state must correspond to that mesh and its element ordering; equal vector lengths
+alone do not establish this after adaptation. For AMR solutions, use the analysis-file
+method, which reads diagnostics evaluated on the mesh present at each recorded time.
 
 When `analysis_path` is provided, read the time and signed cumulative water mass balance
-columns from an analysis file written by
-`AnalysisCallbackFullState(save_analysis = true)` and subtract the first value.
+columns from an analysis file written by `AnalysisCallbackFullState(save_analysis = true)`
+and subtract the first value.
 """
 function mass_bias_history(sol; initial_water_content = nothing)
     semi = sol.prob.p

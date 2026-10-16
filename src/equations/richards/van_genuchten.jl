@@ -27,14 +27,12 @@ S_{\mathrm{e}}(\psi) \coloneqq
 The inverse pressure-head scale ``\alpha_{\mathrm{V}}``, water-retention exponent
 ``n_{\mathrm{V}}``, derived shape parameter ``m_{\mathrm{V}}``, and pore-connectivity
 parameter ``\ell_{\mathrm{V}}`` correspond to `alpha`, `n`, `m`, and `pore_connectivity`,
-respectively.
-The constructor defaults to ``m_{\mathrm{V}}=1-1/n_{\mathrm{V}}``
-but permits an explicit `m`.
-The parameters ``\kappa_{\mathrm{s}}``, ``\theta_{\mathrm{s}}``,
-and ``\theta_{\mathrm{r}}`` correspond to `saturated_hydraulic_conductivity`,
-`theta_s`, and `theta_r`, respectively.
-For ``\psi\geq 0``, the model uses the saturated values ``S_{\mathrm{e}}(\psi)=1``,
-``\vartheta(\psi)=\theta_{\mathrm{s}}``, and ``\kappa(\psi)=\kappa_{\mathrm{s}}``.
+respectively. The constructor defaults to ``m_{\mathrm{V}}=1-1/n_{\mathrm{V}}`` but permits
+an explicit `m`. The parameters ``\kappa_{\mathrm{s}}``, ``\theta_{\mathrm{s}}``, and
+``\theta_{\mathrm{r}}`` correspond to `saturated_hydraulic_conductivity`, `theta_s`, and
+`theta_r`, respectively. For ``\psi\geq 0``, the model uses the saturated values
+``S_{\mathrm{e}}(\psi)=1``, ``\vartheta(\psi)=\theta_{\mathrm{s}}``, and
+``\kappa(\psi)=\kappa_{\mathrm{s}}``.
 
 # References
 

@@ -4,12 +4,12 @@
 @doc raw"""
     RichardsEquation1D(; constitutive_model)
 
-A one-dimensional Richards equation model for vertical flow in a soil column,
-with depth ``z`` measured positive downward and represented by `x[1]` in spatial callbacks.
-The pressure head is ``\psi(z,t)``, the constitutive water-content function is
+A one-dimensional Richards equation model for vertical flow in a soil column, with depth
+``z`` measured positive downward and represented by `x[1]` in spatial callbacks. The
+pressure head is ``\psi(z,t)``, the constitutive water-content function is
 ``\vartheta(\psi)``, and the nonlinear flux is
-``f(\psi, \partial_z\psi) \coloneqq \kappa(\psi)(\partial_z\psi - 1)``.
-The unit gravitational-gradient term follows from the downward-positive depth convention.
+``f(\psi, \partial_z\psi) \coloneqq \kappa(\psi)(\partial_z\psi - 1)``. The unit
+gravitational-gradient term follows from the downward-positive depth convention.
 
 The model supplies the spatial operator shared by the pressure-head formulation
 
@@ -29,16 +29,14 @@ where ``c(\psi) \coloneqq \vartheta'(\psi)``, and the mixed formulation
 
 The temporal formulation and constitutive constraint are supplied by
 [`SemidiscretizationImplicit`](@ref). The hydraulic conductivity is supplied through
-`constitutive_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the
-model type parameter `ConstitutiveModel`.
-[`BoundaryConditionDirichletPenalty`](@ref) uses the default penalty
-``\tau(\psi_b,h,N)=\kappa(\psi_b)N(N+1)/h``,
-where ``\psi_b`` is the prescribed top or bottom boundary pressure head
-``\psi_{\mathrm{T}}`` or ``\psi_{\mathrm{B}}``;
-its optional `penalty_factor` multiplies ``\tau``.
-If `constitutive_model` is omitted, it defaults to a [`Haverkamp`](@ref) model
-parameterized with the Celia et al. (1990) reference values in SI units
-(lengths in metres and time in seconds).
+`constitutive_model`, with `hydraulic_conductivity(psi, equations)` dispatching on the model
+type parameter `ConstitutiveModel`. [`BoundaryConditionDirichletPenalty`](@ref) uses the
+default penalty ``\tau(\psi_b,h,N)=\kappa(\psi_b)N(N+1)/h``, where ``\psi_b`` is the
+prescribed top or bottom boundary pressure head ``\psi_{\mathrm{T}}`` or
+``\psi_{\mathrm{B}}``; its optional `penalty_factor` multiplies ``\tau``. If
+`constitutive_model` is omitted, it defaults to a [`Haverkamp`](@ref) model parameterized
+with the Celia et al. (1990) reference values in SI units (lengths in metres and time in
+seconds).
 """
 struct RichardsEquation1D{ConstitutiveModel} <:
        Trixi.AbstractEquationsParabolic{1, 1, Trixi.GradientVariablesConservative}
@@ -57,14 +55,12 @@ end
 
 Return the pressure head ``\psi`` from a local spatial state `u`.
 
-For scalar states, `u` is returned directly.
-For vector-like states, the first component is interpreted as pressure head.
-The mixed formulation orders the global physical state as
-``\boldsymbol{y}=(\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}``,
-with water content first and pressure head second;
-any passive SFOM variables follow these blocks.
-Use [`state_variable_block`](@ref) to obtain the pressure-head block
-of a complete implicit solver vector before selecting a nodal state.
+For scalar states, `u` is returned directly. For vector-like states, the first component is
+interpreted as pressure head. The mixed formulation orders the global physical state as
+``\boldsymbol{y}=(\boldsymbol{\Theta},\boldsymbol{\Psi})^\mathrm{T}``, with water content
+first and pressure head second; any passive SFOM variables follow these blocks. Use
+[`state_variable_block`](@ref) to obtain the pressure-head block of a complete implicit
+solver vector before selecting a nodal state.
 """
 @inline pressure_head(psi::Number) = psi
 @inline pressure_head(u) = u[1]
@@ -121,8 +117,8 @@ end
 @doc raw"""
     water_content(u, equations::RichardsEquation1D)
 
-Return the volumetric water content ``\vartheta(\psi)``
-associated with the pressure head state `u` under the Richards equation model `equations`.
+Return the volumetric water content ``\vartheta(\psi)`` associated with the pressure head
+state `u` under the Richards equation model `equations`.
 """
 @inline function water_content(u, equations::RichardsEquation1D)
     constitutive_model = equations.constitutive_model
@@ -133,8 +129,8 @@ end
 @doc raw"""
     water_capacity(u, equations::RichardsEquation1D)
 
-Return the capacity ``c(\psi) \coloneqq \vartheta'(\psi)``
-associated with the pressure head state `u` under the Richards equation model `equations`.
+Return the capacity ``c(\psi) \coloneqq \vartheta'(\psi)`` associated with the pressure head
+state `u` under the Richards equation model `equations`.
 """
 @inline function water_capacity(u, equations::RichardsEquation1D)
     return water_capacity(pressure_head(u), equations.constitutive_model)
@@ -168,8 +164,8 @@ end
 @doc raw"""
     pressure_head_from_water_content(theta, equations::RichardsEquation1D)
 
-Return the pressure head ``\psi=\vartheta^{-1}(\theta)``
-associated with water content `theta` for the retention curve stored in `equations`.
+Return the pressure head ``\psi=\vartheta^{-1}(\theta)`` associated with water content
+`theta` for the retention curve stored in `equations`.
 """
 @inline function pressure_head_from_water_content(theta, equations::RichardsEquation1D)
     return pressure_head_from_water_content(theta, equations.constitutive_model)
@@ -203,8 +199,8 @@ end
 end
 
 # These boundary condition methods are needed because Trixi.jl defines the corresponding
-# generic behavior only for `AbstractLaplaceDiffusion`, which is not a supertype of
-# `RichardsEquation1D`. The behavior here matches those Laplace-diffusion methods.
+# generic behavior only for AbstractLaplaceDiffusion, which is not a supertype of
+# RichardsEquation1D. The behavior here matches those Laplace-diffusion methods.
 @inline function (boundary_condition::Trixi.BoundaryConditionDirichlet)(flux_inner,
                                                                         u_inner,
                                                                         normal::AbstractVector,

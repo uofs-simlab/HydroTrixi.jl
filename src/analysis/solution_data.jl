@@ -5,21 +5,19 @@
                      index = lastindex(sol.u), component = 1, mesh_history = nothing)
 
 Extract a saved one-dimensional solution on Trixi's default DG plotting grid and return
-`(; time, x, values, mesh_vertices_x)`.
-Both element traces are retained at shared boundaries.
-The mesh vertices are returned separately, without padding.
-The returned arrays do not alias the solution or its recorded mesh history.
-This function is available without loading a visualization package.
+`(; time, x, values, mesh_vertices_x)`. Both element traces are retained at shared
+boundaries. The mesh vertices are returned separately, without padding. The returned arrays
+do not alias the solution or its recorded mesh history. This function is available without
+loading a visualization package.
 
 For `SemidiscretizationImplicit`, components select evolved variables first, followed by
 spatial state variables. For the mixed Richards form, component 1 is water content and
 component 2 is pressure head; for the pressure-head form, component 1 is pressure head.
 
-An `ImplicitSolveResult` supplies its recorded mesh history.
-With adaptive meshes, use `save_mesh_history = true` during the solve
-to extract earlier saved states on their original meshes.
-Without mesh history, extraction uses the current mesh;
-an earlier state is valid only if that mesh has not changed.
+An `ImplicitSolveResult` supplies its recorded mesh history. With adaptive meshes, use
+`save_mesh_history = true` during the solve to extract earlier saved states on their
+original meshes. Without mesh history, extraction uses the current mesh; an earlier state is
+valid only if that mesh has not changed.
 
 ```julia
 snapshot = solution_data_1d(result; index = 1, component = 2)

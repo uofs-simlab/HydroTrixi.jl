@@ -1,20 +1,17 @@
 @doc raw"""
     default_algorithm(ode::SciMLBase.ODEProblem; kwargs...)
 
-Return a recommended OrdinaryDiffEq.jl time integration algorithm for `ode`,
-suitable for passing to `SciMLBase.solve`.
+Return a recommended OrdinaryDiffEq.jl time integration algorithm for `ode`, suitable for
+passing to `SciMLBase.solve`.
 
-The recommended algorithm for `SemidiscretizationImplicit` is `Rodas5P`,
-an eight-stage, fifth-order Rosenbrock-Wanner method,
-and it recomputes the Jacobian after at most one time step.
-When `ode` has the sparse Jacobian prototype
-supplied by [`semidiscretize`](@ref) with [`SparseJacobian`](@ref),
-the algorithm uses sparse forward-mode automatic differentiation
-with a deterministic analytical colouring and a KLU linear solver.
-The colouring keeps the sparse differentiation cache type unchanged
-when AMR changes a mesh that is large enough to contain the complete colour palette.
-Otherwise, the algorithm uses dense forward-mode automatic differentiation
-with automatic chunk-size selection and a dense LU linear solver.
+The recommended algorithm for `SemidiscretizationImplicit` is `Rodas5P`, an eight-stage,
+fifth-order Rosenbrock-Wanner method, and it recomputes the Jacobian after at most one time
+step. When `ode` has the sparse Jacobian prototype supplied by [`semidiscretize`](@ref) with
+[`SparseJacobian`](@ref), the algorithm uses sparse forward-mode automatic differentiation
+with a deterministic analytical colouring and a KLU linear solver. The colouring keeps the
+sparse differentiation cache type unchanged when AMR changes a mesh that is large enough to
+contain the complete colour palette. Otherwise, the algorithm uses dense forward-mode
+automatic differentiation with automatic chunk-size selection and a dense LU linear solver.
 
 Keyword arguments override these defaults or are forwarded to the `Rodas5P` constructor.
 Configure differentiation through `autodiff` and preconditioning through `linsolve`.
@@ -50,10 +47,9 @@ end
 """
     pressure_head_out_of_domain(u, semi, t)
 
-Return `true` if any pressure-head degree of freedom
-in the candidate ODE state `u` is nonnegative.
-The call signature matches SciML's `isoutofdomain` predicate
-and can be passed directly to [`solve_implicit`](@ref):
+Return `true` if any pressure-head degree of freedom in the candidate ODE state `u` is
+nonnegative. The call signature matches SciML's `isoutofdomain` predicate and can be passed
+directly to [`solve_implicit`](@ref):
 ```julia
 result = solve_implicit(ode; isoutofdomain = pressure_head_out_of_domain, kwargs...)
 ```
@@ -90,12 +86,10 @@ controller.
 
 The `Rodas5P` PI controller uses error exponents ``\beta_1=0.14`` and ``\beta_2=0.08``,
 safety factor ``\sigma=0.9``, step-size ratio bounds ``r_{\min}=0.2`` and ``r_{\max}=10``,
-and initial and minimum stored previous error ``E^0=10^{-4}``.
-The maximum ratio is ``10^4`` for the first proposal.
-Here, ``r`` is the proposed time step divided by the current one.
+and initial and minimum stored previous error ``E^0=10^{-4}``. The maximum ratio is ``10^4``
+for the first proposal. Here, ``r`` is the proposed time step divided by the current one.
 OrdinaryDiffEq.jl uses ``q=1/r`` and holds the step size fixed for ``q\in[1,1.2]``,
-equivalent to ``r\in[1/1.2,1]``.
-Its PI controller keyword `gamma` denotes ``\sigma``,
+equivalent to ``r\in[1/1.2,1]``. Its PI controller keyword `gamma` denotes ``\sigma``,
 distinct from the Rosenbrock coefficient ``\gamma``.
 """
 default_stepsize_controller(algorithm, ode) = nothing
@@ -130,14 +124,13 @@ end
                    kwargs...)
 
 Solve `ode` with HydroTrixi.jl's implicit defaults; the initial time step `dt` is required.
-Return `result`, an [`ImplicitSolveResult`](@ref) containing the SciML solution
-`result.sol` and optional mesh history `result.mesh_history`. See
-[`default_stepsize_controller`](@ref) for adaptive controller settings.
+Return `result`, an [`ImplicitSolveResult`](@ref) containing the SciML solution `result.sol`
+and optional mesh history `result.mesh_history`. See [`default_stepsize_controller`](@ref)
+for adaptive controller settings.
 
-With `save_mesh_history = true`, `result.mesh_history[i]` stores
-the one-dimensional element boundaries for `result.sol.u[i]`;
-otherwise `result.mesh_history` is `nothing`.
-Mesh recording supports only non-saving discrete callbacks.
+With `save_mesh_history = true`, `result.mesh_history[i]` stores the one-dimensional element
+boundaries for `result.sol.u[i]`; otherwise `result.mesh_history` is `nothing`. Mesh
+recording supports only non-saving discrete callbacks.
 
 `error_control_block(u, semi)` selects entries from the full ODE or DAE vector. The default
 [`evolved_variable_block`](@ref) selects stored water content in [`MixedForm`](@ref) or
@@ -145,9 +138,9 @@ pressure head in [`PressureHeadForm`](@ref), excluding passive diagnostics. The 
 RMS norm is configured automatically; `internalnorm` overrides it.
 
 `error_control_mapping(value, equations)` optionally maps the selected entries in the
-previous, primary, and embedded solutions before forming and scaling the error.
-The default `nothing` compares stored entries directly.
-For water-content error control in the pressure-head formulation, for example, use:
+previous, primary, and embedded solutions before forming and scaling the error. The default
+`nothing` compares stored entries directly. For water-content error control in the
+pressure-head formulation, for example, use:
 
 ```julia
 result = solve_implicit(ode; dt = 1.0e-2,
@@ -169,28 +162,26 @@ E^{n+1} \coloneqq \sqrt{\frac{1}{K(N+1)}
 ```
 
 The previous, primary, and embedded water-content blocks ``\boldsymbol{\Theta}^n``,
-``\boldsymbol{\Theta}^{n+1}``, and ``\widehat{\boldsymbol{\Theta}}^{n+1}``
-are stored in mixed form or mapped through ``\vartheta(\psi)`` in pressure-head form,
-all on the mesh at ``t^n`` before spatial adaptation.
-The tolerances ``\texttt{atol}`` and ``\texttt{rtol}`` correspond to `abstol` and `reltol`.
-Scalar tolerances are broadcast; array `abstol` follows the full ODE layout,
-and `reltol` must be scalar for the Rosenbrock linear solves.
+``\boldsymbol{\Theta}^{n+1}``, and ``\widehat{\boldsymbol{\Theta}}^{n+1}`` are stored in
+mixed form or mapped through ``\vartheta(\psi)`` in pressure-head form, all on the mesh at
+``t^n`` before spatial adaptation. The tolerances ``\texttt{atol}`` and ``\texttt{rtol}``
+correspond to `abstol` and `reltol`. Scalar tolerances are broadcast; array `abstol` follows
+the full ODE layout, and `reltol` must be scalar for the Rosenbrock linear solves.
 
-Mapped errors use `Trixi.ode_norm` (MPI-aware RMS), independently of `internalnorm`.
-Mapping supports in-place `Rodas4`, `Rodas42`, `Rodas4P`, `Rodas4P2`, `Rodas5`, `Rodas5P`,
-`Rodas5Pe`, and `Rodas6P` with the default step limiter.
-It wraps the selected controller, using a PI controller if `controller = nothing`,
-and has no effect when `adaptive = false`.
+Mapped errors use `Trixi.ode_norm` (MPI-aware RMS), independently of `internalnorm`. Mapping
+supports in-place `Rodas4`, `Rodas42`, `Rodas4P`, `Rodas4P2`, `Rodas5`, `Rodas5P`,
+`Rodas5Pe`, and `Rodas6P` with the default step limiter. It wraps the selected controller,
+using a PI controller if `controller = nothing`, and has no effect when `adaptive = false`.
 """
 function solve_implicit end
 
 @doc raw"""
     ImplicitSolveResult
 
-Result returned by [`solve_implicit`](@ref),
-containing the SciML solution `sol` and optional `mesh_history`.
-With mesh recording, `mesh_history[i]` is a vector of one-dimensional element boundaries
-paired with the saved state `sol.u[i]`; otherwise `mesh_history` is `nothing`.
+Result returned by [`solve_implicit`](@ref), containing the SciML solution `sol` and
+optional `mesh_history`. With mesh recording, `mesh_history[i]` is a vector of
+one-dimensional element boundaries paired with the saved state `sol.u[i]`; otherwise
+`mesh_history` is `nothing`.
 """
 struct ImplicitSolveResult{S, M}
     sol::S

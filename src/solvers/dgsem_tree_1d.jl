@@ -1,9 +1,17 @@
 @muladd begin
 #! format: noindent
 
-# New parabolic boundary container to allow boundary conditions to depend on `u_inner`,
-# which in base Trixi.jl is overwritten by the parabolic fluxes to reuse the same container.
-# This creates a new container, allowing both to be available for use in the boundary flux.
+# Trixi normally overwrites cache.boundaries.u with parabolic fluxes. Here, we store those
+# fluxes separately in cache_parabolic.parabolic_boundaries.flux_values so that
+# cache.boundaries.u retains the boundary values of u_transformed. This allows our extended
+# calc_boundary_flux_by_direction_divergence! to extract the interior-side values from
+# cache.boundaries.u as the local variable u_inner, and pass it to
+# boundary_flux_divergence(boundary_condition, flux_inner, u_inner, orientation,
+#                          direction, x, t, equations_parabolic, penalty_scale).
+#
+# For the Richards equation, u_inner contains pressure head, used in the Dirichlet penalty
+# term through the difference u_inner - u_boundary. Such a penalty could not have been
+# applied if cache.boundaries.u were overwritten with parabolic fluxes.
 mutable struct ParabolicBoundaryContainer1D{uEltype <: Real}
     flux_values::Array{uEltype, 3}
     _flux_values::Vector{uEltype}
@@ -78,7 +86,7 @@ function Trixi.coarsen!(u_ode::AbstractVector, adaptor, mesh::Trixi.TreeMesh{1},
     return nothing
 end
 
-# Version of `rhs_parabolic!` that allows both the interior-side solution and flux to be 
+# Version of rhs_parabolic! that allows both the interior-side solution and flux to be
 # available at the boundary for use in the boundary condition
 function Trixi.rhs_parabolic!(du, u, t, mesh::Trixi.TreeMesh{1},
                               equations_parabolic::Trixi.AbstractEquationsParabolic{1},
@@ -256,7 +264,7 @@ function calc_boundary_flux_by_direction_divergence!(surface_flux_values::Abstra
 
         # Call the boundary flux function; for non-penalty-type boundary conditions, the
         # penalty_scale is ignored and the function returns Trixi.jl's standard
-        # `boundary_condition(..., Trixi.Divergence(), equations_parabolic)`.
+        # boundary_condition(..., Trixi.Divergence(), equations_parabolic).
         flux = boundary_flux_divergence(boundary_condition, flux_inner, u_inner,
                                         orientations[boundary], direction, x, t,
                                         equations_parabolic, penalty_scale)
